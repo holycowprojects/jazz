@@ -10,14 +10,16 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 **Description:** Initialize the git repo at `jazz/`, create the directory structure SPEC.md defines, add a watertight `.gitignore` from the first commit, and install a Gitleaks pre-commit hook so no secret can enter history from commit #1 onward.
 
 **Acceptance criteria:**
-- [ ] `git log` shows an initial commit
-- [ ] `docs/`, `tasks/`, `install/`, `scripts/`, `scripts/verify/`, `configs/`, `vm/` exist; the four existing docs are moved into `docs/`
-- [ ] `.gitignore` excludes `*.qcow2`, `*.iso`, venvs, model weights, secrets
-- [ ] `.pre-commit-config.yaml` runs `gitleaks detect --staged` and is installed as an active hook
+- [x] `git log` shows an initial commit
+- [x] `docs/`, `tasks/`, `install/`, `scripts/`, `scripts/verify/`, `configs/`, `vm/` exist; the five existing docs are moved into `docs/`
+- [x] `.gitignore` excludes `*.qcow2`, `*.iso`, venvs, model weights, secrets
+- [x] `.pre-commit-config.yaml` runs the gitleaks hook and is installed as an active hook
 
 **Verification:**
-- [ ] Manual check: a deliberately-staged fake secret string is rejected by the pre-commit hook
-- [ ] `git status` is clean after the initial commit
+- [x] Manual check: a deliberately-staged fake secret (RSA private key block) was rejected by the pre-commit hook (exit code 1, commit blocked) before being removed; the real initial commit then passed cleanly
+- [x] `git status` is clean after the initial commit
+
+**Notes from execution (2 Sept 2026):** pre-commit (pip) and gitleaks (winget, `Gitleaks.Gitleaks`) were installed on the host after explicit go-ahead (SPEC.md "ask first" boundary). Both installers' bin dirs needed adding to the user PATH — noted here in case a fresh shell can't find `pre-commit`/`gitleaks`. First test used an invalid fake-AWS-key string (wrong length, silently didn't match gitleaks' rule) — not a hook failure, just a bad test string; corrected with a private-key block, which gitleaks caught immediately.
 
 **Dependencies:** None
 
