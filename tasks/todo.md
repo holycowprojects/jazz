@@ -33,11 +33,13 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 **Description:** Install QEMU on the Windows host and confirm WHPX acceleration actually engages — this gates every VM task after it.
 
 **Acceptance criteria:**
-- [ ] `qemu-system-x86_64 --version` succeeds
-- [ ] A trivial boot with `-accel whpx` shows accelerated (not TCG-fallback) performance
+- [x] `qemu-system-x86_64 --version` succeeds — QEMU 11.1.0, installed via winget (`SoftwareFreedomConservancy.QEMU`)
+- [x] A trivial boot with `-accel whpx` shows accelerated (not TCG-fallback) performance
 
 **Verification:**
-- [ ] Manual check: boot speed/behavior confirms hardware acceleration, not software emulation
+- [x] Manual check: a no-disk `-accel whpx`-only boot (no fallback accelerator available, so failure would be immediate and fatal) stayed running and printed host-CPUID-specific warnings (e.g. real SVM-bit feature check against actual host CPU). The identical command under `-accel tcg` produced zero such warnings — TCG has no real CPU to query. That asymmetry confirms WHPX is genuinely engaging hardware virtualization, not silently falling back to software emulation.
+
+**Notes from execution (2 Sept 2026):** QEMU's installer put it in `C:\Program Files\qemu`, not on PATH by default — added to user PATH manually (per Task 1's pattern with pre-commit/gitleaks). Installed after explicit go-ahead per SPEC.md's "ask first" boundary on host installs.
 
 **Dependencies:** None (independent of Task 1)
 

@@ -62,7 +62,7 @@ Track A: Filesystem   Track B: Desktop   Track C: AI engineering
 
 ### Phase 0: Foundation
 - [x] Task 1: Repo scaffolding + Gitleaks
-- [ ] Task 2: QEMU installed, WHPX confirmed
+- [x] Task 2: QEMU installed, WHPX confirmed
 - [ ] Task 3: OVMF + launch script (with the `-bios` fix and qcow2 overlay workflow)
 
 ### Phase 1: Base system (Stage 1)
