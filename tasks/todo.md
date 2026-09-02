@@ -81,6 +81,15 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 **Also carried over — interaction limitation:** `vm/serial-console.py` is line-buffered, not a raw terminal. archinstall's interactive TUI may not render correctly over it. Test this early in this task; if it doesn't work, the console client needs a raw-mode rewrite (noted in its own docstring) before proceeding.
 
+**Progress as of 2 Sept 2026 (in progress, not done — resume here):**
+- Both carried-over flags resolved/answered:
+  - **Raw-mode client built and confirmed working:** `vm/serial-console-raw.py` (new file, committed-pending) puts the Windows console into raw mode (`ENABLE_VIRTUAL_TERMINAL_INPUT`); user confirmed arrow keys, Tab, and typing all work correctly driving archinstall's real Textual-based TUI over the serial socket.
+  - **UEFI flag confirmed as a real blocker, then fixed at the VM-launch level:** on the existing direct-kernel-boot VM, archinstall's Bootloader screen showed "UEFI is not detected and some options are disabled" — `systemd-boot` wasn't even offered (only Grub/Limine). Root cause and fix isolated in a separate throwaway test VM (see `docs/Research-Reference-List.md` section 0 for full detail): OVMF + `-accel whpx` + `-vga none` (no display device at all, not just no window) renders genuine UEFI firmware output over serial — confirmed by watching GRUB's real boot countdown render correctly. This means a live session booted this way will have a real `/sys/firmware/efi`.
+  - **Still open:** getting GRUB to actually boot with `console=ttyS0,115200` appended to the kernel line wasn't nailed down — editing the line works, but the boot-trigger keystroke (Ctrl+X, F10) didn't work when scripted as raw bytes over the socket (GRUB's raw serial input doesn't assemble escape sequences the way a real terminal does). **Next step: try this live via a real keypress through `vm/serial-console-raw.py`** rather than scripted injection — may just work where the script didn't. If it does, update `vm/launch-dev-vm.ps1` to boot this way (OVMF + `-vga none`) instead of direct kernel boot.
+- **Manual partitioning completed once already** (on the now-superseded direct-kernel-boot VM, screenshots `SS-shots/ja_06.png`–`ja_16.png`): `/dev/vda`, GPT, partition 1 = 953.7MiB FAT32 at `/boot`, partition 2 = 19.1GiB Btrfs with subvolumes `@`→`/`, `@home`→`/home`, `@snapshots`→`/.snapshots`. This layout is correct and should be repeated (fast, since the exact values are now known) once the VM is relaunched on the fixed OVMF+`-vga none` boot method — the old VM's disk config can't be reused since its live session isn't genuinely UEFI.
+- Swap-on-zram and mirrors/locales left at defaults — fine, no changes needed there.
+- Not yet reached: Kernel selection (must pick `linux-lts`), hostname/credentials, Profile (Hyprland), and the final "Save configuration" export.
+
 **Acceptance criteria:**
 - [ ] `install/base-profile.json` (and credentials file, gitignored) exist, generated via export
 - [ ] Config specifies Btrfs subvolumes, the Hyprland desktop profile, target kernel 6.18 LTS

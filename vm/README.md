@@ -70,9 +70,20 @@ differs from what's currently there.
 Once it's running, connect to the serial console in a separate terminal:
 
 ```powershell
-python vm\serial-console.py       # two-way: type commands, see output
+python vm\serial-console.py       # two-way, line-buffered: type commands, see output
+python vm\serial-console-raw.py   # two-way, raw mode: required for archinstall's TUI
 python vm\watch-serial.py         # read-only viewer
 ```
+
+`serial-console.py` is line-buffered (sends a line once you press Enter) -
+fine for running shell commands, but confirmed (2 Sept 2026, live probe)
+unable to drive `archinstall`: it's a full-screen Textual app that enables
+the alternate screen buffer and mouse tracking the instant it starts, which
+needs every keystroke forwarded immediately, not batched per line. Use
+`serial-console-raw.py` for the interactive archinstall session in Task 4 -
+it puts the Windows console into raw mode (`ENABLE_VIRTUAL_TERMINAL_INPUT`)
+so arrow keys, Tab, and single-key selections all forward correctly. Ctrl+]
+quits it (Ctrl+C is forwarded to the guest instead of killing the client).
 
 Only one client can hold the serial connection at a time.
 
