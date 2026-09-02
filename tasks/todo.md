@@ -1,0 +1,402 @@
+# Task List: JAZZ Phase 1
+
+Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill's guidance, nothing here should run L+ — if a task turns out larger once started, split it rather than push through).
+
+---
+
+## Phase 0: Foundation
+
+### Task 1: Repo scaffolding + Gitleaks
+**Description:** Initialize the git repo at `jazz/`, create the directory structure SPEC.md defines, add a watertight `.gitignore` from the first commit, and install a Gitleaks pre-commit hook so no secret can enter history from commit #1 onward.
+
+**Acceptance criteria:**
+- [ ] `git log` shows an initial commit
+- [ ] `docs/`, `tasks/`, `install/`, `scripts/`, `scripts/verify/`, `configs/`, `vm/` exist; the four existing docs are moved into `docs/`
+- [ ] `.gitignore` excludes `*.qcow2`, `*.iso`, venvs, model weights, secrets
+- [ ] `.pre-commit-config.yaml` runs `gitleaks detect --staged` and is installed as an active hook
+
+**Verification:**
+- [ ] Manual check: a deliberately-staged fake secret string is rejected by the pre-commit hook
+- [ ] `git status` is clean after the initial commit
+
+**Dependencies:** None
+
+**Files likely touched:** `.gitignore`, `.pre-commit-config.yaml`, `docs/*` (moved), directory scaffolding
+
+**Estimated scope:** S
+
+---
+
+### Task 2: QEMU installed, WHPX confirmed
+**Description:** Install QEMU on the Windows host and confirm WHPX acceleration actually engages — this gates every VM task after it.
+
+**Acceptance criteria:**
+- [ ] `qemu-system-x86_64 --version` succeeds
+- [ ] A trivial boot with `-accel whpx` shows accelerated (not TCG-fallback) performance
+
+**Verification:**
+- [ ] Manual check: boot speed/behavior confirms hardware acceleration, not software emulation
+
+**Dependencies:** None (independent of Task 1)
+
+**Files likely touched:** none (host tooling only)
+
+**Estimated scope:** XS
+
+---
+
+### Task 3: OVMF + launch script
+**Description:** Source OVMF UEFI firmware and write the QEMU launch script, baking in the two confirmed fixes: `-bios OVMF_CODE.fd` (never the pflash drive syntax, which is broken under WHPX) and a qcow2 backing-file overlay workflow for fast resets between test runs.
+
+**Acceptance criteria:**
+- [ ] `vm/launch-dev-vm.ps1` (or `.sh`) exists and uses `-bios`, not `-drive if=pflash`
+- [ ] Script creates/uses a qcow2 overlay against a base image rather than booting the base directly
+- [ ] Networking uses `-netdev user` (documented limitation: no ICMP/ping to the guest — noted in the script's comments)
+
+**Verification:**
+- [ ] Running the script boots the Arch ISO installer environment to a shell prompt
+
+**Dependencies:** Task 2
+
+**Files likely touched:** `vm/launch-dev-vm.ps1`, `vm/README.md`
+
+**Estimated scope:** S
+
+---
+
+## Phase 1: Base system (Stage 1)
+
+### Task 4: archinstall config generated
+**Description:** Run archinstall interactively once, selecting the built-in Hyprland profile and a Btrfs subvolume layout (`@`, `@home`, `@snapshots`), then export the config via its "Save configuration" feature — never hand-author the JSON, per the confirmed finding that hand-edited configs crash `--silent` mode.
+
+**Acceptance criteria:**
+- [ ] `install/base-profile.json` (and credentials file, gitignored) exist, generated via export
+- [ ] Config specifies Btrfs subvolumes, the Hyprland desktop profile, target kernel 6.18 LTS
+
+**Verification:**
+- [ ] `python -m json.tool install/base-profile.json` confirms valid JSON
+
+**Dependencies:** Task 3
+
+**Files likely touched:** `install/base-profile.json`
+
+**Estimated scope:** S
+
+---
+
+### Task 5: Unattended install boots to login
+**Description:** The actual Stage 1 moment — run `archinstall --config install/base-profile.json --silent` against a fresh VM disk and confirm it reaches a working login prompt unattended.
+
+**Acceptance criteria:**
+- [ ] Fresh qcow2 disk, unattended install completes without manual intervention
+- [ ] VM reboots into a login prompt
+
+**Verification:**
+- [ ] `systemctl is-system-running` returns a healthy state after logging in
+- [ ] `scripts/verify/base-install.sh` created and passing
+
+**Dependencies:** Task 4
+
+**Files likely touched:** `scripts/verify/base-install.sh`
+
+**Estimated scope:** M
+
+---
+
+### Task 6: Repeat install — reproducibility check
+**Description:** Per the blueprint's own Stage 1 guidance ("install manually several times") and SPEC.md's success criterion #1, run the exact same unattended install a second time from a fresh disk and confirm it's reproducible.
+
+**Acceptance criteria:**
+- [ ] Second install, from the same config, on a fresh disk, also reaches a working login prompt
+
+**Verification:**
+- [ ] `scripts/verify/base-install.sh` passes on both installs
+- [ ] No unintended differences between the two (spot-check package list/versions)
+
+**Dependencies:** Task 5
+
+**Files likely touched:** none new
+
+**Estimated scope:** S
+
+---
+
+## Checkpoint: Foundation
+- [ ] `git log` shows commits; Gitleaks hook demonstrably active
+- [ ] VM boots via the launch script with confirmed WHPX acceleration
+- [ ] Two independent installs from the same config both reach login unattended
+- [ ] **Review with Akash before proceeding to Phase 2**
+
+---
+
+## Phase 2, Track A: Filesystem/recovery
+
+### Task 7: Snapper + snap-pac configured
+**Description:** Confirm the Btrfs subvolume layout from archinstall, install and configure Snapper with `snap-pac` so every pacman transaction auto-snapshots.
+
+**Acceptance criteria:**
+- [ ] `snapper list` shows a snapshot configuration
+- [ ] A `pacman -S` (any small package) triggers a new automatic snapshot
+
+**Verification:**
+- [ ] `scripts/verify/snapper.sh` created and passing
+
+**Dependencies:** Task 5
+
+**Files likely touched:** `scripts/setup-snapper.sh`, `scripts/verify/snapper.sh`
+
+**Estimated scope:** S
+
+---
+
+### Task 8: Rollback tested
+**Description:** Make a deliberate, clearly-breaking change, then roll back via Snapper and confirm the system is restored.
+
+**Acceptance criteria:**
+- [ ] A deliberately broken state (e.g. a corrupted config) is fully reverted after `snapper rollback` (or equivalent) and a reboot
+
+**Verification:**
+- [ ] System boots cleanly post-rollback; the deliberate breakage is gone
+
+**Dependencies:** Task 7
+
+**Files likely touched:** none new
+
+**Estimated scope:** S
+
+---
+
+## Phase 2, Track B: Desktop
+
+**Read `Design-Vision.md` before starting any task in this track** — it records the agreed workspace colors, the native-Hyprland-vs-Quickshell animation split, dashboard scope, and accessibility commitments, so this track builds toward what was actually agreed rather than re-deriving it from memory.
+
+### Task 9: Hyprland reaches a working desktop
+**Description:** Confirm the Hyprland desktop provisioned by archinstall's profile actually launches and is usable inside the VM.
+
+**Acceptance criteria:**
+- [ ] Graphical login reaches a working Hyprland session
+- [ ] Basic window management (open a terminal, move/tile it) works
+
+**Verification:**
+- [ ] `hyprctl version` succeeds; `scripts/verify/hyprland.sh` created and passing
+
+**Dependencies:** Task 5
+
+**Files likely touched:** `scripts/verify/hyprland.sh`
+
+**Estimated scope:** S
+
+---
+
+### Task 10: Quickshell running with one custom widget
+**Description:** Install Quickshell and build one small widget (clock or workspace indicator) from its Getting Started guide, per the research addendum's own recommended first step — not the full AI Command Centre yet.
+
+**Acceptance criteria:**
+- [ ] Quickshell process running under Hyprland
+- [ ] One custom QML widget renders and updates live
+
+**Verification:**
+- [ ] Manual visual check; `scripts/verify/quickshell.sh` confirms the process is running
+
+**Dependencies:** Task 9
+
+**Files likely touched:** `configs/quickshell/*.qml`, `scripts/verify/quickshell.sh`
+
+**Estimated scope:** M
+
+---
+
+### Task 11: `Theme.qml` singleton + one functional-animation proof
+**Description:** Build the lightweight `Theme.qml` singleton (named state tokens, `Behavior`/`ColorAnimation`/`Transition` primitives) recommended by the design research, and wire one real functional-animation behavior end to end — a window-class-matched border color rule — as proof the pattern works before building the rest of the animation vision.
+
+**Acceptance criteria:**
+- [ ] `Theme.qml` exists with at least one named color token
+- [ ] A test window matching a specific class shows the rule-driven border color, confirmed live-updating via Hyprland's `windowrule` syntax
+
+**Verification:**
+- [ ] Manual visual check
+
+**Dependencies:** Task 10
+
+**Files likely touched:** `configs/quickshell/Theme.qml`, `configs/hypr/hyprland.conf` (windowrule addition)
+
+**Estimated scope:** M
+
+---
+
+## Phase 2, Track C: AI engineering
+
+### Task 12: Rootless Podman working
+**Description:** Set up rootless Podman on the base system.
+
+**Acceptance criteria:**
+- [ ] `podman info` succeeds without root
+
+**Verification:**
+- [ ] `scripts/verify/podman.sh` created and passing
+
+**Dependencies:** Task 5
+
+**Files likely touched:** `scripts/setup-podman.sh`, `scripts/verify/podman.sh`
+
+**Estimated scope:** S
+
+---
+
+### Task 13: Reproducible PyTorch + JupyterLab container, CPU-validated
+**Description:** Build one reproducible container (pinned PyTorch version, lockfile) with JupyterLab, and confirm CPU-backed PyTorch operation inside it. This exact container definition is what Task 16 later validates against a rented GPU — build it carefully.
+
+**Acceptance criteria:**
+- [ ] Container builds from a pinned Containerfile/lockfile
+- [ ] Inside the container: `import torch; torch.zeros(3).sum()` runs successfully on CPU
+- [ ] JupyterLab starts and is reachable
+
+**Verification:**
+- [ ] `scripts/verify/ai-core.sh` created and passing
+
+**Dependencies:** Task 12
+
+**Files likely touched:** `configs/containers/ai-core/Containerfile`, lockfile, `scripts/verify/ai-core.sh`
+
+**Estimated scope:** M
+
+---
+
+### Task 14: Ollama installed, CPU inference confirmed
+**Description:** Install Ollama, pull one small model, confirm a CPU inference request returns output.
+
+**Acceptance criteria:**
+- [ ] `ollama list` shows a pulled model
+- [ ] A prompt via `ollama run` (or the API) returns a real response
+
+**Verification:**
+- [ ] `scripts/verify/ollama.sh` created and passing
+
+**Dependencies:** Task 5 (does not depend on Podman track)
+
+**Files likely touched:** `scripts/setup-ollama.sh`, `scripts/verify/ollama.sh`
+
+**Estimated scope:** S
+
+---
+
+### Task 15: Garak/PyRIT probe run
+**Description:** Install Garak and PyRIT, run one probe (e.g. `dan.DAN_Jailbreak`) against the local Ollama model, and confirm a report is produced.
+
+**Acceptance criteria:**
+- [ ] `garak --version` succeeds
+- [ ] A probe run against the local model completes and produces a readable report file
+
+**Verification:**
+- [ ] `scripts/verify/garak.sh` created and passing; report file exists and is non-empty
+
+**Dependencies:** Task 14
+
+**Files likely touched:** `scripts/setup-redteam-ai.sh`, `scripts/verify/garak.sh`
+
+**Estimated scope:** S
+
+---
+
+## Checkpoint: Core tracks
+- [ ] Tracks A, B, C each pass all their `scripts/verify/*.sh` checks independently
+- [ ] **Review with Akash before Task 16 — it's the first task that spends real money**
+
+---
+
+## Phase 3: GPU validation (isolated, explicit go-ahead required)
+
+### Task 16: Rent a GPU, validate the AI-core container
+**Description:** Rent a Vast.ai (or RunPod fallback) RTX 4090 spot instance, run Task 13's exact container definition unmodified, and confirm `torch.cuda.is_available()` returns `True`. Tear the instance down immediately after — never leave it running.
+
+**Acceptance criteria:**
+- [ ] The same container from Task 13 runs on the rented instance without modification
+- [ ] `torch.cuda.is_available()` returns `True` inside it
+- [ ] Instance is terminated after validation
+
+**Verification:**
+- [ ] `scripts/verify/gpu-cuda.sh` (run manually against the remote instance) confirms the above
+
+**Dependencies:** Task 13
+
+**Files likely touched:** `scripts/verify/gpu-cuda.sh`
+
+**Estimated scope:** S (small in files touched, but requires explicit ask-first per SPEC.md boundaries before spending money)
+
+---
+
+## Phase 4: Public-repo readiness
+
+### Task 17: README
+**Description:** Write the public-facing README — what JAZZ is, why it exists, install instructions referencing `install/` and `scripts/`, current status, a demo GIF/screenshot once the desktop from Task 10/11 is stable.
+
+**Acceptance criteria:**
+- [ ] README covers: what/why, install steps, current status, at least one visual (screenshot/GIF)
+
+**Verification:**
+- [ ] Manual read-through: could a stranger follow this?
+
+**Dependencies:** Tasks 5, 9, 10 (needs a working, demoable system)
+
+**Files likely touched:** `README.md`
+
+**Estimated scope:** S
+
+---
+
+### Task 18: LICENSE + CHANGELOG
+**Description:** Add the MIT LICENSE (copyright Akash Navet / Holy Cow Studios Pvt Ltd) and start `CHANGELOG.md`.
+
+**Acceptance criteria:**
+- [ ] `LICENSE` present with correct copyright holders
+- [ ] `CHANGELOG.md` exists with at least one entry
+
+**Verification:**
+- [ ] Manual check
+
+**Dependencies:** None (can happen any time, listed here for phase grouping)
+
+**Files likely touched:** `LICENSE`, `CHANGELOG.md`
+
+**Estimated scope:** XS
+
+---
+
+### Task 19: Hygiene gate
+**Description:** Full-history Gitleaks scan (not just staged-diff) and a manual pass confirming every tracked config references `$HOME`/XDG variables natively rather than hardcoded personal paths.
+
+**Acceptance criteria:**
+- [ ] `gitleaks detect` (full history, not `--staged`) returns clean
+- [ ] No hardcoded personal paths/usernames found in `configs/`
+
+**Verification:**
+- [ ] Command output reviewed directly
+
+**Dependencies:** All prior tasks
+
+**Files likely touched:** none (audit only, fixes applied wherever found)
+
+**Estimated scope:** S
+
+---
+
+### Task 20: Clean-clone rebuild test
+**Description:** The spec's own definition-of-done for reproducibility: boot a genuinely fresh vanilla Arch ISO in a disposable VM, clone the repo, run only what's in `install/` and `scripts/`, and confirm it reproduces a working system using nothing but the repo and its README.
+
+**Acceptance criteria:**
+- [ ] A fresh VM, following only the README, reaches the same working state as the development VM
+
+**Verification:**
+- [ ] Full walkthrough performed and documented; any gap between "what I did from memory" and "what's actually in the repo" gets fixed before this passes
+
+**Dependencies:** Task 19
+
+**Files likely touched:** whatever gaps are found during the walkthrough
+
+**Estimated scope:** M
+
+---
+
+## Checkpoint: Public-repo ready
+- [ ] All 12 of SPEC.md's success criteria met
+- [ ] **Explicit go-ahead from Akash obtained before the first public push** — this checklist does not authorize that step on its own, per SPEC.md's boundaries

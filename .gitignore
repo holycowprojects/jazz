@@ -1,0 +1,37 @@
+# VM disk images and installer media — large, host-specific, never belong in git
+*.qcow2
+*.qcow2.bak
+*.iso
+vm/*.img
+vm/*.raw
+
+# archinstall credentials export (contains a plaintext root/user password by default)
+install/*-credentials.json
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Model weights — large, fetched at setup time, never committed
+*.gguf
+*.safetensors
+*.bin
+models/
+
+# Secrets and local overrides
+.env
+.env.*
+*.pem
+*.key
+secrets/
+*_secret*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
