@@ -4,6 +4,8 @@
 *.iso
 vm/*.img
 vm/*.raw
+vm/*.fd
+vm/vmlinuz-linux
 
 # archinstall credentials export (contains a plaintext root/user password by default)
 install/*-credentials.json
@@ -35,3 +37,6 @@ secrets/
 Thumbs.db
 .vscode/
 .idea/
+
+# Ad-hoc debugging screenshots — not project content
+SS-shots/

@@ -25,15 +25,16 @@ The conventional red-team lab layer is deferred for this phase (see `Blueprint_P
 No single build/test entrypoint yet (this is an OS install, not an app) — the operative commands are:
 
 ```
-# Launch the dev VM (exact flags finalized in Task 1; illustrative here)
-qemu-system-x86_64 -accel whpx -m 6144 -smp 4 \
-  -drive file=vm/arch-dev.qcow2,if=virtio \
-  -cdrom vm/archlinux-x86_64.iso -boot d \
-  -bios <path-to-OVMF_CODE.fd> \
-  -netdev user,id=n0 -device virtio-net,netdev=n0
+# Launch the dev VM (finalized in Task 3 — see vm/launch-dev-vm.ps1 and vm/README.md)
+# NOTE: boots via direct kernel boot + serial console, not graphical UEFI —
+# WHPX cannot render an OVMF framebuffer on this host at all (confirmed
+# 2 Sept 2026, broader than the known WHPX+pflash bug). See
+# docs/Research-Reference-List.md section 0 and vm/README.md for the full story.
+.\vm\launch-dev-vm.ps1
+python vm/serial-console.py   # separate terminal: interact with the guest
 
 # Run the install profile against a freshly-booted vanilla Arch ISO in the dev VM
-# (exact invocation finalized in Task 1; illustrative here)
+# (exact invocation finalized in Task 4; illustrative here)
 archinstall --config install/profile.json --silent
 
 # Snapshot before a risky change (inside the guest, once Btrfs/Snapper exist)

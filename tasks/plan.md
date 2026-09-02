@@ -63,7 +63,7 @@ Track A: Filesystem   Track B: Desktop   Track C: AI engineering
 ### Phase 0: Foundation
 - [x] Task 1: Repo scaffolding + Gitleaks
 - [x] Task 2: QEMU installed, WHPX confirmed
-- [ ] Task 3: OVMF + launch script (with the `-bios` fix and qcow2 overlay workflow)
+- [x] Task 3: OVMF + launch script (revised: WHPX can't render OVMF graphics at all on this host — shipped as direct-kernel-boot + serial console instead; see tasks/todo.md and docs/Research-Reference-List.md section 0)
 
 ### Phase 1: Base system (Stage 1)
 - [ ] Task 4: archinstall config generated

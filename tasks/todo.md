@@ -52,19 +52,23 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 3: OVMF + launch script
 **Description:** Source OVMF UEFI firmware and write the QEMU launch script, baking in the two confirmed fixes: `-bios OVMF_CODE.fd` (never the pflash drive syntax, which is broken under WHPX) and a qcow2 backing-file overlay workflow for fast resets between test runs.
 
+**What actually shipped (differs from the original plan — see below):** extensive live testing found WHPX cannot render an OVMF/UEFI graphical framebuffer *at all* on this host, not just the documented pflash bug — confirmed with a hand-verified monolithic firmware build that rendered correctly under `-accel tcg` but drew nothing under WHPX in every configuration tried. The working fix is QEMU direct kernel boot (`-kernel`/`-initrd`/`-append`) via SeaBIOS with serial console output, which never touches firmware graphics at all. Full diagnostic trail in `docs/Research-Reference-List.md` section 0.
+
 **Acceptance criteria:**
-- [ ] `vm/launch-dev-vm.ps1` (or `.sh`) exists and uses `-bios`, not `-drive if=pflash`
-- [ ] Script creates/uses a qcow2 overlay against a base image rather than booting the base directly
-- [ ] Networking uses `-netdev user` (documented limitation: no ICMP/ping to the guest — noted in the script's comments)
+- [x] `vm/launch-dev-vm.ps1` exists, boots reliably under WHPX (revised: via direct kernel boot + serial console, not `-bios`/OVMF — see note above)
+- [x] Script creates/uses a qcow2 overlay against a base image rather than booting the base directly
+- [x] Networking uses `-netdev user` (documented limitation: no ICMP/ping to the guest — noted in the script's comments and `vm/README.md`)
 
 **Verification:**
-- [ ] Running the script boots the Arch ISO installer environment to a shell prompt
+- [x] Running the script boots the Arch ISO installer environment to a shell prompt — confirmed via live serial session: logged in as root, ran `whoami && uname -a`, got `root` / `Linux archiso 7.2.2-arch1-1 ... x86_64 GNU/Linux`, then visually confirmed by the user watching the live console via `vm/watch-serial.py`
+
+**Follow-up flagged for Task 4/5 (not resolved here — out of this task's scope):** the live installer environment now boots via legacy BIOS, not UEFI. SPEC.md requires the installed *target* system to be UEFI (systemd-boot). Must explicitly verify archinstall still produces a correct UEFI target (ESP partition, systemd-boot install) even though the live session itself has no `/sys/firmware/efi`.
 
 **Dependencies:** Task 2
 
-**Files likely touched:** `vm/launch-dev-vm.ps1`, `vm/README.md`
+**Files likely touched:** `vm/launch-dev-vm.ps1`, `vm/README.md`, `vm/watch-serial.py`, `vm/serial-console.py`
 
-**Estimated scope:** S
+**Estimated scope:** S (ran significantly over — extensive WHPX/OVMF diagnostic work was needed; see Research-Reference-List.md section 0 for why)
 
 ---
 
@@ -73,9 +77,14 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 4: archinstall config generated
 **Description:** Run archinstall interactively once, selecting the built-in Hyprland profile and a Btrfs subvolume layout (`@`, `@home`, `@snapshots`), then export the config via its "Save configuration" feature — never hand-author the JSON, per the confirmed finding that hand-edited configs crash `--silent` mode.
 
+**Carried over from Task 3 — resolve here, don't skip:** the dev VM's live environment now boots via legacy BIOS (direct kernel boot, to work around a WHPX graphics bug — see `vm/README.md`), meaning `/sys/firmware/efi` won't exist in that live session. SPEC.md requires the *installed* system to be UEFI (systemd-boot). Explicitly check archinstall's disk/bootloader config to confirm it can still be told to produce a UEFI-bootable target (ESP partition + systemd-boot) regardless of the live environment's own boot mode — don't assume it "just follows" the live session's mode. If it can't, this needs a real solution (e.g. retrying the OVMF+direct-kernel-boot combination, which wasn't tested) before Task 5.
+
+**Also carried over — interaction limitation:** `vm/serial-console.py` is line-buffered, not a raw terminal. archinstall's interactive TUI may not render correctly over it. Test this early in this task; if it doesn't work, the console client needs a raw-mode rewrite (noted in its own docstring) before proceeding.
+
 **Acceptance criteria:**
 - [ ] `install/base-profile.json` (and credentials file, gitignored) exist, generated via export
 - [ ] Config specifies Btrfs subvolumes, the Hyprland desktop profile, target kernel 6.18 LTS
+- [ ] Config produces a UEFI-bootable target (see note above — confirm explicitly, don't assume)
 
 **Verification:**
 - [ ] `python -m json.tool install/base-profile.json` confirms valid JSON
