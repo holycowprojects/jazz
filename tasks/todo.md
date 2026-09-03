@@ -81,22 +81,23 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 **Also carried over — interaction limitation:** `vm/serial-console.py` is line-buffered, not a raw terminal. archinstall's interactive TUI may not render correctly over it. Test this early in this task; if it doesn't work, the console client needs a raw-mode rewrite (noted in its own docstring) before proceeding.
 
-**Progress as of 2 Sept 2026 (in progress, not done — resume here):**
-- Both carried-over flags resolved/answered:
-  - **Raw-mode client built and confirmed working:** `vm/serial-console-raw.py` (new file, committed-pending) puts the Windows console into raw mode (`ENABLE_VIRTUAL_TERMINAL_INPUT`); user confirmed arrow keys, Tab, and typing all work correctly driving archinstall's real Textual-based TUI over the serial socket.
-  - **UEFI flag confirmed as a real blocker, then fixed at the VM-launch level:** on the existing direct-kernel-boot VM, archinstall's Bootloader screen showed "UEFI is not detected and some options are disabled" — `systemd-boot` wasn't even offered (only Grub/Limine). Root cause and fix isolated in a separate throwaway test VM (see `docs/Research-Reference-List.md` section 0 for full detail): OVMF + `-accel whpx` + `-vga none` (no display device at all, not just no window) renders genuine UEFI firmware output over serial — confirmed by watching GRUB's real boot countdown render correctly. This means a live session booted this way will have a real `/sys/firmware/efi`.
-  - **Still open:** getting GRUB to actually boot with `console=ttyS0,115200` appended to the kernel line wasn't nailed down — editing the line works, but the boot-trigger keystroke (Ctrl+X, F10) didn't work when scripted as raw bytes over the socket (GRUB's raw serial input doesn't assemble escape sequences the way a real terminal does). **Next step: try this live via a real keypress through `vm/serial-console-raw.py`** rather than scripted injection — may just work where the script didn't. If it does, update `vm/launch-dev-vm.ps1` to boot this way (OVMF + `-vga none`) instead of direct kernel boot.
-- **Manual partitioning completed once already** (on the now-superseded direct-kernel-boot VM, screenshots `SS-shots/ja_06.png`–`ja_16.png`): `/dev/vda`, GPT, partition 1 = 953.7MiB FAT32 at `/boot`, partition 2 = 19.1GiB Btrfs with subvolumes `@`→`/`, `@home`→`/home`, `@snapshots`→`/.snapshots`. This layout is correct and should be repeated (fast, since the exact values are now known) once the VM is relaunched on the fixed OVMF+`-vga none` boot method — the old VM's disk config can't be reused since its live session isn't genuinely UEFI.
-- Swap-on-zram and mirrors/locales left at defaults — fine, no changes needed there.
-- Not yet reached: Kernel selection (must pick `linux-lts`), hostname/credentials, Profile (Hyprland), and the final "Save configuration" export.
+**Done as of 3 Sept 2026:**
+- Both Task 3 carried-over flags fully resolved:
+  - **Raw-mode client** (`vm/serial-console-raw.py`) confirmed working end-to-end — drove the entire archinstall TUI (partitioning, menus, text fields) correctly over serial.
+  - **UEFI blocker fixed and fully closed.** OVMF + `-accel whpx` + `-vga none` gives a genuinely UEFI live session. The previously-open piece — getting GRUB to actually boot with `console=ttyS0,115200` appended — is now also resolved: scripted Ctrl+X/F10 byte-injection never worked, but **a real human keypress (Ctrl+X) through `vm/serial-console-raw.py` worked on the first try.** Bootloader screen then showed `Systemd-boot` selected by default with no "UEFI not detected" warning, confirming the live session had a real `/sys/firmware/efi`.
+  - **New gotcha found this session:** hot-adding a virtio disk to an already-running VM via the QEMU monitor (`drive_add` + `device_add virtio-blk-pci`) attaches at the QEMU level but the archiso kernel doesn't pick it up (archinstall still reports "No disks were detected"). Fix: always attach the disk at VM launch time (`-drive file=...,if=virtio`), never hot-add mid-session. Restarting the VM with the disk present from boot resolved it immediately.
+- Manual partitioning redone on the new genuinely-UEFI VM (fast, ~2 minutes): `/dev/vda`, GPT, partition 1 = 1GiB FAT32 `/boot`, partition 2 = 19GiB Btrfs with subvolumes `@`→`/`, `@home`→`/home`, `@snapshots`→`/.snapshots`. Screenshots `SS-shots/14_ja.png` (partition table) and `SS-shots/ja_23.png` (bootloader confirmation).
+- Full walkthrough completed: kernel `linux-lts` only (had to fix a `linux-ltsts` typo along the way — verified corrected), hostname `jazz`, user `holycowstudios` (sudo), Hyprland profile (`seat_access: seatd`, `ly` greeter, "All open-source" gfx driver), Pipewire audio, Bluetooth + print service + ufw firewall enabled, fonts (`noto-fonts`, `noto-fonts-emoji`, `ttf-dejavu`), `base-devel` + `git` added as extra packages (AI tooling deliberately deferred to the later idempotent script, per architecture decision), NetworkManager, Asia/Kolkata timezone, zstd zram swap.
+- Exported via "Save configuration" → "Save all" → `/root` (credentials left unencrypted — throwaway VM, file is gitignored and never leaves the guest). Pulled `user_configuration.json` off the guest via `cat` over the serial line and saved to `install/base-profile.json` on the host.
+- **Flag for Task 5:** the confirmed GRUB boot-trigger fix requires a *real keypress* — scripted/unattended boot of this same OVMF+`-vga none` path will hit the same Ctrl+X problem with no human there to press it. Task 5 will need the fallback discussed but not yet implemented: permanently bake `console=ttyS0,115200` into the ISO's own `grub.cfg` default entry (one-time mount-and-edit) so no runtime keystroke is needed at all.
 
 **Acceptance criteria:**
-- [ ] `install/base-profile.json` (and credentials file, gitignored) exist, generated via export
-- [ ] Config specifies Btrfs subvolumes, the Hyprland desktop profile, target kernel 6.18 LTS
-- [ ] Config produces a UEFI-bootable target (see note above — confirm explicitly, don't assume)
+- [x] `install/base-profile.json` (and credentials file, gitignored) exist, generated via export
+- [x] Config specifies Btrfs subvolumes, the Hyprland desktop profile, target kernel 6.18 LTS (`linux-lts`)
+- [x] Config produces a UEFI-bootable target (confirmed live: Bootloader screen defaulted to `Systemd-boot` with no UEFI warning)
 
 **Verification:**
-- [ ] `python -m json.tool install/base-profile.json` confirms valid JSON
+- [x] `python -m json.tool install/base-profile.json` confirms valid JSON
 
 **Dependencies:** Task 3
 
