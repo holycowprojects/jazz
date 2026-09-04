@@ -67,6 +67,23 @@ The script also needs a monolithic OVMF build (not committed — see
 (a plain, unmodified `tianocore/edk2` build via public CI — audited before
 use). Download its `RELEASEX64_OVMF.fd` release asset and place it there.
 
+## Running the unattended install (Task 5/6)
+
+```powershell
+.\vm\launch-dev-vm.ps1 -Fresh   # or -DiskName for an independent second disk
+python vm\run-unattended-install.py [SerialPort]
+```
+
+This pushes `install/base-profile.json` and `install/base-credentials.json`
+into the guest over the serial socket (no shared filesystem exists) and runs
+`archinstall --config ... --creds ... --silent`. **`base-credentials.json`
+is gitignored (`install/*-credentials.json` - it holds a plaintext root/user
+password) and is not in the repo** - copy `install/base-credentials.json.example`
+to `install/base-credentials.json` and fill in real values before running
+this. The schema (`!root-password`, `!users[].{username,!password,sudo}`) is
+archinstall's own credentials-export format, documented on the
+[ArchWiki Archinstall page](https://wiki.archlinux.org/title/Archinstall).
+
 ## Usage
 
 ```powershell
