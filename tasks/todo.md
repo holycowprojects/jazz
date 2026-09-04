@@ -284,11 +284,17 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 12: Rootless Podman working
 **Description:** Set up rootless Podman on the base system.
 
+**Done as of 4 Sept 2026 — clean pass, no bugs hit this time:**
+- `scripts/setup-podman.sh <username>` installs `podman`, `slirp4netns` (rootless networking), and `fuse-overlayfs` (rootless storage), then confirms/fixes `/etc/subuid`+`/etc/subgid` delegation for the target user and enables `loginctl enable-linger` (so the user's systemd instance runs even outside an interactive login, needed for cgroups v2 delegation). Idempotent — skips the subuid/subgid step if already present.
+- **Confirmed (not assumed): archinstall's own user creation does NOT auto-populate `/etc/subuid`/`/etc/subgid`** — the script's `usermod --add-subuids/--add-subgids` step actually ran and was needed; without it rootless Podman would have nothing to map container UIDs into.
+- Ran against `holycowstudios` (the real sudo user from Task 4, not root — testing rootless from an actual non-root account is the meaningful test).
+- `scripts/verify/podman.sh` checks two things, not just config presence (matching the lesson from Task 7's bugs — verify real behavior): `podman info` succeeding as the non-root user, and an actual container (`docker.io/library/alpine:latest echo rootless-container-ok`) running rootless and producing the expected output. Both passed on the first run.
+
 **Acceptance criteria:**
-- [ ] `podman info` succeeds without root
+- [x] `podman info` succeeds without root
 
 **Verification:**
-- [ ] `scripts/verify/podman.sh` created and passing
+- [x] `scripts/verify/podman.sh` created and passing
 
 **Dependencies:** Task 5
 
