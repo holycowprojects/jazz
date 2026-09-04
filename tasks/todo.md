@@ -139,12 +139,21 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 6: Repeat install — reproducibility check
 **Description:** Per the blueprint's own Stage 1 guidance ("install manually several times") and SPEC.md's success criterion #1, run the exact same unattended install a second time from a fresh disk and confirm it's reproducible.
 
+**Done as of 4 Sept 2026:**
+- `vm/launch-dev-vm.ps1` got a small addition to support this: a `-DiskName` param (default unchanged) so a second install can run against an independent overlay (`arch-dev-overlay2.qcow2`) without touching Task 5's disk — needed to keep both installs around long enough to diff them.
+- Second install: `.\vm\launch-dev-vm.ps1 -DiskName arch-dev-overlay2.qcow2 -Fresh`, then the same `vm/run-unattended-install.py` pushed the *same* `install/base-profile.json` + `install/base-credentials.json` and ran `archinstall --silent` unattended again — "Installation completed without any errors," ~8m56s (nearly identical to Task 5's ~9min).
+- Rebooted from the second disk only (same OVMF, no ISO/kernel args pattern as Task 5) — reached `jazz login:` unattended, no keypress needed, consistent with Task 5.
+- `scripts/verify/base-install.sh` pushed and run on the second install: 11/11 checks pass, same as Task 5.
+- **Package-list spot-check exceeded expectations: `pacman -Q` output was byte-for-byte identical between the two installs** — 623 packages, same versions, zero diff. Captured via the same "boot disk-only, log in, dump to a file, cat it back over serial" pattern used throughout; compared with a plain `diff` on the host after stripping terminal escape codes.
+- Found and fixed one script bug along the way: `vm/run-unattended-install.py`'s "wait for the install to finish" loop was matching the shell's own echo of the *typed* command (which contains the literal, unexpanded marker text) instead of the real post-completion output — fixed by draining the echo first and only searching newly-arrived data afterward. (Caught immediately in Task 5 too, but only fixed once, before this task's run — see the file's own comments.)
+- Debug artifacts (raw pkglists, install logs, boot captures) were written to `vm/` during this task and deleted afterward once the finding was recorded here — not meant to be tracked in the repo.
+
 **Acceptance criteria:**
-- [ ] Second install, from the same config, on a fresh disk, also reaches a working login prompt
+- [x] Second install, from the same config, on a fresh disk, also reaches a working login prompt
 
 **Verification:**
-- [ ] `scripts/verify/base-install.sh` passes on both installs
-- [ ] No unintended differences between the two (spot-check package list/versions)
+- [x] `scripts/verify/base-install.sh` passes on both installs
+- [x] No unintended differences between the two (spot-check package list/versions) — went further than a spot-check: full `pacman -Q` diff, zero differences
 
 **Dependencies:** Task 5
 
@@ -155,10 +164,10 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ---
 
 ## Checkpoint: Foundation
-- [ ] `git log` shows commits; Gitleaks hook demonstrably active
-- [ ] VM boots via the launch script with confirmed WHPX acceleration
-- [ ] Two independent installs from the same config both reach login unattended
-- [ ] **Review with Akash before proceeding to Phase 2**
+- [x] `git log` shows commits; Gitleaks hook demonstrably active
+- [x] VM boots via the launch script with confirmed WHPX acceleration
+- [x] Two independent installs from the same config both reach login unattended
+- [ ] **Review with Akash before proceeding to Phase 2** — not checked by design; this needs Akash's own sign-off, not an automated pass
 
 ---
 

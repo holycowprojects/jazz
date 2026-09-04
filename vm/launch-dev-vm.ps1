@@ -39,7 +39,8 @@ param(
     [int]$RamMB = 4096,
     [int]$Cpus = 4,
     [int]$SerialPort = 4445,
-    [int]$MonitorPort = 4444
+    [int]$MonitorPort = 4444,
+    [string]$DiskName = "arch-dev-overlay.qcow2"   # override for a second independent overlay (Task 6 reproducibility)
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,7 +49,7 @@ $QemuDir = "C:\Program Files\qemu"
 $QemuExe = Join-Path $QemuDir "qemu-system-x86_64.exe"
 $QemuImg = Join-Path $QemuDir "qemu-img.exe"
 $BaseDisk = Join-Path $VmDir "arch-base.qcow2"
-$Overlay = Join-Path $VmDir "arch-dev-overlay.qcow2"
+$Overlay = Join-Path $VmDir $DiskName
 $Iso = Join-Path $VmDir "archlinux-x86_64.iso"
 $Kernel = Join-Path $VmDir "vmlinuz-linux"
 $Initrd = Join-Path $VmDir "initramfs-linux.img"
