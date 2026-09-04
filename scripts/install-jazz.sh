@@ -6,9 +6,11 @@
 # script, with Snapper's auto-snapshot as the rollback safety net). Each
 # sub-script is already idempotent, so this whole script is safe to re-run.
 #
-# Tracks A (filesystem/recovery) + C (AI engineering) only - Track B
-# (desktop/Hyprland) has no setup script yet (deprioritized, see
-# docs/Research-Reference-List.md), so it's not chained in here.
+# Tracks A (filesystem/recovery) + C (AI engineering) + a small preinstalled
+# extras layer only - Track B (desktop/Hyprland widgets) has no setup script
+# yet (deprioritized, see docs/Research-Reference-List.md), so it's not
+# chained in here. When Track B gets one, extend THIS file - don't add a
+# second master installer.
 #
 # Run this ON THE INSTALLED GUEST, as root.
 #
@@ -32,5 +34,9 @@ bash "$SCRIPT_DIR/setup-podman.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-ollama.sh" "$MODEL"
 bash "$SCRIPT_DIR/setup-pyrit.sh"
 
-echo "=== JAZZ install complete (Tracks A+C) ==="
+echo "=== JAZZ install: Extras (terminal, CLI toys, AI coding tools) ==="
+bash "$SCRIPT_DIR/setup-extras.sh"
+bash "$SCRIPT_DIR/setup-aider.sh"
+
+echo "=== JAZZ install complete (Tracks A+C + extras) ==="
 echo "Track B (desktop) has no setup script yet - not included here."
