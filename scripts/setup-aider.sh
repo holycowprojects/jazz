@@ -14,7 +14,9 @@ VENV=/opt/jazz-aider/venv
 
 pacman -Sy --noconfirm --needed uv
 
-uv venv --python 3.12 "$VENV"
+if [[ ! -d "$VENV" ]]; then
+    uv venv --python 3.12 "$VENV"
+fi
 uv pip install --python "$VENV/bin/python" aider-chat==0.86.2
 
 ln -sf "$VENV/bin/aider" /usr/local/bin/aider

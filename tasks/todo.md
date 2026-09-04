@@ -228,18 +228,27 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 9: Hyprland reaches a working desktop
 **Description:** Confirm the Hyprland desktop provisioned by archinstall's profile actually launches and is usable inside the VM.
 
+**Done as of 5 Sept 2026 — real, working session, after one hard dead end:**
+- **Plan A (documented approach) failed for a real, precise reason, not a misconfiguration.** Hyprland's own wiki documents `AQ_NO_KMS_REQUIREMENT=1` for running on a GPU with no display output — exactly the `vgem` dummy-card CI pattern. Confirmed via `strace -v` that Aquamarine 0.14.0 hard-requires `DRM_CAP_CRTC_IN_VBLANK_EVENT`, which `vgem` (a pure dumb-buffer driver, no real CRTC) can never support — `CBackend::create() failed!` every time, immediately, regardless of any documented env var.
+- **Plan B: a real `virtio-gpu-pci` device**, added at QEMU launch (not hotplug — QEMU flatly refuses to hotplug display devices, confirmed directly: `Error: Device 'virtio-gpu-pci' does not support hotplugging`). Tested live whether this reintroduces the known WHPX/OVMF firmware graphics stall (`-vga none` exists specifically to avoid it) — it does not; a full cold boot with it attached reached `jazz login:` exactly as fast as without it.
+- Real session achieved after fixing three further real bugs, each found live: (1) the target user needs `video` group membership (`card0` is `root:video`, Mesa's EGL/DRI2 open of it isn't seatd-mediated); (2) `seatd-launch` conflicts with the system's own already-running `seatd.service` and shouldn't be used — the system service handles DRM master correctly on its own; (3) `foot`'s shell inherits Hyprland's own cwd to `chdir()` into, and `holycowstudios` can't enter `/root` — fixed by launching Hyprland with a sane cwd.
+- Confirmed live via `hyprctl monitors`: a genuine display (`Virtual-1`, `1280x800@74.99400`, `description: Red Hat Inc. QEMU Monitor`), rendered via Mesa's `kms_swrast` software path (no virgl, as expected) — not a headless dummy.
+- **New finding: Hyprland 0.56.2 moved its config to Lua** (`hyprland.lua`, not `hyprland.conf`), and `hyprctl dispatch`'s syntax changed to match (`hl.dsp.<category>.<action>({...})`, not the old space-separated `dispatch exec <cmd>`) — confirmed against the real `dispatchers.md` wiki source (fetched via `gh api`), not guessed.
+- `vm/boot-dev-vm.ps1` (new) is now the standard way to boot the installed system directly (previously always hand-rolled ad hoc, never committed) — includes `-device virtio-gpu-pci`. `scripts/setup-hyprland.sh` (new) adds the `video` group + seeds a deliberately minimal `hyprland.lua` scaffold (stdout logging left on for diagnosability; the real config is Tasks 10/11's job). `scripts/verify/hyprland.sh` (new) launches a real session, opens `foot`, and confirms real window management (tiled by default, then floated + moved to an exact position) via `hyprctl clients`.
+- Confirmed clean end-to-end with the actual committed scripts on a fresh boot (not just the exploratory session): `install-jazz.sh holycowstudios` → `verify-hyprland.sh holycowstudios` → `3 passed, 0 failed`. Along the way this also caught and fixed a real idempotency bug in the already-committed `setup-aider.sh` (`uv venv` errors if the venv already exists, unlike `pip`'s natural idempotency) — exposed only because this was a genuine second run on the same disk.
+
 **Acceptance criteria:**
-- [ ] Graphical login reaches a working Hyprland session
-- [ ] Basic window management (open a terminal, move/tile it) works
+- [x] Graphical login reaches a working Hyprland session
+- [x] Basic window management (open a terminal, move/tile it) works
 
 **Verification:**
-- [ ] `hyprctl version` succeeds; `scripts/verify/hyprland.sh` created and passing
+- [x] `hyprctl version` succeeds; `scripts/verify/hyprland.sh` created and passing (3/3)
 
 **Dependencies:** Task 5
 
-**Files likely touched:** `scripts/verify/hyprland.sh`
+**Files likely touched:** `scripts/verify/hyprland.sh`, `scripts/setup-hyprland.sh` (new, not anticipated when this task was scoped), `vm/boot-dev-vm.ps1` (new — the installed-system boot recipe had never been committed before this task), `scripts/install-jazz.sh` (chained in), `scripts/setup-aider.sh` (idempotency fix)
 
-**Estimated scope:** S
+**Estimated scope:** S (revised: M — the vgem dead end and seatd/permissions debugging turned out heavier than expected)
 
 ---
 

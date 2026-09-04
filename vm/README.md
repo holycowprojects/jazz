@@ -87,12 +87,21 @@ archinstall's own credentials-export format, documented on the
 ## Usage
 
 ```powershell
-# Boot (attaches the ISO automatically; direct kernel boot needs it for the root filesystem)
+# Unattended install / archiso live environment (attaches the ISO automatically;
+# direct kernel boot needs it for the root filesystem) - Task 5/6 only
 .\vm\launch-dev-vm.ps1
 
 # Reset to a clean disk (Task 6's reproducibility check)
 .\vm\launch-dev-vm.ps1 -Fresh
+
+# Boot the already-installed system directly (no ISO) - every task after 5/6
+.\vm\boot-dev-vm.ps1
 ```
+
+`boot-dev-vm.ps1` (added 5 Sept 2026, Task 9) also attaches `-device
+virtio-gpu-pci`, needed for Hyprland to get a real display - confirmed live
+this does not reintroduce the WHPX/OVMF firmware graphics stall `-vga none`
+exists to avoid (see `docs/Research-Reference-List.md` section 0).
 
 Once it's running, connect to the serial console in a separate terminal:
 

@@ -6,13 +6,15 @@
 # script, with Snapper's auto-snapshot as the rollback safety net). Each
 # sub-script is already idempotent, so this whole script is safe to re-run.
 #
-# Tracks A (filesystem/recovery) + C (AI engineering) + a small preinstalled
-# extras layer only - Track B (desktop/Hyprland widgets) has no setup script
-# yet (deprioritized, see docs/Research-Reference-List.md), so it's not
-# chained in here. When Track B gets one, extend THIS file - don't add a
-# second master installer.
+# Tracks A (filesystem/recovery) + B (desktop, Task 9 groundwork only) + C
+# (AI engineering) + a small preinstalled extras layer. Track B's widgets
+# (Tasks 10/11) still have no setup script - extend THIS file when they do,
+# don't add a second master installer.
 #
-# Run this ON THE INSTALLED GUEST, as root.
+# Run this ON THE INSTALLED GUEST, as root. Note: setup-hyprland.sh itself
+# needs no GPU access to run (just usermod + writing a config file), but
+# actually USING the resulting Hyprland session needs the VM booted via
+# vm/boot-dev-vm.ps1 (adds -device virtio-gpu-pci).
 #
 # Usage: install-jazz.sh <username> [ollama-model]
 #   <username>      the non-root sudo user rootless Podman gets configured
@@ -29,6 +31,9 @@ MODEL="${2:-qwen2.5:0.5b}"
 echo "=== JAZZ install: Track A (filesystem/recovery) ==="
 bash "$SCRIPT_DIR/setup-snapper.sh"
 
+echo "=== JAZZ install: Track B (desktop, Task 9 groundwork) ==="
+bash "$SCRIPT_DIR/setup-hyprland.sh" "$USERNAME"
+
 echo "=== JAZZ install: Track C (AI engineering) ==="
 bash "$SCRIPT_DIR/setup-podman.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-ollama.sh" "$MODEL"
@@ -38,5 +43,5 @@ echo "=== JAZZ install: Extras (terminal, CLI toys, AI coding tools) ==="
 bash "$SCRIPT_DIR/setup-extras.sh"
 bash "$SCRIPT_DIR/setup-aider.sh"
 
-echo "=== JAZZ install complete (Tracks A+C + extras) ==="
-echo "Track B (desktop) has no setup script yet - not included here."
+echo "=== JAZZ install complete (Tracks A+B(groundwork)+C + extras) ==="
+echo "Track B's widgets (Tasks 10/11) have no setup script yet - not included here."
