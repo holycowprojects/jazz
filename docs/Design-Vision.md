@@ -56,6 +56,43 @@ Scoped to what's actually measurable on this hardware today, confirmed via resea
 - **High-contrast / scalable text:** achievable, but GTK, Qt/QML, and XWayland legacy apps are three separate theming systems — plan real coordination work across all three, not one global toggle.
 - **Screen-reader compatibility:** **not currently achievable on Hyprland** — Orca's dependencies (AT-SPI2/D-Bus integration) aren't reliably implemented on wlroots-based compositors as of 2026. This is reclassified from "planned" to "aspirational, blocked on upstream" — don't scope build time against it, and say so plainly in the README rather than implying it works.
 
-## 6. What this document is for
+## 6. Daily-life widget backlog (added 5 Sept 2026, Akash's request)
+
+**Status: backlog, not yet broken into `tasks/todo.md` tasks.** Captured here first, deliberately, since Track B hasn't even confirmed Quickshell renders reliably under WHPX yet (Task 9 not started) — scoping individual tasks for 20 widgets before that's proven would be premature. Break these out once Task 10/11's single MVP widget is confirmed working end to end.
+
+These sit **alongside**, not replacing, the AI Command Centre (§4) — the Centre stays Observe-workspace-scoped AI/dev telemetry (CPU/mem, Ollama, Podman, GPU-pending). These are daily-life/productivity widgets and most naturally belong on a persistent panel visible across all workspaces, rather than tied to one workspace's identity color.
+
+Grouped by what each actually requires to build — sequence roughly Tier 1 → Tier 2 → Tier 3 → Tier 4, since dependency risk rises each tier:
+
+**Tier 1 — pure local, no external dependency:**
+- Clock (large digital/analogue + date) — the likely Task 10 pick
+- World clock (same widget, multiple timezones)
+- Notes / sticky notes
+- To-do widget
+- Pomodoro timer
+
+**Tier 2 — wraps an existing Hyprland-ecosystem tool (Quickshell UI over an existing backend):**
+- Screenshot widget → `grim`/`slurp` (full/area/window), `wf-recorder` for recording
+- App launcher → a rofi/wofi-style launcher, restyled
+- Clipboard history → `cliphist`
+- Quick settings panel → NetworkManager/BlueZ/`brightnessctl`/`wpctl` wrapped in one panel
+- Notification centre → Hyprland's own notification protocol, or a `mako`/`swaync`-equivalent
+
+**Tier 3 — standard Linux desktop APIs, well-trodden, no external service:**
+- Now Playing (Spotify/YouTube Music/MPD/browser) → MPRIS covers all of these uniformly
+- Volume mixer (per-app) → PipeWire/WirePlumber
+- Battery widget → `upower`/`/sys/class/power_supply`
+- Bluetooth devices panel → BlueZ
+- Network widget (Wi-Fi strength/SSID) → NetworkManager
+- Storage widget → `df`/`statvfs`
+- Recent files widget → XDG recently-used tracking
+- Package update indicator → `checkupdates` (pacman-contrib) — shows "12 updates available", never raw terminal output
+
+**Tier 4 — needs a real external service/API (genuine integration work, plus a design call on offline behavior and API keys):**
+- Weather (current + hourly + rain chance + sunrise/sunset) — needs a weather API + a location source
+- Calendar + agenda — needs a real backend (CalDAV, Google Calendar, or a local `.ics`) to be more than decoration
+- Currency converter — needs a live FX-rate API
+
+## 7. What this document is for
 
 Read this before starting Tasks 9–11 (Hyprland desktop, Quickshell, `Theme.qml` + first animation proof) in `tasks/todo.md`. If something here turns out wrong once real implementation starts, fix this document first — it should stay the accurate record of intent, not a stale aspiration next to code that quietly does something else.
