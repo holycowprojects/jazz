@@ -336,12 +336,14 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 14: Ollama installed, CPU inference confirmed
 **Description:** Install Ollama, pull one small model, confirm a CPU inference request returns output.
 
+**Done as of 4 Sept 2026:** `scripts/setup-ollama.sh` installs the official `ollama` Arch package, enables its systemd service, and pulls `qwen2.5:0.5b` (small, fast to verify on CPU). Ran on the same dev VM as Tracks A/C. `scripts/verify/ollama.sh` checks structurally (a completed, non-empty response via the `/api/generate` endpoint) rather than pinning to exact wording, since a 0.5B model won't reliably follow "say exactly X" instructions and asserting content would make the check flaky for the wrong reason. Clean pass, 2/2, no bugs found — the most boring task in the project so far, as expected (this is a well-trodden, official-repo install path, unlike Task 13's pip/PyPI saga).
+
 **Acceptance criteria:**
-- [ ] `ollama list` shows a pulled model
-- [ ] A prompt via `ollama run` (or the API) returns a real response
+- [x] `ollama list` shows a pulled model
+- [x] A prompt via `ollama run` (or the API) returns a real response
 
 **Verification:**
-- [ ] `scripts/verify/ollama.sh` created and passing
+- [x] `scripts/verify/ollama.sh` created and passing
 
 **Dependencies:** Task 5 (does not depend on Podman track)
 
