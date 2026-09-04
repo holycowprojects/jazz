@@ -307,21 +307,23 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 13: Reproducible PyTorch + JupyterLab container, CPU-validated
 **Description:** Build one reproducible container (pinned PyTorch version, lockfile) with JupyterLab, and confirm CPU-backed PyTorch operation inside it. This exact container definition is what Task 16 later validates against a rented GPU — build it carefully.
 
-**IN PROGRESS as of 4 Sept 2026 — paused mid-retry, resume here:**
+**Done as of 4 Sept 2026:**
 - Researched first (per user request): confirmed via PyPI metadata that plain `pip install torch==2.14.0` on Linux already pulls the CUDA-enabled build (depends on `cuda-toolkit==13.0.3`, `nvidia-cudnn-cu13`, etc.) — no special `--index-url` needed. This is what makes "the same container works CPU-only today and GPU later, unmodified" possible. JupyterLab pinned at 4.6.3 (current stable, checked via PyPI).
-- `configs/containers/ai-core/Containerfile` + `requirements.txt` (the lockfile) and `scripts/verify/ai-core.sh` are all written and committed (see below) — the *definitions* are done, what's not yet confirmed is a full clean passing build.
+- `configs/containers/ai-core/Containerfile` + `requirements.txt` (the lockfile) and `scripts/verify/ai-core.sh` written and committed.
 - **First build attempt failed on disk space, not a build bug**: `pip install` fully succeeded inside the container, but podman's layer-commit step hit `no space left on device` — the base install's ~19GiB Btrfs partition only had ~9.2GiB free, not enough for torch + the full CUDA 13 toolkit unpacked. Full diagnosis and fix in `docs/Research-Reference-List.md` section 0 (4 Sept 2026 entry) — grew the dev VM's disk live via `qemu-img resize` + `sgdisk -e` + `growpart` + `btrfs filesystem resize max` (parted got stuck on two separate interactive prompts that `-s` didn't suppress; growpart went through cleanly). Disk is now 79GB/70GB free on `arch-dev-overlay.qcow2`.
-- Kicked off a retry (`podman system prune -a -f` then re-run `scripts/verify/ai-core.sh`) with the extra disk space — **this was still running when the session was paused** (user asked to stop and resume later, not a failure). Likely needs another ~20-30 minutes to fully re-download and build (the prune also cleared the base-image cache).
-- **To resume:** boot `arch-dev-overlay.qcow2` (already has the grown 79GB disk, `~holycowstudios/ai-core/` build context, and `~holycowstudios/verify-ai-core.sh` already in place from before — no need to re-push files), log in, and just re-run `su - holycowstudios -c 'bash /home/holycowstudios/verify-ai-core.sh'`, watching for the `PASS`/`FAIL` summary. If it fails again for a *different* reason, diagnose fresh rather than assuming it's still disk space (that specific problem is now fixed).
+- **Second failure, a real (if minor) bug, not disk space**: with more disk, the build succeeded but the PyTorch check failed — `torch` emits a `UserWarning: Failed to initialize NumPy: No module named 'numpy'` because `numpy` was never actually pinned in `requirements.txt` (torch treats it as optional), and the verify script's `torch_out=$(... 2>&1)` folded that stderr warning into the same string it strict-compared against `"0.0"`, so a functionally-correct run showed as FAIL. Fixed two things: added `numpy` to `requirements.txt` (a real missing dependency for an AI/Jupyter container, not just to silence a warning), and changed the verify script to redirect stderr to a separate file (`/tmp/ai-core-torch-stderr.log`) so it can never corrupt the stdout comparison again.
+- **Third failure, a real version-compatibility bug**: pinning `numpy==2.5.2` (latest) produced a *different* error — `ImportError: cannot load module more than once per process` when torch imports numpy internally. Researched via web search rather than guessing: numpy 2.4+ added a stricter guard against its C extension (`_multiarray_umath`) being loaded twice in the same process, and torch 2.14.0's internal numpy interop path trips that guard. Fixed by pinning `numpy==2.3.5` (the last 2.3.x release, confirmed via PyPI, predating the 2.4+ guard) instead.
+- **Fourth attempt hit a transient `pip` network timeout** (`ReadTimeoutError` from `files.pythonhosted.org`) — not a bug, just flaky download; a plain retry with no file changes built cleanly.
+- **Final clean run: all 3 checks pass** — container builds, `torch.zeros(3).sum() == 0.0` on CPU, JupyterLab reachable on port 8888. VM stopped after confirming.
 - **Known follow-up, not yet done:** `vm/launch-dev-vm.ps1`'s base-disk size was bumped 20G→80G for future fresh disks, but `install/base-profile.json`'s own `disk_config` still hardcodes the old ~19GiB partition size — a fresh archinstall run (Task 6-style, or anyone cloning the repo) will still only get ~19GiB until that's addressed too. Worth fixing before Task 6 is ever re-run, or before a stranger tries to reproduce the build from the repo alone (SPEC.md criterion #1).
 
 **Acceptance criteria:**
-- [ ] Container builds from a pinned Containerfile/lockfile
-- [ ] Inside the container: `import torch; torch.zeros(3).sum()` runs successfully on CPU
-- [ ] JupyterLab starts and is reachable
+- [x] Container builds from a pinned Containerfile/lockfile
+- [x] Inside the container: `import torch; torch.zeros(3).sum()` runs successfully on CPU
+- [x] JupyterLab starts and is reachable
 
 **Verification:**
-- [ ] `scripts/verify/ai-core.sh` created and passing
+- [x] `scripts/verify/ai-core.sh` created and passing
 
 **Dependencies:** Task 12
 

@@ -26,12 +26,16 @@ else
     exit 1
 fi
 
-torch_out=$(podman run --rm "$IMAGE" python -c "import torch; print(torch.zeros(3).sum().item())" 2>&1)
+# stdout and stderr are kept separate on purpose: torch/numpy can emit
+# UserWarnings on stderr (e.g. numpy init warnings) that must not corrupt
+# a strict stdout comparison - a real Task 13 finding (4 Sept 2026).
+torch_out=$(podman run --rm "$IMAGE" python -c "import torch; print(torch.zeros(3).sum().item())" 2>/tmp/ai-core-torch-stderr.log)
 if [[ "$torch_out" == "0.0" ]]; then
     echo "PASS: CPU-backed PyTorch runs inside the container (torch.zeros(3).sum() == $torch_out)"
     pass=$((pass + 1))
 else
     echo "FAIL: PyTorch check did not return expected output: $torch_out"
+    cat /tmp/ai-core-torch-stderr.log
     fail=$((fail + 1))
 fi
 
