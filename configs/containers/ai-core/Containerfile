@@ -1,0 +1,21 @@
+# JAZZ AI-core container (Task 13). Pinned deliberately - this exact
+# definition is what Task 16 later runs UNMODIFIED against a rented cloud
+# GPU to validate torch.cuda.is_available(). requirements.txt pins
+# torch==2.14.0, which on Linux pulls PyPI's CUDA-enabled build by default
+# (confirmed via PyPI metadata: it depends on cuda-toolkit==13.0.3 and
+# nvidia-cudnn-cu13, not a separate --index-url) - this build runs fine
+# CPU-only (cuda.is_available() just reports False), so today's CPU
+# validation and Task 16's later GPU validation use the identical image.
+FROM docker.io/library/python:3.12-slim
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+WORKDIR /workspace
+EXPOSE 8888
+
+# Token/password auth disabled: this container is only ever reached over
+# the VM's own loopback interface for verification, never exposed
+# externally - not a production configuration.
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", \
+     "--allow-root", "--ServerApp.token=", "--ServerApp.password="]

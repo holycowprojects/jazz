@@ -65,9 +65,17 @@ foreach ($f in @($Iso, $Kernel, $Initrd, $Ovmf)) {
 }
 
 # Base disk: an empty canvas. Created once; the overlay is what actually gets written to.
+# 80G (not 20G) since Task 13 found 20G isn't enough headroom once real AI
+# containers (CUDA-enabled PyTorch, Ollama models) enter the picture - see
+# docs/Research-Reference-List.md section 0. NOTE: this only affects a
+# brand-new base disk. install/base-profile.json's own disk_config still
+# hardcodes a ~19GiB Btrfs partition size from when it was exported against
+# a 20G disk - a fresh archinstall run (Task 6-style) against this bigger
+# base disk will still only use ~19GiB unless that's addressed too (not yet
+# done - flagged, not fixed, as of this comment).
 if (-not (Test-Path $BaseDisk)) {
-    Write-Host "Creating base disk (20G, empty, sparse) at $BaseDisk"
-    & $QemuImg create -f qcow2 $BaseDisk 20G | Out-Null
+    Write-Host "Creating base disk (80G, empty, sparse) at $BaseDisk"
+    & $QemuImg create -f qcow2 $BaseDisk 80G | Out-Null
 }
 
 if ($Fresh -and (Test-Path $Overlay)) {
