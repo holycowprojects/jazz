@@ -200,15 +200,22 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 8: Rollback tested
 **Description:** Make a deliberate, clearly-breaking change, then roll back via Snapper and confirm the system is restored.
 
+**Done as of 4 Sept 2026 — found two real bugs, both worth knowing before anyone relies on this:**
+- Took an explicit pre-break snapshot (`snapper create --description pre-break-task8`, #7), then broke three independent things: `/etc/hostname` → `BROKEN`, removed the `git` package, and dropped a canary file. Confirmed all three took effect.
+- **`snapper rollback 7` failed outright**: "Cannot detect ambit since default subvolume is unknown." Root cause: archinstall's fstab mounts root by a fixed subvolume *path* (`subvol=/@`, confirmed by reading `/etc/fstab` directly), not via btrfs's "default subvolume" mechanism — which is what `snapper rollback`'s automatic ambit-detection depends on. The error message's own suggested fix (`--ambit` option) doesn't even exist as a flag on this snapper version (0.13.1) — tried it, got "Unknown option '--ambit'". **This is a real gap in what Task 7 set up, not a fluke** — automatic rollback simply does not work on archinstall's default Btrfs+systemd-boot layout without extra tooling (e.g. `grub-btrfs`, which needs GRUB, not systemd-boot).
+- **Built and used the standard manual-recovery procedure instead**, now codified as `scripts/rollback-manual.sh <snapshot-number>`: mount the btrfs top-level (`subvolid=5`), rename the current `@` out of the way, create a new writable `@` as a snapshot of the target restore point, unmount. Confirmed live-renaming a subvolume that is *currently mounted as root* is safe (the kernel's mount reference is by subvolume ID, not by name/path) — no need to boot into a rescue environment. Works cleanly with zero fstab edits specifically *because* fstab uses `subvol=/@` (name-based), not `subvolid=` (ID-based) — confirmed this before relying on it, not assumed.
+- **Second, unrelated bug found along the way: warm reboot crashes OVMF.** Running `reboot` *inside* the guest (as opposed to killing and relaunching the QEMU process, which is how every prior "reboot" in this project actually happened) triggered `!!!! X64 Exception Type - 0E(#PF - Page Fault` during the ACPI reset and hung the guest — a new WHPX/OVMF issue, distinct from the already-documented graphics-rendering bug. The filesystem had already unmounted cleanly before the crash (confirmed from the shutdown log), so no data was at risk, but the QEMU process itself needed a hard `Stop-Process -Force` + fresh relaunch to recover. **Documented directly in `scripts/rollback-manual.sh`'s own comments and `docs/Research-Reference-List.md`: never trust in-guest `reboot` on this host — always cold-boot externally.**
+- Post-recovery (via a fresh cold boot): hostname back to `jazz`, `git` reinstalled, canary file gone, `systemctl is-system-running` → `running`, and `findmnt /` confirmed root now resolves to the restored subvolume's new ID. Cleaned up the orphaned broken subvolume afterward (`btrfs subvolume delete`, including its two nested `var/lib/{portables,machines}` subvolumes).
+
 **Acceptance criteria:**
-- [ ] A deliberately broken state (e.g. a corrupted config) is fully reverted after `snapper rollback` (or equivalent) and a reboot
+- [x] A deliberately broken state (e.g. a corrupted config) is fully reverted after `snapper rollback` (or equivalent — see finding above: automatic `snapper rollback` doesn't work on this layout, `scripts/rollback-manual.sh` is the real mechanism) and a reboot
 
 **Verification:**
-- [ ] System boots cleanly post-rollback; the deliberate breakage is gone
+- [x] System boots cleanly post-rollback; the deliberate breakage is gone
 
 **Dependencies:** Task 7
 
-**Files likely touched:** none new
+**Files likely touched:** `scripts/rollback-manual.sh` (new — not anticipated when this task was scoped, but necessary once `snapper rollback` was confirmed broken)
 
 **Estimated scope:** S
 
