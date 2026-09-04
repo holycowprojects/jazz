@@ -379,6 +379,31 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
+### Task 15b: Master install script + preinstalled extras
+**Description:** Chain every existing `setup-*.sh` into one master `scripts/install-jazz.sh` (Tracks A+C), matching JAZZ's own "git pull + re-run the install script" update model. Also add a small preinstalled-extras layer — a terminal emulator for Hyprland, a few terminal toys, and two AI coding CLIs (OpenCode, Aider) — per Akash's explicit request. Not part of the original 20-task plan; added ad hoc, tracked here after the fact for consistency.
+
+**Done as of 5 Sept 2026:**
+- `scripts/install-jazz.sh` chains `setup-snapper.sh → setup-podman.sh → setup-ollama.sh → setup-pyrit.sh → setup-extras.sh → setup-aider.sh` in dependency order. Each sub-script was already idempotent, so the whole chain is too. Tested live end to end on the dev VM (not just written and assumed correct): every step hit its already-configured skip-path cleanly and finished in seconds.
+- `scripts/setup-extras.sh`: `foot` (terminal — chosen over kitty/alacritty since it needs no GPU acceleration, the safer pick given Task 9's still-open WHPX graphics risk), `opencode`, `cmatrix`, `fastfetch`, `cava`, `sl` — verified live against Arch's package JSON API to confirm official-repo availability, not assumed. `hollywood`/`asciiquarium`/`pipes.sh` were checked too and found to be AUR-only — skipped per Akash's explicit decision to keep JAZZ pacman-only, no AUR helper.
+- `scripts/setup-aider.sh`: Aider isn't in any Arch repo, and its PyPI package (`aider-chat==0.86.2`) requires Python `<3.13` while Arch's official `python` is now 3.14.7 — a plain venv off system Python (the `setup-pyrit.sh` approach) doesn't work here. Fixed by installing `uv` (also official-repo) to provision an isolated Python 3.12 build independent of pacman, then building the venv against that.
+- Confirmed live via `pacman -Q` and `aider --version`: every package installed with a real version (`foot 1.28.0-1`, `opencode 1.18.25-1`, `cmatrix 2.0-4`, `fastfetch 2.68.1-1`, `cava 0.10.7-1`, `sl 5.05-6`, `aider 0.86.2`).
+
+**Acceptance criteria:**
+- [x] `install-jazz.sh <username>` runs all six setup scripts successfully in one pass
+- [x] Every extras package (`foot`, `opencode`, `cmatrix`, `fastfetch`, `cava`, `sl`) installs from official repos with a real version
+- [x] `aider --version` succeeds despite Arch shipping a newer Python than Aider supports
+
+**Verification:**
+- [x] Live end-to-end run on the dev VM, confirmed via `pacman -Q` and `aider --version` output — not just script logic
+
+**Dependencies:** Task 15
+
+**Files likely touched:** `scripts/install-jazz.sh`, `scripts/setup-extras.sh`, `scripts/setup-aider.sh`
+
+**Estimated scope:** S
+
+---
+
 ## Checkpoint: Core tracks
 - [ ] Tracks A, B, C each pass all their `scripts/verify/*.sh` checks independently
 - [ ] **Review with Akash before Task 16 — it's the first task that spends real money**
