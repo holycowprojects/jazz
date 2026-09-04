@@ -176,12 +176,18 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 7: Snapper + snap-pac configured
 **Description:** Confirm the Btrfs subvolume layout from archinstall, install and configure Snapper with `snap-pac` so every pacman transaction auto-snapshots.
 
+**Done as of 4 Sept 2026:**
+- `scripts/setup-snapper.sh` installs `snapper`+`snap-pac`, then does the standard reconciliation dance for a pre-existing `@snapshots` subvolume (archinstall already created and mounted one at `/.snapshots`, which conflicts with `snapper create-config`'s own default behavior): unmount, let Snapper create its own placeholder, discard that placeholder, remount the real subvolume in its place. Idempotent — checks for an existing `root` config first and skips the dance on re-run.
+- Ran against the Task 5 disk (`arch-dev-overlay.qcow2`, now the ongoing dev VM going forward) over serial: `pacman -Sy snapper snap-pac` succeeded, the reconciliation ran cleanly, `snapper list-configs` showed the `root` config pointing at `/`.
+- **First verify attempt caught two real bugs in `scripts/verify/snapper.sh` itself, not in the setup**: (1) `snapper list`'s table uses the Unicode box-drawing `│` character, not an ASCII `|` — the verify script's grep pattern silently matched zero rows regardless of how many snapshots existed. (2) using `--needed` in the test `pacman -S` meant a second run (package already installed) triggered no transaction at all, a false-negative trap. Diagnosed directly on the guest (not guessed): `snapper list` on its own showed real pre/post snapshot pairs tied to the `pacman -S ... tree` transaction, proving snap-pac was working correctly the whole time — confirmed via `pacman -Ql snap-pac` and its three hook files under `/usr/share/libalpm/hooks/`. Fixed both: match `^[0-9]+ ` instead of relying on the separator character, and remove-then-install the test package so re-runs always produce a real transaction.
+- Re-ran the fixed verify script: both checks pass (`5 -> 7` snapshots across the remove+install round trip).
+
 **Acceptance criteria:**
-- [ ] `snapper list` shows a snapshot configuration
-- [ ] A `pacman -S` (any small package) triggers a new automatic snapshot
+- [x] `snapper list` shows a snapshot configuration
+- [x] A `pacman -S` (any small package) triggers a new automatic snapshot
 
 **Verification:**
-- [ ] `scripts/verify/snapper.sh` created and passing
+- [x] `scripts/verify/snapper.sh` created and passing
 
 **Dependencies:** Task 5
 
