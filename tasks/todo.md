@@ -353,21 +353,29 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
-### Task 15: Garak/PyRIT probe run
-**Description:** Install Garak and PyRIT, run one probe (e.g. `dan.DAN_Jailbreak`) against the local Ollama model, and confirm a report is produced.
+### Task 15: PyRIT probe run
+**Description:** ~~Install Garak and PyRIT~~ Install PyRIT (Akash's explicit preference over Garak), run one probe against the local Ollama model, and confirm a report is produced. PyRIT installed via `scripts/setup-pyrit.sh` as a standard part of the OS build (same tier as `setup-ollama.sh`/`setup-podman.sh`), not a one-off manual step.
+
+**IN PROGRESS as of 4 Sept 2026 — paused overnight, resume here:**
+- Researched PyRIT's real current API live rather than guessing (its API has changed significantly from what older blog posts/training data describe — no `PromptSendingOrchestrator` import path anymore). Downloaded the exact pinned `pyrit==1.0.1` wheel and inspected its actual source to confirm: it ships a `pyrit_scan` CLI (client/server — a local `pyrit_backend` FastAPI server), a native Ollama-compatible target (`OpenAIChatTarget` registered as `"ollama"` from `OLLAMA_CHAT_ENDPOINT`/`OLLAMA_MODEL` env vars — Ollama's OpenAI-compatible API), and a built-in `airt.jailbreak` scenario (HarmBench objectives × jailbreak templates, auto-scored for refusal) — exactly the "DAN-style jailbreak" probe the original task envisioned, no custom orchestration code needed.
+- `scripts/setup-pyrit.sh` and `scripts/verify/pyrit.sh` written and committed. Setup: `python`+`python-pip` via pacman (VM had no Python before this), dedicated venv at `/opt/jazz-pyrit/venv` (PyRIT is pip-only, Arch's system Python is PEP-668 externally-managed), `pyrit==1.0.1` + pinned `numpy==2.3.5`, CLI symlinked to `/usr/local/bin`.
+- **Real bug found and fixed**: a bare `pip install pyrit==1.0.1` pulls numpy 2.5.2 (latest) as a transitive dependency, which crashes on import — `NumPy was built with baseline optimizations (X86_V2) but your machine doesn't support (X86_V2)`. QEMU's default WHPX virtual CPU (no explicit `-cpu` flag passed) doesn't expose the SIMD baseline numpy 2.5.2's wheel assumes. Fixed by pinning `numpy==2.3.5` in the same install command — the same version already proven to work on this VM from Task 13 (a different numpy issue there, same fix). Confirmed via live diagnosis (crash traceback captured from `/tmp/pyrit_backend.log`), not assumed.
+- **Real friction found, not a bug but had to be discovered live**: `pyrit_scan`'s backend unconditionally validates a "default objective target" (`OPENAI_CHAT_*` env vars) even when the run only asks for the differently-named `ollama` target — every command 400s with "Environment variable OPENAI_CHAT_KEY is required" otherwise. Worked around by also setting `OPENAI_CHAT_ENDPOINT`/`OPENAI_CHAT_MODEL`/`OPENAI_CHAT_KEY=not-needed` pointed at the same Ollama endpoint — both targets register, only `ollama` is actually used.
+- **First real scenario run actually succeeded** (confirmed via `/tmp/pyrit_backend.log`, which showed `Executing Jailbreak: 100%|██████████| 3/3 [07:15<00:00, ...]`) but my own polling timeout (300s) was set too short for a 0.5B CPU model doing 3 attacks with a scoring pass per attack (~2-4 min each) — I mistakenly sent Ctrl+C to the client thinking it had hung, interrupting the CLI's own result-printing/report-writing before confirming a clean PASS. The backend server (and its loaded datasets) stayed up throughout, so a retry doesn't need to redo setup. **Not a bug in the scripts — a timeout that needs to be ~15-20 min, not 5, in whatever orchestrates the next run.**
+- **To resume:** boot `arch-dev-overlay.qcow2` (PyRIT venv + scripts already in place, no re-push needed), log in, run `bash /root/verify-pyrit.sh` (or push a fresh copy of `scripts/verify/pyrit.sh` first if it's changed) and **wait at least 15-20 minutes** before assuming anything is wrong — check `/tmp/pyrit_backend.log` for real progress (`Executing Jailbreak: N/3 [...]`) rather than judging by what streams to serial, since `pyrit_scan`'s own stdout is fully redirected to the report file and prints nothing live.
 
 **Acceptance criteria:**
-- [ ] `garak --version` succeeds
+- [ ] `python -c "import pyrit; print(pyrit.__version__)"` succeeds (PyRIT has no `--version` CLI flag)
 - [ ] A probe run against the local model completes and produces a readable report file
 
 **Verification:**
-- [ ] `scripts/verify/garak.sh` created and passing; report file exists and is non-empty
+- [ ] `scripts/verify/pyrit.sh` created; not yet confirmed passing end-to-end (see above)
 
 **Dependencies:** Task 14
 
-**Files likely touched:** `scripts/setup-redteam-ai.sh`, `scripts/verify/garak.sh`
+**Files likely touched:** `scripts/setup-pyrit.sh`, `scripts/verify/pyrit.sh`
 
-**Estimated scope:** S
+**Estimated scope:** S (revised: M — PyRIT's real dependency weight and CPU-inference timing turned out heavier than Garak's would have been)
 
 ---
 
