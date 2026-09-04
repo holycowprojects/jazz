@@ -27,7 +27,10 @@
         "removable": false,
         "uki": true
     },
-    "custom_commands": [],
+    "custom_commands": [
+        "sed -i 's/$/ console=ttyS0,115200/' /etc/kernel/cmdline",
+        "mkinitcpio -P"
+    ],
     "disk_config": {
         "btrfs_options": {
             "snapshot_config": null

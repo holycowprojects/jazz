@@ -7,31 +7,35 @@ real hardware.
 
 ## Why this boots the way it does (read before changing anything here)
 
-The original plan was a normal graphical UEFI boot (`-bios OVMF...`). That
-does not work on this host: **WHPX cannot render an OVMF/UEFI graphical
-framebuffer at all**, confirmed through extensive testing on 2 Sept 2026 (see
-`docs/Research-Reference-List.md` section 0 for the full diagnostic trail).
-This is broader than the well-documented WHPX+pflash MMIO bug (QEMU GitLab
-#513) — even a verified-correct monolithic OVMF build (confirmed working,
-rendering the real UEFI boot-device menu, under `-accel tcg`) drew nothing at
-all under WHPX, across every firmware/device/machine-type combination tried.
-The firmware runs fine (confirmed via real CPU burn); WHPX just never
-displays it.
+The original plan was a normal graphical UEFI boot (`-bios OVMF...`, letting
+GRUB/systemd-boot show its own menu). That doesn't fully work on this host:
+**WHPX cannot render an OVMF/UEFI graphical framebuffer at all**, confirmed
+through extensive testing on 2 Sept 2026 (see `docs/Research-Reference-List.md`
+section 0 for the full diagnostic trail) — broader than the documented
+WHPX+pflash MMIO bug (QEMU GitLab #513); even a verified-correct monolithic
+OVMF build (confirmed working, rendering the real UEFI boot-device menu,
+under `-accel tcg`) drew nothing at all under WHPX. Separately, GRUB's raw
+serial input can't be driven unattended — scripted Ctrl+X/F10 byte injection
+never triggers a real boot, only an actual human keypress does (3 Sept 2026
+finding).
 
-**The fix:** boot via QEMU's direct kernel boot (`-kernel`/`-initrd`/
-`-append`), which loads the archiso's own kernel and initramfs straight into
-guest memory via SeaBIOS (legacy BIOS) instead of OVMF — no firmware boot
-menu is ever rendered, so the broken WHPX graphics path is never touched.
+**The fix (current, since 4 Sept 2026): OVMF firmware + QEMU's direct kernel
+boot (`-kernel`/`-initrd`/`-append`) together, skipping any bootloader menu
+entirely.** QEMU's fw_cfg kernel loader hands the kernel+initrd straight to
+OVMF, which jumps directly into it — no boot menu is ever drawn, so neither
+problem above is ever triggered. `-vga none` is required too (any VGA-capable
+device stalls OVMF's console splitter even if nothing ever renders to it).
+Confirmed directly, not assumed: `/sys/firmware/efi` is genuinely present in
+the resulting live session — real UEFI, verified over serial, not a fallback.
 Output goes over a serial console (`console=ttyS0`) as plain text over a TCP
-socket, not a framebuffer.
+socket, not a framebuffer, throughout.
 
-**Consequence for later tasks:** this boots the *live installer environment*
-via legacy BIOS, not UEFI. `/sys/firmware/efi` will not exist in that live
-session. SPEC.md requires the *installed target system* to be UEFI-bootable
-(systemd-boot) regardless — Task 4/5 need to explicitly verify archinstall
-still produces a correct UEFI target (ESP partition, systemd-boot install)
-even though the live environment that runs it booted via BIOS. Don't assume
-this "just works" — check it.
+**This is also how Task 5 rebooted the actual installed target** — same
+OVMF+`-vga none` firmware, but *without* `-kernel`/`-initrd`/`-cdrom`, letting
+UEFI's real boot manager find systemd-boot on the ESP. systemd-boot's own
+countdown rendered fine over serial too (same "no VGA device" property
+applies to its menu as much as GRUB's), reaching a real `jazz login:` prompt
+with no human keypress needed anywhere in the chain.
 
 ## First-time setup
 
@@ -56,6 +60,12 @@ The `archisosearchuuid` value baked into `launch-dev-vm.ps1` must match the
 ISO you downloaded — find it in `${drive}:\loader\entries\01-archiso-linux.conf`
 (the `archisosearchuuid=` option) after mounting, and update the script if it
 differs from what's currently there.
+
+The script also needs a monolithic OVMF build (not committed — see
+`.gitignore`) at `vm\RELEASEX64_OVMF.fd`. The one currently in use came from
+[`retrage/edk2-nightly`](https://github.com/retrage/edk2-nightly)'s releases
+(a plain, unmodified `tianocore/edk2` build via public CI — audited before
+use). Download its `RELEASEX64_OVMF.fd` release asset and place it there.
 
 ## Usage
 
@@ -101,6 +111,6 @@ Only one client can hold the serial connection at a time.
 - **RAM:** defaults to 4096 MB. Override with `-RamMB`.
 - **A verified working monolithic OVMF build** (`RELEASEX64_OVMF.fd`, from
   `retrage/edk2-nightly` — audited before download, see chat history/decision
-  log) is kept in this directory (gitignored) in case UEFI graphical boot is
-  worth retrying later (different QEMU version, different host, etc.) — it is
-  not used by the current launch script.
+  log) lives in this directory (gitignored) and **is used by the current
+  launch script**, paired with direct kernel boot rather than a graphical
+  firmware boot menu (see above).
