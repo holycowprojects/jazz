@@ -518,6 +518,8 @@ Task 16 (GPU rental, spends real money).
 ### Task 16: Rent a GPU, validate the AI-core container
 **Description:** Rent a Vast.ai (or RunPod fallback) RTX 4090 spot instance, run Task 13's exact container definition unmodified, and confirm `torch.cuda.is_available()` returns `True`. Tear the instance down immediately after — never leave it running.
 
+**In progress as of 6 Sept 2026:** `scripts/verify/gpu-cuda.sh` drafted (written, not yet run — needs a real rented instance, which Akash provisions himself since it spends money). Unlike every other `verify/*.sh`, this one runs from the local machine and SSHes out to the instance rather than running on the target; it deliberately never starts the container's default JupyterLab command (unauthenticated, binds `0.0.0.0` — fine on the local dev VM's loopback-only network, not on an internet-facing rented box), only a one-shot `python -c "torch.cuda.is_available()"` check. Prefers `docker` over `podman` for the `--gpus all` GPU-passthrough flag, since Vast.ai/RunPod GPU images are built around docker's nvidia-container-toolkit wiring. Waiting on Akash to rent the instance and hand over its SSH host/port before this can actually run.
+
 **Acceptance criteria:**
 - [ ] The same container from Task 13 runs on the rented instance without modification
 - [ ] `torch.cuda.is_available()` returns `True` inside it
