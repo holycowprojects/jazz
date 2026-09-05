@@ -413,6 +413,35 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
+### Task 15c: Everyday desktop app layer
+**Description:** Add a normal consumer/productivity/creator/gaming desktop layer sitting alongside JAZZ's AI-engineering tooling, per Akash's explicit request (a categorized wishlist: Consumer Core, Productivity Pack, Creator Pack, Gaming Pack, Advanced). Not part of the original 20-task plan; added ad hoc, tracked here after the fact for consistency, same as Task 15b.
+
+**Done as of 5 Sept 2026 (code written, live install still pending):**
+- Every candidate package checked live against Arch's official package JSON API before being added — nothing assumed from training data. Two rounds of trimming followed, each driven by a real tradeoff Akash weighed in on rather than silently decided:
+  - **Cut outright:** LocalSend (AUR-only; KDE Connect already covers phone↔PC transfer), Timeshift (overlaps Snapper, which already owns JAZZ's snapshot/rollback story), Pamac/Bauh (AUR-only), Krita/Kdenlive/OBS Studio (Krita overlaps GIMP; Kdenlive drags in a large KDE Frameworks/MLT/FFmpeg tree for unlikely-to-be-used video editing; OBS went with it), Gamescope/MangoHud (Steam + GameMode stay, overlay extras don't), and the whole Virtual Machines line (virt-manager/libvirt/qemu-desktop) — Akash first asked to drop only qemu-desktop, but that would've left virt-manager/libvirt with no hypervisor backend at all, so the non-functional half was cut too rather than shipping a broken shell.
+  - **Swapped for a lighter equivalent:** `file-roller` → `xarchiver` (no GNOME/Nautilus dependency chain), `qemu-full` → `qemu-desktop` (dropped entirely per above, but was the initially-planned swap), `gnome-calendar` → `gsimplecal` (gnome-calendar needs a real CalDAV backend to be more than decoration per Design-Vision.md §6; gsimplecal is a minimal GTK date-grid popup that doesn't pretend to do more than it can), `gnome-software` → **Bazaar** (added back after Akash asked "do we have an app store?" — Bazaar is a newer Flatpak-only store built without gnome-software's PackageKit/pacman-backend baggage, the app-store GUI Akash actually wanted without the GTK4/libadwaita dependency weight).
+  - **Final 18-package list:** Firefox, Flatpak, Bazaar, VLC, zathura, thunar, xarchiver, Bitwarden, KDE Connect, gsimplecal, LibreOffice, Thunderbird, Obsidian, GIMP, Inkscape, Audacity, Steam, GameMode, Syncthing.
+- `scripts/setup-desktop-apps.sh` also enables Arch's `[multilib]` repo (idempotent — skips if already on) since Steam needs it and it isn't on by default.
+- Chained into `install-jazz.sh` after the extras/Aider step.
+- **Not yet live-tested** — the dev VM's test disk is still sized at the old ~19GiB from Task 4 (a known pending item), and this list is heavy enough (LibreOffice, Steam, GIMP, etc.) that a live install risks running out of space, not from a script bug. Deliberately deferred to the next VM session (Task 10, once Akash sends the logo) rather than booting the VM twice — resize the disk then, and run the full `install-jazz.sh` chain (Hyprland + this layer together) end to end.
+
+**Acceptance criteria:**
+- [x] Every package in the final list confirmed live against Arch's official package API — no AUR
+- [x] Every cut/swap has a recorded reason, not a silent removal
+- [ ] `install-jazz.sh` runs the full chain (including this script) successfully on a resized test disk
+- [ ] `pacman -Q` confirms all 18 packages installed with real versions
+
+**Verification:**
+- [ ] Live end-to-end run on the dev VM once the test disk is resized (planned for the Task 10 VM session)
+
+**Dependencies:** Task 15b
+
+**Files likely touched:** `scripts/install-jazz.sh`, `scripts/setup-desktop-apps.sh`
+
+**Estimated scope:** S
+
+---
+
 ## Checkpoint: Core tracks
 - [ ] Tracks A, B, C each pass all their `scripts/verify/*.sh` checks independently
 - [ ] **Review with Akash before Task 16 — it's the first task that spends real money**

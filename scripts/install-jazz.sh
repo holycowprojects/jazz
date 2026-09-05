@@ -7,7 +7,8 @@
 # sub-script is already idempotent, so this whole script is safe to re-run.
 #
 # Tracks A (filesystem/recovery) + B (desktop, Task 9 groundwork only) + C
-# (AI engineering) + a small preinstalled extras layer. Track B's widgets
+# (AI engineering) + a small preinstalled extras layer + a normal desktop
+# app layer (consumer/productivity/creator/gaming). Track B's widgets
 # (Tasks 10/11) still have no setup script - extend THIS file when they do,
 # don't add a second master installer.
 #
@@ -43,5 +44,8 @@ echo "=== JAZZ install: Extras (terminal, CLI toys, AI coding tools) ==="
 bash "$SCRIPT_DIR/setup-extras.sh"
 bash "$SCRIPT_DIR/setup-aider.sh"
 
-echo "=== JAZZ install complete (Tracks A+B(groundwork)+C + extras) ==="
+echo "=== JAZZ install: Desktop apps (consumer/productivity/creator/gaming) ==="
+bash "$SCRIPT_DIR/setup-desktop-apps.sh"
+
+echo "=== JAZZ install complete (Tracks A+B(groundwork)+C + extras + desktop apps) ==="
 echo "Track B's widgets (Tasks 10/11) have no setup script yet - not included here."
