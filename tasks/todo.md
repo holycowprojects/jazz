@@ -489,8 +489,27 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ---
 
 ## Checkpoint: Core tracks
-- [ ] Tracks A, B, C each pass all their `scripts/verify/*.sh` checks independently
+- [x] Tracks A, B, C each pass all their `scripts/verify/*.sh` checks independently
 - [ ] **Review with Akash before Task 16 — it's the first task that spends real money**
+
+**Done as of 5 Sept 2026.** Full re-verify on a fresh VM boot (`vm/boot-dev-vm.ps1`), every
+Track A/B/C script run back-to-back in one pass, none skipped:
+
+| Track | Script | Result |
+|---|---|---|
+| A | `verify/snapper.sh` | 2 passed, 0 failed |
+| B | `verify/hyprland.sh holycowstudios` | 3 passed, 0 failed |
+| B | `verify/quickshell.sh holycowstudios` | 2 passed, 0 failed |
+| B | `verify/theme.sh holycowstudios` | 6 passed, 0 failed |
+| B | `verify/widgets-tier1.sh holycowstudios` | 9 passed, 0 failed |
+| C | `verify/podman.sh holycowstudios` | 2 passed, 0 failed |
+| C | `verify/ai-core.sh` (as holycowstudios) | 3 passed, 0 failed |
+| C | `verify/ollama.sh` | 2 passed, 0 failed |
+| C | `verify/pyrit.sh` | 2 passed, 0 failed |
+
+**Total: 31 passed, 0 failed.** VM was cleanly powered off (`poweroff`) afterward, confirmed via
+QEMU process exit. Tracks A+B+C are solid on a from-scratch boot - ready for Akash's review before
+Task 16 (GPU rental, spends real money).
 
 ---
 
