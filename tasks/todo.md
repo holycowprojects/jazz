@@ -255,18 +255,28 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 10: Quickshell running with one custom widget
 **Description:** Install Quickshell and build one small widget (clock or workspace indicator) from its Getting Started guide, per the research addendum's own recommended first step — not the full AI Command Centre yet.
 
+**Done as of 5 Sept 2026 — real autostart, two real bugs found and fixed live:**
+- Quickshell 0.3.1 confirmed official-repo (`extra/quickshell`) before touching the VM — no AUR needed. Its real QML API was confirmed directly from the installed `.qmltypes` files on the VM (`/usr/lib/qt6/qml/Quickshell/**/*.qmltypes`), not guessed from a blog post: `import Quickshell` gets `PanelWindow` (re-exported via `Quickshell._Window`'s `default import`) and `SystemClock` (`Quickshell/SystemClock`), with every property name (`anchors`, `implicitHeight`, `color`, `precision`, `date`, etc.) read straight from the type metadata.
+- The widget: a live clock in a top `PanelWindow` bar, bound to `SystemClock.date` via `Qt.formatTime` — `configs/quickshell/shell.qml`-equivalent content lives inline in `scripts/setup-quickshell.sh` (matching the pattern already set by `setup-hyprland.sh`'s `hyprland.lua`, not a separately-tracked config file).
+- **Bug 1: Qt crashed on the `xcb` platform plugin** ("could not connect to display") when Quickshell was launched via a manually-reconstructed `sudo -u` environment — `WAYLAND_DISPLAY` is not automatically inherited just by matching `XDG_RUNTIME_DIR`/the Hyprland instance signature, confirmed live via the actual crash log, not assumed.
+- **Bug 2: Qt Quick's own OpenGL/EGL scenegraph renderer failed** ("MESA-EGL: failed to create dri2 screen") even once Wayland connected correctly — this VM's virtio-gpu-pci device only supports Mesa's software rasterizer (kms_swrast), the same constraint Task 9 already found for Aquamarine itself. Fixed with `QT_QUICK_BACKEND=software`, Qt's own documented pure-software scenegraph renderer — confirmed live this bypasses EGL/DRI2 entirely and Quickshell stays running with "Configuration Loaded" and no crash.
+- **Real fix architecture, not a test-harness hack:** both env vars are set via `hl.env(...)` inside `hyprland.lua` (confirmed via `gh api` fetch of the real `environment-variables.md`/`autostart.md` wiki source — `hl.env()` sets vars *before the display server initializes*, so anything `hl.exec_cmd()`'d afterward inherits them correctly), and Quickshell is started the real way Hyprland is meant to autostart anything: `hl.on("hyprland.start", function() hl.exec_cmd("quickshell") end)` — not a manual `sudo -u ... env ...` wrapper. `scripts/setup-quickshell.sh` appends this block to the existing `hyprland.lua` idempotently (checks for `exec_cmd("quickshell")` before appending).
+- **Verification bug also found and fixed:** `PanelWindow` uses the wlr-layer-shell protocol (bars/panels), so `hyprctl clients` (regular toplevel windows) never shows it — confirmed live, switched the verify script to `hyprctl layers`, which showed a real, visible surface: `Layer ...: xywh: 0 0 1280 32, a: 1, namespace: quickshell, pid: ...`. (`quickshell list` itself had its own separate detection quirk not chased down further, since `hyprctl layers` is stronger, more direct evidence.)
+- Final end-to-end test used **zero manual Quickshell invocation** — booted the VM, ran `setup-hyprland.sh` + `setup-quickshell.sh`, launched only Hyprland, and confirmed Quickshell auto-started purely via its own `hl.on("hyprland.start", ...)` hook: `2 passed, 0 failed`.
+- Chained `setup-quickshell.sh` into `install-jazz.sh` right after `setup-hyprland.sh`.
+
 **Acceptance criteria:**
-- [ ] Quickshell process running under Hyprland
-- [ ] One custom QML widget renders and updates live
+- [x] Quickshell process running under Hyprland
+- [x] One custom QML widget renders and updates live
 
 **Verification:**
-- [ ] Manual visual check; `scripts/verify/quickshell.sh` confirms the process is running
+- [x] `scripts/verify/quickshell.sh` confirms the process is running (via real autostart, not manual launch) and the widget is a real, visible layer-shell surface (`hyprctl layers`)
 
 **Dependencies:** Task 9
 
-**Files likely touched:** `configs/quickshell/*.qml`, `scripts/verify/quickshell.sh`
+**Files likely touched:** `scripts/setup-quickshell.sh` (installs quickshell, writes `shell.qml`, wires Hyprland autostart), `scripts/verify/quickshell.sh`, `scripts/install-jazz.sh`
 
-**Estimated scope:** M
+**Estimated scope:** M (matched — the two real Qt/Wayland env bugs were the expected kind of risk, not a surprise dead end like Task 9's vgem gap)
 
 ---
 
