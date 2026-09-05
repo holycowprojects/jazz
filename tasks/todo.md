@@ -536,6 +536,45 @@ Task 16 (GPU rental, spends real money).
 
 ---
 
+### Task 16b: Bare-metal install on real hardware
+**Description:** Not part of the original 20-task plan; added ad hoc after Akash raised a real gap — every task so far (all 31 Core-tracks checkpoint passes) has only ever run inside a QEMU VM with software-rendered graphics, never on real silicon. Install JAZZ on Akash's own Lenovo Yoga 6 13ARE05 (Ryzen 7 4700U, Radeon Vega 7 iGPU, 16GB RAM), dual-booting alongside the existing Windows install in a 100GB partition, to prove the whole stack — base install through Tracks A/B/C — actually works on physical hardware, not just in a VM. This is the closest thing JAZZ has to an Omarchy-style "does this really work on someone's laptop" test.
+
+**Why this hardware is a good test candidate (assessed 6 Sept 2026):** 16GB RAM and 100GB storage are both comfortably above what the full stack needs (the desktop-app layer alone used ~37GB in Task 15c). More importantly, AMD's `amdgpu` open-source driver has a stronger real-world Linux track record than the Intel Arc iGPU this project's dev laptop has — no `xe.force_probe`-style kernel workaround is expected to be needed here. The one hard gate is UEFI: confirmed fine, since any 2020 pre-installed-Windows laptop boots UEFI.
+
+**Real differences from the VM install this task must account for — do not just reuse `install/base-profile.json` unmodified:**
+1. **Disk device path will differ** — the VM's config hardcodes `/dev/vda`; the Yoga's NVMe drive will be something like `/dev/nvme0n1`. Must confirm the real device name live (`lsblt`/`fdisk -l`) once booted from USB, not guessed.
+2. **Must not wipe the disk.** `base-profile.json` sets `"wipe": false` already but still defines the *entire* disk's two partitions from scratch (`config_type: manual_partitioning`, `device_modifications` covering the whole device) — that assumed a disk with nothing else on it. A new `install/bare-metal-profile.json` is needed that only touches the 100GB of unallocated space Akash frees up by shrinking the Windows partition (via Windows' own Disk Management, not a Linux tool — safer for resizing an existing NTFS volume), leaving Windows' existing partitions completely alone.
+3. **Reuse Windows' existing ESP, don't create a second one.** Standard dual-boot pattern: mount the laptop's existing EFI System Partition at `/boot` (status "modify"/existing, not "create") so systemd-boot adds its own boot entry alongside Windows Boot Manager's, rather than creating a redundant second ESP. Exact partition UUID is unknown until the live USB shows the real layout.
+4. **Drop the serial-console `custom_commands` hack** (`console=ttyS0,115200` baked into the kernel cmdline) — that existed purely because the dev VM has no real display and had to be watched over a serial socket. Real hardware has an actual screen; this isn't needed (harmless to leave in, but it's VM-specific cruft, not a real requirement).
+5. **New verification needed that the VM could never test:** real GPU acceleration (confirm Hyprland is actually using `amdgpu`/Mesa hardware rendering, not falling back to software rendering the way the VM always did), and real wifi/bluetooth hardware working (untested on any VM so far, since QEMU's user-mode networking sidesteps real wifi drivers entirely).
+
+**Planned flow (drafted 6 Sept 2026, not yet executed):**
+1. **Akash's own prep, on the physical laptop, before anything else:** back up any data he cares about; check/record the BitLocker recovery key if Device Encryption is on; disable Windows "Fast Startup"; shrink the Windows partition via Disk Management to free ~100GB of unallocated space; disable Secure Boot in UEFI firmware settings.
+2. Flash the official Arch ISO to USB (Rufus, DD mode) and boot it on the Yoga in UEFI mode.
+3. In the live environment: set a root password (`passwd`) and confirm network reachability so Claude can SSH in from the Windows machine and drive the install the same rigorous way Tasks 5/6 were done (not hand-typed and unverified) — falls back to Akash typing directly at the laptop if networking in the live env doesn't cooperate.
+4. Inspect the real disk layout (`lsblk`, `fdisk -l`), identify the existing ESP and the freed unallocated space, and hand-author `install/bare-metal-profile.json` from those real values (adapted from `base-profile.json` per the four differences above).
+5. Run `archinstall --config install/bare-metal-profile.json --creds <credentials> --silent`, reboot, confirm both Windows and JAZZ appear as separate boot options.
+6. Run `scripts/install-jazz.sh <username>` exactly as on the VM.
+7. Run every Track A/B/C `scripts/verify/*.sh` again, plus new hardware-only checks: confirm `glxinfo`/`hyprctl` shows real `amdgpu` rendering (not `llvmpipe`/software), confirm wifi/bluetooth hardware is recognized and usable.
+
+**Acceptance criteria:**
+- [ ] Windows install is untouched and still boots normally after JAZZ is installed alongside it
+- [ ] JAZZ installs on the real Yoga 6 hardware via the same `archinstall` + `install-jazz.sh` mechanism used on the VM (adapted profile, not a different install method)
+- [ ] All Track A/B/C `verify/*.sh` scripts pass on the real hardware, same as the VM checkpoint
+- [ ] Hyprland is confirmed using real `amdgpu`/Mesa hardware rendering, not a software fallback
+- [ ] Wifi and Bluetooth hardware both work on the installed system
+
+**Verification:**
+- [ ] Live, on the real laptop — not simulated, not assumed from the VM's results
+
+**Dependencies:** Checkpoint: Core tracks (done)
+
+**Files likely touched:** `install/bare-metal-profile.json` (new), `scripts/verify/*.sh` (run, not modified, unless real hardware surfaces a genuine bug), possibly a new `scripts/verify/gpu-hw.sh` for the amdgpu/Mesa check
+
+**Estimated scope:** M — mechanically similar to Tasks 4-6, but on hardware Claude has no direct tool access to, so pacing depends on Akash's own physical steps (partitioning, USB boot, BIOS settings) between each remotely-driven part
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
