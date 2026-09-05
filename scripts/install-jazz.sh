@@ -35,6 +35,7 @@ bash "$SCRIPT_DIR/setup-snapper.sh"
 echo "=== JAZZ install: Track B (desktop) ==="
 bash "$SCRIPT_DIR/setup-hyprland.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-quickshell.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-theme.sh" "$USERNAME"
 
 echo "=== JAZZ install: Track C (AI engineering) ==="
 bash "$SCRIPT_DIR/setup-podman.sh" "$USERNAME"

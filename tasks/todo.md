@@ -283,18 +283,25 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 ### Task 11: `Theme.qml` singleton + one functional-animation proof
 **Description:** Build the lightweight `Theme.qml` singleton (named state tokens, `Behavior`/`ColorAnimation`/`Transition` primitives) recommended by the design research, and wire one real functional-animation behavior end to end — a window-class-matched border color rule — as proof the pattern works before building the rest of the animation vision.
 
+**Done as of 5 Sept 2026 — one real config bug caught by an actual screenshot, not just text checks:**
+- `Theme.qml` (`~/.config/quickshell/Theme.qml`) is a real QML singleton (`pragma Singleton`), registered via a local `qmldir` (`singleton Theme 1.0 Theme.qml`), exposing the 6 named workspace color tokens already agreed in Design-Vision.md sec 2 and used in the approved desktop-simulation mockup — not arbitrary placeholders. `shell.qml` (Task 10's clock widget) was rewritten to bind its panel color to `Theme.forge` instead of a hardcoded hex, proving the singleton is actually consumed, not just present.
+- The border-color rule lives in `hyprland.lua`, a separate system from Theme.qml (Hyprland's Lua config and Quickshell's QML runtime don't share variables — the rule's hex matches `Theme.forge` by convention, not a live binding).
+- **Real bug, caught by a real screenshot:** the first `hl.window_rule({ match = {...}, effect = { border_color = ... } })` shape (following the wiki's generic syntax block too literally) made Hyprland reject the whole config and drop into emergency mode (`hl.window_rule: unknown field 'effect'`) — invisible to the text-only verify checks, which only grepped for the strings `hl.window_rule`/`border_color` being present, not that the config actually parsed. Caught only because a `grim` screenshot was pulled off the guest (via base64-over-serial, no shared filesystem) and actually looked at, showing Hyprland's own emergency-mode error overlay. Fixed by finding real `hl.window_rule` call examples elsewhere in the wiki source (`code-snippets.md`) rather than trusting the generic syntax block alone: `border_color` is a direct sibling key of `match`, not nested under an `effect` field.
+- **Both halves of the acceptance criteria confirmed with real screenshots, not inferred:** one screenshot showed the clock bar in Theme.forge's slate blue and a `foot` window with a matching blue border; a second showed the *same* window (confirmed via unchanged pid) with an amber border after editing `hyprland.lua`'s `border_color` value and running `hyprctl reload` — live-reevaluating, no restart of Hyprland or the window itself.
+- `grim` (also a planned Tier 2 screenshot-widget dependency from the widget backlog) installed for this — already present on this VM as an existing dependency, confirmed live.
+
 **Acceptance criteria:**
-- [ ] `Theme.qml` exists with at least one named color token
-- [ ] A test window matching a specific class shows the rule-driven border color, confirmed live-updating via Hyprland's `windowrule` syntax
+- [x] `Theme.qml` exists with at least one named color token
+- [x] A test window matching a specific class shows the rule-driven border color, confirmed live-updating via Hyprland's `windowrule` syntax
 
 **Verification:**
-- [ ] Manual visual check
+- [x] Manual visual check — done via real `grim` screenshots pulled off the guest and viewed directly, not just automated text checks. `scripts/verify/theme.sh` also confirms 6/6: the config files are correct, and nothing already working (Quickshell, a real window opening) broke.
 
 **Dependencies:** Task 10
 
-**Files likely touched:** `configs/quickshell/Theme.qml`, `configs/hypr/hyprland.conf` (windowrule addition)
+**Files likely touched:** `scripts/setup-theme.sh` (writes `Theme.qml`/`qmldir`, rewrites `shell.qml` to use `Theme.forge`, appends the `border_color` windowrule to `hyprland.lua`), `scripts/verify/theme.sh`, `scripts/install-jazz.sh`
 
-**Estimated scope:** M
+**Estimated scope:** M (matched)
 
 ---
 
