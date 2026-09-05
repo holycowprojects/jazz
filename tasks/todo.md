@@ -305,6 +305,35 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
+### Task 11b: Tier 1 widget set (World clock, Notes, To-do, Pomodoro)
+**Description:** The first batch broken out of the Design-Vision.md §6 widget backlog, now that Task 10/11 proved Quickshell+Theme.qml works end to end. Tier 1 = "pure local, no external dependency" per that doc's own tiering. Not part of the original 20-task plan; added ad hoc, tracked here after the fact, same as Task 15b/15c.
+
+**Done as of 5 Sept 2026:**
+- A second `PanelWindow` (bottom-right, floating, `exclusiveZone: -1`, persistent across every workspace per Design-Vision.md §6's own framing — not tied to any one workspace's identity color) holds all four widgets in one `Column`.
+- **World clock**: computed via plain UTC-offset arithmetic on the local `SystemClock` (Asia/Kolkata, per Task 4's `base-profile.json`) rather than relying on Qt's ICU/timezone-database support (not a confirmed dependency of this install). Confirmed correct live via screenshot: Goa 18:19 → UTC 12:49 (−5:30) → SF 05:49 (−7:00 from UTC) — exact.
+- **Notes / To-do**: real disk persistence via Quickshell's `Quickshell.Io` `FileView` component — its actual API (`path`, `.text()`, `.setText()`, `onLoaded`/`onLoadFailed`) was confirmed by reading the installed `.qmltypes` source directly, not guessed. To-do uses a hand-rolled `ListModel` + `Repeater` with a simple `"0|label"`/`"1|label"` line format (no JSON adapter needed). Checkboxes/buttons are hand-rolled `Rectangle`+`MouseArea` — `QtQuick.Controls` isn't a confirmed dependency of this install, so avoided rather than assumed present.
+- **Pomodoro**: a plain QML `Timer`, no extra dependency.
+- `Theme.qml` extended with a neutral `panel`/`panelInk` token pair (the workspace tokens don't fit a cross-workspace persistent panel) — still the same singleton, still genuinely consumed.
+- **Real bug caught by a real screenshot (again):** the panel's first `implicitHeight: 260` clipped the Pomodoro row off the bottom edge — invisible to any structural/text check, only visible in the actual rendered screenshot. Fixed by bumping to `320`. This is the second task in a row where a visual check caught something a passing text-based verify would have missed entirely — worth treating "look at a real screenshot" as a standard step for any future widget work, not just theme/animation tasks.
+- **Real infra bug found and fixed along the way (Claude's own tooling, not the OS):** the `grim`-screenshot-pull helper script itself had a subtle bug — its stop condition matched the *echoed* command text (the classic echoed-input-line trap this project has hit before), and separately, passing `/tmp/...` paths as Bash command-line arguments to `python.exe` got silently mangled into Windows paths by Git Bash's automatic path conversion. Both fixed (wait for a genuine quiet period + take the largest regex match; hardcode remote paths inside the script instead of passing them as args).
+
+**Acceptance criteria:**
+- [x] All four widgets render in a real Quickshell session (confirmed via `grim` screenshots, not just hyprctl text)
+- [x] World clock's computed offsets are correct against real Goa/UTC/SF time
+- [x] Notes/To-do use genuine `FileView`-based persistence, not in-memory-only state
+- [x] Adding the widget panel doesn't break Quickshell's existing autostart/rendering (Task 10) or Theme.qml usage (Task 11)
+
+**Verification:**
+- [x] `scripts/verify/widgets-tier1.sh`: 9/9 (structural checks + both PanelWindows registering as real layer-shell surfaces)
+
+**Dependencies:** Task 11
+
+**Files likely touched:** `scripts/setup-widgets-tier1.sh` (extends `Theme.qml`, rewrites `shell.qml` to add the widget panel), `scripts/verify/widgets-tier1.sh`, `scripts/install-jazz.sh`
+
+**Estimated scope:** M
+
+---
+
 ## Phase 2, Track C: AI engineering
 
 ### Task 12: Rootless Podman working

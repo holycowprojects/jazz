@@ -6,11 +6,11 @@
 # script, with Snapper's auto-snapshot as the rollback safety net). Each
 # sub-script is already idempotent, so this whole script is safe to re-run.
 #
-# Tracks A (filesystem/recovery) + B (desktop, Task 9 groundwork only) + C
-# (AI engineering) + a small preinstalled extras layer + a normal desktop
-# app layer (consumer/productivity/creator/gaming). Track B's widgets
-# (Tasks 10/11) still have no setup script - extend THIS file when they do,
-# don't add a second master installer.
+# Tracks A (filesystem/recovery) + B (desktop: Hyprland, Quickshell, Theme,
+# Tier 1 widgets) + C (AI engineering) + a small preinstalled extras layer +
+# a normal desktop app layer (consumer/productivity/creator/gaming).
+# Tier 2-4 widgets (Design-Vision.md sec 6) still have no setup script -
+# extend THIS file when they do, don't add a second master installer.
 #
 # Run this ON THE INSTALLED GUEST, as root. Note: setup-hyprland.sh itself
 # needs no GPU access to run (just usermod + writing a config file), but
@@ -36,6 +36,7 @@ echo "=== JAZZ install: Track B (desktop) ==="
 bash "$SCRIPT_DIR/setup-hyprland.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-quickshell.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-theme.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-widgets-tier1.sh" "$USERNAME"
 
 echo "=== JAZZ install: Track C (AI engineering) ==="
 bash "$SCRIPT_DIR/setup-podman.sh" "$USERNAME"
@@ -49,5 +50,5 @@ bash "$SCRIPT_DIR/setup-aider.sh"
 echo "=== JAZZ install: Desktop apps (consumer/productivity/creator/gaming) ==="
 bash "$SCRIPT_DIR/setup-desktop-apps.sh"
 
-echo "=== JAZZ install complete (Tracks A+B(groundwork)+C + extras + desktop apps) ==="
-echo "Track B's widgets (Tasks 10/11) have no setup script yet - not included here."
+echo "=== JAZZ install complete (Tracks A+B+C + extras + desktop apps) ==="
+echo "Tier 2-4 widgets (Design-Vision.md sec 6) have no setup script yet - not included here."
