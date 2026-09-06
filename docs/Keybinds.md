@@ -22,8 +22,8 @@ All binds use **Super** (the Windows key) as the main modifier.
 | Super + V | Toggle floating for the focused window |
 | Super + M | Maximize (fills the screen, keeps the top bar/margins visible) |
 | Super + F | Fullscreen (hides everything, true fullscreen) |
-| Super + H | Minimize - moves the window to a hidden "stash" workspace. There's no true minimize in a tiling WM (no taskbar); this is the closest equivalent. The dock (Task 22, not yet built) will list stashed windows and let you click to restore one. |
-| Super + Shift + H | Show/hide the stash - toggles the special "minimized" workspace into view on the current monitor so you can see and use whatever's stashed there |
+| Super + H | Minimize - moves the focused window to a hidden "stash" workspace, remembering which real workspace it came from |
+| Super + Shift + H | Restore - brings back the most recently minimized window to the real workspace it came from (LIFO order). Only restores one at a time, and only in the order they were minimized - the dock (Task 22, not yet built) replaces this with clicking any specific stashed window directly. Resets on `hyprctl reload` (a window minimized before a reload is still recoverable manually via Super+Shift+1..6, just no longer tracked). |
 
 ## Navigation
 

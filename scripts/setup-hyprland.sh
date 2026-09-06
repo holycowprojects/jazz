@@ -87,14 +87,40 @@ hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 -- keeps the bar/margins (mode = "maximized"), fullscreen hides everything
 -- (mode = "fullscreen"). Minimize has no native Hyprland concept (tiling
 -- WM, no taskbar) - implemented as moving the window to a special
--- "minimized" scratchpad workspace, which the dock (Task 22) will list and
--- let you click to restore, same mechanism either way.
+-- "minimized" scratchpad workspace. First cut just toggled that
+-- workspace's visibility (hl.dsp.workspace.toggle_special) - confirmed
+-- live on real hardware that this is NOT a real restore: the window never
+-- actually leaves the special workspace, it just becomes visible/invisible
+-- in place, so pressing minimize again on an already-stashed active window
+-- does nothing (source == destination). Fixed to properly remember each
+-- window's real origin workspace (hl.get_active_window().workspace.name -
+-- confirmed field names live via `hyprctl -j activewindow`, not guessed)
+-- and move it back there specifically, LIFO, on restore - a real
+-- minimize/restore, not a visibility toggle. Task 22's dock replaces this
+-- LIFO restore with per-window selection once it exists. Known limitation:
+-- `minimizeStack` is plain Lua state, reset by `hyprctl reload` - a window
+-- minimized before a reload is still recoverable manually afterward via
+-- Super+Shift+<1-6> (it's still really there, just untracked).
+local minimizeStack = {}
+
 hl.bind(mainMod .. " + Q", hl.dsp.window.close({}))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({}))
 hl.bind(mainMod .. " + M", hl.dsp.window.fullscreen({ mode = "maximized" }))
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
-hl.bind(mainMod .. " + H", hl.dsp.window.move({ workspace = "special:minimized" }))
-hl.bind(mainMod .. " + SHIFT + H", hl.dsp.workspace.toggle_special("minimized"))
+
+hl.bind(mainMod .. " + H", function()
+    local w = hl.get_active_window()
+    if w == nil then return end
+    table.insert(minimizeStack, { address = w.address, origin = w.workspace.name })
+    hl.dispatch(hl.dsp.window.move({ window = "address:" .. w.address, workspace = "special:minimized" }))
+end)
+
+hl.bind(mainMod .. " + SHIFT + H", function()
+    local entry = table.remove(minimizeStack)
+    if entry == nil then return end
+    hl.dispatch(hl.dsp.window.move({ window = "address:" .. entry.address, workspace = "name:" .. entry.origin }))
+end)
+
 hl.bind(mainMod .. " + SHIFT + Q", hl.dsp.exit())
 hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "previous" }))
 
