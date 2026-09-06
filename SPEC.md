@@ -2,6 +2,8 @@
 
 **Built by:** Akash Navet, Holy Cow Studios Pvt Ltd, and Claude
 
+**v2 planning:** `docs/JAZZ-v2.md` holds the forward-looking backlog for what comes after this Phase 1 spec (a custom bootable ISO with JAZZ's own branding, and anything else added there) - none of it is in scope for this document, and nothing in that file should be built against without a real scoping conversation first.
+
 ## Objective
 Build Phase 1 of **JAZZ**, a custom Arch Linux–based AI engineering workstation that is both a learning vehicle *and* a genuinely workable, publishable operating system. The end state is public-repo-ready: clean git history from commit #1 (no secrets or personal data ever enters it — this can't be scrubbed after the fact), a real license, and documentation sufficient for a stranger to clone and build it themselves. Learning stays primary for *how* we work — every stage should leave the user able to explain it, not just have run it — but "good enough to understand" is not the bar for anything that ships; "good enough for someone else to use" is.
 
