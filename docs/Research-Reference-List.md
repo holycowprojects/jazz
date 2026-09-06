@@ -156,6 +156,8 @@ Read these repos' `install.sh`/profile structure directly before writing this pr
 
 ## 8. Deferred — only needed if/when a custom ISO becomes worth building
 
+**Correction (7 Sept 2026):** the original claim below that "Omarchy ships as a script on vanilla Arch, never a custom ISO" was wrong - confirmed live via `gh api` that Omarchy has a real, actively-maintained custom ISO (`iso.omarchy.org`, built from the dedicated `omacom/omarchy-iso` repo - 265 stars, MIT licensed, its own branches for OEM install/dual-boot/Steam Deck variants). This doesn't automatically mean JAZZ should build one now - the cost items below (archiso, signing, CI boot-testing) are still real and still apply - but the reasoning "no comparable small project does this" no longer holds; Omarchy proves a small project *can* maintain this. Treat the decision to defer as a scope/priority call, not "this isn't done in practice."
+
 Do not read these for v1. They're here so they're easy to find later, once there's real demand for a GUI-first onboarding experience beyond a script:
 
 - **archiso** — <https://wiki.archlinux.org/title/Archiso>
