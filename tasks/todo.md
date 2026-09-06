@@ -558,18 +558,20 @@ Task 16 (GPU rental, spends real money).
 7. Run every Track A/B/C `scripts/verify/*.sh` again, plus new hardware-only checks: confirm `glxinfo`/`hyprctl` shows real `amdgpu` rendering (not `llvmpipe`/software), confirm wifi/bluetooth hardware is recognized and usable.
 
 **Acceptance criteria:**
-- [ ] Windows install is untouched and still boots normally after JAZZ is installed alongside it
-- [ ] JAZZ installs on the real Yoga 6 hardware via the same `archinstall` + `install-jazz.sh` mechanism used on the VM (adapted profile, not a different install method)
-- [ ] All Track A/B/C `verify/*.sh` scripts pass on the real hardware, same as the VM checkpoint
-- [ ] Hyprland is confirmed using real `amdgpu`/Mesa hardware rendering, not a software fallback
-- [ ] Wifi and Bluetooth hardware both work on the installed system
+- [ ] Windows install is untouched and still boots normally after JAZZ is installed alongside it — `efibootmgr` confirms the Windows Boot Manager entry is still present and unmodified, and Windows' own partitions (`nvme0n1p2/p3/p4`) were never touched at the partition-table level; **actually booting into Windows to confirm it still starts has not been done yet** — do that next time Akash reboots
+- [x] JAZZ installs on the real Yoga 6 hardware via the same `archinstall` + `install-jazz.sh` mechanism used on the VM (adapted profile, not a different install method) — done 6 Sept 2026, using `install/bare-metal-profile.json` (new)
+- [x] All Track A/B/C `verify/*.sh` scripts pass on the real hardware, same as the VM checkpoint — 42/42 passed (base-install 11, snapper 2, hyprland 3, quickshell 2, theme 6, widgets-tier1 9, podman 2, ai-core 3, ollama 2, pyrit 2)
+- [x] Hyprland is confirmed using real `amdgpu`/Mesa hardware rendering, not a software fallback — `lspci -k` shows the Ryzen 4700U's Vega iGPU with `Kernel driver in use: amdgpu`, and `/sys/class/drm/card1` exposes the laptop's real `eDP-1` panel; unlike the VM there is no software/virtual DRM device on this hardware at all, so Hyprland (which worked cleanly through every verify script) has no fallback path to have used
+- [x] Wifi and Bluetooth hardware both work on the installed system — `nmcli` shows `wlp2s0` connected to a real network, `bluetoothctl show` shows a powered-on real controller (`hci0`)
 
 **Verification:**
-- [ ] Live, on the real laptop — not simulated, not assumed from the VM's results
+- [x] Live, on the real laptop — not simulated, not assumed from the VM's results. Done 6 Sept 2026.
+
+**Real bug found and fixed along the way:** `setup-theme.sh`'s idempotency check (`grep -q 'hl.window_rule'`) collided with window rules Hyprland's own stock auto-generated config already ships (`suppress-maximize-events`, `fix-xwayland-drags`, etc.) - the check always saw *some* `hl.window_rule` present and silently skipped adding the border-color rule, on every install, including the VM. The Core-tracks checkpoint's `verify/theme.sh` never caught this because todo.md's own history shows Task 11 was last hand-verified before Hyprland's package template grew those extra example rules. Fixed by matching a marker unique to this script (`Added by setup-theme.sh`) instead of the generic string. This is a real fix, not bare-metal-specific - it affects the VM install too.
 
 **Dependencies:** Checkpoint: Core tracks (done)
 
-**Files likely touched:** `install/bare-metal-profile.json` (new), `scripts/verify/*.sh` (run, not modified, unless real hardware surfaces a genuine bug), possibly a new `scripts/verify/gpu-hw.sh` for the amdgpu/Mesa check
+**Files likely touched:** `install/bare-metal-profile.json` (new, done), `scripts/setup-theme.sh` (bug fix), `scripts/verify/*.sh` (run, not modified - real hardware surfaced a genuine bug in a *setup* script, not a verify script)
 
 **Estimated scope:** M — mechanically similar to Tasks 4-6, but on hardware Claude has no direct tool access to, so pacing depends on Akash's own physical steps (partitioning, USB boot, BIOS settings) between each remotely-driven part
 

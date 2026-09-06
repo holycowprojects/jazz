@@ -91,7 +91,7 @@ ShellRoot {
 }
 EOF
 
-if [[ -f "$HYPR_CONFIG" ]] && ! grep -q 'hl.window_rule' "$HYPR_CONFIG"; then
+if [[ -f "$HYPR_CONFIG" ]] && ! grep -q 'Added by setup-theme.sh' "$HYPR_CONFIG"; then
     sudo -u "$USERNAME" tee -a "$HYPR_CONFIG" > /dev/null << 'EOF'
 
 -- Added by setup-theme.sh (Task 11): border_color is a "dynamic effect" -
