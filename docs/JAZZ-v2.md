@@ -47,4 +47,25 @@ Recorded 7 Sept 2026. Akash wants JAZZ to eventually ship its own bootable ISO -
 
 ---
 
-## 3. (Space for more v2 items as they come up)
+## 3. What Omarchy's "Beautiful, Fun & Agentic" actually means, and what JAZZ v2 should learn from it
+
+Recorded 7 Sept 2026, after Akash asked to research Omarchy's own positioning more deeply. Confirmed via `gh api` (issue/PR history on `omacom/omarchy-iso`), not guessed:
+
+**The tagline itself evolved.** "Beautiful, Fun & Agentic Linux by DHH" started as "Beautiful, Fun & **Opinionated**" (issue #136) and changed to "...Agentic" (issue #144) as AI coding agents became central to the product - it was never a founding principle, it's a repositioning as the ecosystem shifted. Worth noting for JAZZ too: positioning can and should evolve as the product does, not be fixed on day one.
+
+**"Beautiful" - concrete execution:** 22 built-in themes, each a *complete bundle* - wallpaper, terminal, Neovim, btop, browser, and the entire shell chrome (top bar, menu, notifications, OSD, even the lock screen) restyle together as **one atomic switch** (`Super+Space` → Style → Theme), not a wallpaper change with some chrome colors following along. Separately, there's a funded "Artist In Residence" program ($2,500/month, 6 months) paying outside artists to build themes/plugins - visual design treated as an ongoing, named product surface with its own contributor path, not a one-off task.
+
+**"Fun" - concrete execution:** a retro Winamp-style music player bundled alongside serious tools (Neovim, Chromium, Obsidian) - a deliberate, slightly absurd personality touch. Documentation voice is conversational and self-aware ("Neovim (btw)"). Fun lives in small, specific, deliberate touches and in tone of voice - not in doing more.
+
+**"Agentic" - concrete execution, and the important one:** this is **literal AI-coding-agent integration**, not a vague nod to user agency/hackability. Pre-wired launcher commands for ~10 coding agents as first-class citizens (`claude`, `codex`, `copilot`, `agy`/Google Antigravity, `crush`, `grok`, and more via `omarchy-mise-install`), a `omarchy default agent <name>` picker, and a genuinely distinctive feature: **crashing processes can auto-route their logs to your chosen AI agent for diagnosis**. Their own definition of "agentic" is tools that *autonomously execute*, not just chat/suggest.
+
+**What this means for JAZZ v2, decided:**
+
+1. **JAZZ already has the stronger, more literal claim to "agentic" than Omarchy does** - Ollama/PyTorch/PyRIT are real AI-*engineering* infrastructure (building and red-teaming AI systems), not coding-assistant launchers (using AI to write code faster). Don't just copy the word - earn it differently: *Omarchy is the OS where agents help you build; JAZZ is the OS where you build agents.* Lead with that distinction in any future JAZZ positioning/README copy.
+2. **Theme system is JAZZ's single biggest concrete visual gap** vs. Omarchy's actual execution. JAZZ's current dark/light toggle is far short of "one switch restyles wallpaper + terminal + shell + lock-screen together, with a picker." Build JAZZ's eventual theme system around the six existing workspace identity colors (Forge/Lab/Arena/Observe/Vault/Range) as the *seed* for full bundles, not just chrome tokens - this is a real v2 task once scoped, bigger than Task 25's polish pass.
+3. **Worth adopting near-verbatim: a multi-agent coding-tool launcher** (`jazz default agent <name>`-style, wrapping Claude Code/Aider - Track C's `setup-aider.sh` already exists as a starting point) - JAZZ has the AI-engineering backend already, missing this day-to-day convenience layer.
+4. **Worth adopting near-verbatim: crash-to-agent auto-diagnosis** - route a crashing process's logs to the user's chosen coding agent for analysis. Low effort, high "agentic" credibility, fits JAZZ's identity naturally.
+5. **JAZZ currently has zero deliberate "fun" touches** - cheap to add, currently absent. Jazz/music motifs are a natural, unclaimed lane here (distinct from Omarchy's Winamp reference) - one deliberate personality touch (a retro toy app, an easter-egg command, a distinctive boot/login message) would go a long way. Doesn't need to be extensive, just deliberate and specific to JAZZ's own identity.
+6. **A funded contributor program (AIR) isn't directly replicable at JAZZ's scale**, but the underlying move - treat visual/theme design as an explicit, ongoing, named workstream with its own path for outside contribution once public, not a one-off task buried in a general todo list - is worth adopting in spirit (e.g. a future `docs/JAZZ-Themes.md` once the repo is public).
+
+## 4. (Space for more v2 items as they come up)
