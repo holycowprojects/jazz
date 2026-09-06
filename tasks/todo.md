@@ -707,6 +707,34 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
+### Task 26: AI Command Centre (Observe workspace dashboard)
+**Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 4a (Claude's proposal, promoted to a real task on Akash's request). The content and scope are already fully designed - `Design-Vision.md` sec 4, written 31 Aug 2026, never actually built. A Quickshell panel scoped to the **Observe workspace** (Design-Vision.md sec 2: "Logs, metrics, the AI Command Centre" - this is workspace-specific, not a global always-visible panel like the dock/widget-stack), showing real system + AI-stack telemetry.
+
+**What it shows (per Design-Vision.md sec 4, unchanged from the original spec):**
+- **Real now:** CPU / memory / temperature / power (`/proc`/`/sys` reads), Ollama's loaded model + VRAM-equivalent size + context length + quantization (`GET /api/ps` against the local Ollama endpoint), Podman per-container CPU/memory/network (`podman stats --format json`)
+- **Deliberately shown as pending, not faked, unless verification below says otherwise:** GPU utilization/VRAM graph - the original spec assumed the dev laptop's Intel Xe iGPU (no working `intel_gpu_top` support). Task 16b moved the real target hardware to an AMD Ryzen 4700U (Vega iGPU) - AMD's GPU monitoring tooling (`radeontop`, `amdgpu_top`) has historically been more reliable than Intel Xe's. **Check live, on the Yoga 6, whether one of these actually works before deciding this panel is real vs. honestly-pending** - do not assume either way, the hardware changed since this was originally speced.
+- Token throughput - explicitly not free per the original spec (would need client-side timing of Ollama's streaming response, not a pulled metric) - still fine to leave as a later refinement, not required for this task's first pass
+
+**Technical mechanism (reuse what's already proven, don't reinvent):** Tonight's Task 22 build already proved the exact pattern this needs live on real hardware - `Process` + `SplitParser` (line-streamed) or `StdioCollector` (whole-output, `this.text` in `onStreamFinished`) polling on a `Timer`, exactly as used for network SSID/Bluetooth status/volume/brightness. No new Quickshell technique to learn here, just new data sources. Visibility gated on `workspaces.active === "Observe"` (the active-workspace state already tracked and polled every second since Task 22's top-bar retinting).
+
+**Acceptance criteria:**
+- [ ] Panel appears when on the Observe workspace, not visible on others
+- [ ] CPU/memory/temperature/power show real, live-updating values
+- [ ] Ollama's loaded model info (name/size/context/quantization) shown live, real data from `GET /api/ps`
+- [ ] Podman per-container stats shown live, real data from `podman stats`
+- [ ] GPU utilization: either real data (if `radeontop`/`amdgpu_top` works on this hardware, confirmed live) or an honest "pending" state matching Design-Vision.md sec 4's own precedent - decided by live verification, not assumption
+- [ ] Confirmed live on the Yoga 6, screenshot showing the Observe workspace with real data
+
+**Verification:** Live, on the Yoga 6 (real hardware)
+
+**Dependencies:** Task 21 (own config), Task 22 (the polling/`Process` patterns this reuses)
+
+**Files likely touched:** `configs/quickshell/shell.qml` (new PanelWindow, workspace-gated), possibly a new `scripts/setup-` script if this needs its own package installs (e.g. `radeontop`)
+
+**Estimated scope:** M
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
