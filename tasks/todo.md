@@ -577,6 +577,56 @@ Task 16 (GPU rental, spends real money).
 
 ---
 
+### Task 21: Own the base Hyprland config
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026 after real-hardware testing surfaced the root cause of "this feels like stock Hyprland, not JAZZ": `setup-hyprland.sh` only writes its own `hyprland.lua` scaffold if no config file exists yet. On both the VM and the Yoga 6, Hyprland's own package auto-generates a default config the first time the compositor launches (e.g. an early/curious login before `install-jazz.sh` ever runs) - so the guard silently skips, and Track B's whole chain (`setup-quickshell.sh`/`setup-theme.sh`/`setup-widgets-tier1.sh`) ends up appending onto Hyprland's stock example config instead of JAZZ's own. This is why the real install still had the stock launcher placeholder (`hyprlauncher`, a name that isn't a real package), stock keybinds, and stock window-rule examples.
+
+Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unconditionally (backs up any existing one first, doesn't silently defer to it), with a complete real keybind scheme - not just a minimal scaffold.
+
+**Scope expanded live (6 Sept 2026, Akash's request) once the base fix was in place:** keyboard-first stays the design (no window title bars/buttons - `Design-Vision.md` sec 1/5 already commits to this, confirmed with Akash directly rather than assumed), but every window action must have a real, working, documented keybind. Added: file manager launch (dolphin - was in the stock config, got dropped in the first rewrite pass), maximize vs. true fullscreen as two distinct actions (`window.fullscreen` with `mode = "maximized"` vs `"fullscreen"` - confirmed as genuinely different dispatcher states, not two names for the same thing), minimize (no native concept in a tiling WM - implemented as moving the window to a `special:minimized` scratchpad workspace, which Task 22's dock will list/restore from), and directional focus/window movement (Super+arrows) - a core tiling-WM navigation gap missed in the first draft. Full reference recorded in new `docs/Keybinds.md`, which must be kept in sync with this script - not left to drift.
+
+**Real bugs found and fixed live on the Yoga 6 during this task, not just designed on paper:**
+1. Hyprland's Lua key-string parser requires the modifier written as `SHIFT` (all-caps) - `Shift` (mixed case) fails with "Unknown keysym" and breaks config load entirely, taking down every SHIFT-modified bind at once. Confirmed live (red error banner, `hyprctl reload`), not caught by any static check beforehand.
+2. Workspace switching is a `hl.dsp.focus({workspace = ...})` call, not a `hl.dsp.workspace.switch(...)` (that function doesn't exist - `hl.dsp.workspace.*` only covers `change_id`/`rename`/`move`-to-monitor/`swap_monitors`/`toggle_special`). Caught before deploying, by fetching the real dispatcher list from `hyprwm/hyprland-wiki` via `gh api` rather than trusting an initial guess.
+
+**Acceptance criteria:**
+- [x] `setup-hyprland.sh` always writes JAZZ's own config, never silently skips because a file already exists
+- [x] The app launcher keybind actually launches a real installed program, not a placeholder name
+- [x] Existing appended content from `setup-quickshell.sh`/`setup-theme.sh`/`setup-widgets-tier1.sh` still applies cleanly on top of the new base (no regression in Tasks 9-11/widgets-tier1)
+- [x] All Track A/B/C `verify/*.sh` scripts still pass after this change - re-ran hyprland/quickshell/theme/widgets-tier1 live, 20/20 passed after the full rebuild
+- [x] Every window action (launch/close/float/maximize/fullscreen/minimize/restore/focus-move/window-move/workspace-switch/exit) has a real keybind, confirmed live via `hyprctl reload` producing no config errors
+- [x] `docs/Keybinds.md` exists and matches the real config exactly
+
+**Verification:** Live, on the Yoga 6 (real hardware) - re-ran `scripts/verify/hyprland.sh`, `quickshell.sh`, `theme.sh`, `widgets-tier1.sh` (20/20 passed) plus a live `hyprctl reload` config-error check after every change
+
+**Dependencies:** Task 16b (done - this is the task that surfaced the bug)
+
+**Files likely touched:** `scripts/setup-hyprland.sh`, `docs/Keybinds.md` (new)
+
+**Estimated scope:** S (grew to M once live testing surfaced the full keybind gap)
+
+---
+
+### Task 22: Top-bar shortcuts + app dock + system menu
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's request after seeing the real desktop. Three additions to the Quickshell top bar/panel layer: icon shortcuts on the top bar itself (launcher, screenshot, quick-settings), a real app dock for launching/switching apps, and a **system icon/menu** on the top bar - the Windows-system-tray/macOS-menu-bar equivalent: one icon that opens a panel with network (wifi SSID/strength via NetworkManager), Bluetooth (BlueZ), volume (PipeWire/WirePlumber), brightness (`brightnessctl`), and a power menu (lock/logout/restart/shutdown). This is Design-Vision.md §6 Tier 2's "Quick settings panel" item, entry-pointed the way users already expect from Windows/macOS.
+
+**Design note:** `Design-Vision.md` §1 states the desktop is "keyboard-first and calm by default." A permanently-visible dock cuts against that. Decision (pending Akash's confirmation): build the dock as a real Quickshell layer-shell surface, but summonable via a keybind (e.g. Super+D) rather than always on-screen, so it fits the project's stated direction instead of contradicting it - flip to always-visible is a one-line change if Akash prefers that instead.
+
+**Acceptance criteria:**
+- [ ] Top bar has real, working icon shortcuts (not decorative) for at least: launcher, screenshot, quick-settings
+- [ ] A real app dock exists (pinned + running apps, click to launch/switch), summonable via keybind per the design note above
+- [ ] A system icon on the top bar opens a real panel showing network/Bluetooth/volume/brightness and a working power menu (lock/logout/restart/shutdown)
+- [ ] All of the above render as real layer-shell surfaces (`hyprctl layers`), confirmed live, not just present in source
+
+**Verification:** Live, on the Yoga 6 (real hardware)
+
+**Dependencies:** Task 21 (needs JAZZ's own config to bind the dock's keybind into, not stock Hyprland's)
+
+**Files likely touched:** `scripts/setup-widgets-tier1.sh` or a new `scripts/setup-dock.sh`, Quickshell `shell.qml`/new `.qml` files, `scripts/verify/*.sh` (new verify script)
+
+**Estimated scope:** M
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
