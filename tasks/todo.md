@@ -611,10 +611,12 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 **Design note:** `Design-Vision.md` §1 states the desktop is "keyboard-first and calm by default." A permanently-visible dock cuts against that. Decision (pending Akash's confirmation): build the dock as a real Quickshell layer-shell surface, but summonable via a keybind (e.g. Super+D) rather than always on-screen, so it fits the project's stated direction instead of contradicting it - flip to always-visible is a one-line change if Akash prefers that instead.
 
+**Technical mechanism (confirmed live, not guessed):** dock/menu visibility toggled from Hyprland keybinds via Quickshell's real IPC system - `IpcHandler { target: "x"; function toggle(): void {...} }` in QML, invoked with `qs ipc call x toggle` from a Hyprland `exec_cmd`. Confirmed against a real working Quickshell config (bjarneo/quickshell on GitHub) since the official docs site 403s to automated fetches - both `qs` and `quickshell` binaries are confirmed present on the installed system (`pacman -Ql quickshell`).
+
 **Acceptance criteria:**
 - [ ] Top bar has real, working icon shortcuts (not decorative) for at least: launcher, screenshot, quick-settings
 - [ ] A real app dock exists (pinned + running apps, click to launch/switch), summonable via keybind per the design note above
-- [ ] A system icon on the top bar opens a real panel showing network/Bluetooth/volume/brightness and a working power menu (lock/logout/restart/shutdown)
+- [ ] A system icon on the top bar opens a real panel showing network/Bluetooth/volume/brightness, a **dark/light mode toggle** (Akash's request, 6 Sept 2026), and a working power menu (lock/logout/restart/shutdown)
 - [ ] All of the above render as real layer-shell surfaces (`hyprctl layers`), confirmed live, not just present in source
 
 **Verification:** Live, on the Yoga 6 (real hardware)
@@ -622,6 +624,30 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** Task 21 (needs JAZZ's own config to bind the dock's keybind into, not stock Hyprland's)
 
 **Files likely touched:** `scripts/setup-widgets-tier1.sh` or a new `scripts/setup-dock.sh`, Quickshell `shell.qml`/new `.qml` files, `scripts/verify/*.sh` (new verify script)
+
+**Estimated scope:** M
+
+---
+
+### Task 23: JAZZ visual identity (wallpaper + dark/light theme)
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's direct feedback after using the real desktop: "it should also have theme and wallpapers... JAZZ should have its own personality rather than Hyprland." Real gap - the installed system still shows Hyprland's own stock triangle-pattern wallpaper (Task 11's `Theme.qml` only ever themed the top bar/border colors, never the desktop background), and there's no dark/light mode at all yet, just the one fixed palette.
+
+**Scope:**
+- A real JAZZ-branded wallpaper (or a small rotating set), set via `hyprpaper` or Quickshell's own background support - replacing Hyprland's stock example wallpaper, not layering on top of it
+- A dark/light mode toggle wired into `Theme.qml`'s existing token system (`forge`/`lab`/`arena`/`observe`/`vault`/`range` + the neutral `panel` token from Task widgets-tier1) - both palettes need real, considered values, not an auto-inverted guess
+- The toggle itself lives in Task 22's system menu (already scoped there), but the actual dual-palette + wallpaper work is tracked here since it's a distinct visual-identity concern, not a system-menu mechanics concern
+
+**Acceptance criteria:**
+- [ ] Hyprland's stock wallpaper is fully replaced by a real JAZZ-branded one
+- [ ] `Theme.qml` exposes both a light and dark palette, switchable live without restarting Hyprland/Quickshell
+- [ ] The switch is reachable from Task 22's system menu toggle
+- [ ] Confirmed live via screenshot on the Yoga 6, both modes
+
+**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation, both modes
+
+**Dependencies:** Task 21 (own config), Task 22 (system menu, for the toggle UI)
+
+**Files likely touched:** `scripts/setup-theme.sh` (`Theme.qml` dual-palette), new wallpaper asset + a `scripts/setup-wallpaper.sh` (or extends `setup-theme.sh`)
 
 **Estimated scope:** M
 
