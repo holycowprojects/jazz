@@ -735,6 +735,33 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
+### Task 27: Theme-as-bundle system
+**Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 3 point 2 (Omarchy research finding, promoted to a real task on Akash's request). Real gap identified: JAZZ's current dark/light toggle (Task 21/23) only ever switches `Theme.qml`'s chrome tokens (`panel`/`panelInk`) + the wallpaper (via `jazz-wallpaper-set`) - two things, switched together but not as part of a real bundling system. Omarchy's actual execution (confirmed via research) is that a "theme" is a **complete bundle** - wallpaper, terminal colors, shell chrome, and lock-screen appearance all restyle together as one atomic switch, with a picker.
+
+**What JAZZ's current dark/light switch does NOT yet touch, that a real bundle would:**
+- **kitty** (the terminal) - has its own independent color config, untouched by `Theme.qml`'s toggle right now. Confirm live what's actually in `~/.config/kitty/` before implementing - likely still whatever `setup-hyprland.sh`/package defaults left it as, never themed.
+- **hyprlock** (the lock screen, installed Task 22 for the power menu's Lock button) - has its own config, untouched by the toggle. Confirm live whether `~/.config/hypr/hyprlock.conf` exists yet or is still using hyprlock's built-in defaults.
+- **dunst** (notifications, installed Task 22) - same gap, its own independent config.
+
+**Scope for this task (the bundling architecture, not necessarily many themes):** JAZZ currently has exactly two built-in palettes (dark/light) vs. Omarchy's 22 - the valuable v2 work is the **mechanism**, built so more themes can be added later as pure data (a bundle definition) without new engineering, not authoring a large theme library right now. A theme bundle should be a directory/manifest specifying: `Theme.qml` token values, a wallpaper path, a kitty color config, a hyprlock config, a dunst config. Switching calls one function that atomically applies all of them (`Theme.darkMode` today; generalize to `Theme.currentTheme` or similar) and restarts/reloads whichever of kitty/hyprlock/dunst need it.
+
+**Acceptance criteria:**
+- [ ] A defined theme bundle format (whatever shape - directory of configs, a manifest file) exists and is documented
+- [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live, not just chrome+wallpaper as today
+- [ ] At minimum the existing dark/light pair is rebuilt as real bundles under this system (not necessarily new themes beyond that for the first pass)
+- [ ] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - extend it, don't replace it
+- [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch, not just the shell chrome
+
+**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation that kitty/hyprlock/dunst genuinely restyle, not just Quickshell's own chrome
+
+**Dependencies:** Task 21 (own config), Task 22 (Settings panel to extend), Task 23 (existing wallpaper mechanism to fold in)
+
+**Files likely touched:** `scripts/setup-theme.sh` (extend `Theme.qml`'s single boolean into a real theme-bundle system), `configs/quickshell/shell.qml` (Settings Appearance tab), new theme-bundle config directory (exact location TBD - e.g. `configs/themes/<name>/`), kitty/hyprlock/dunst config files (currently untouched - confirm their actual current state live before writing this)
+
+**Estimated scope:** L - real architecture work, not a small extension
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
