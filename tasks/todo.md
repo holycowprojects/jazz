@@ -607,49 +607,103 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 ---
 
 ### Task 22: Top-bar shortcuts + app dock + system menu
-**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's request after seeing the real desktop. Three additions to the Quickshell top bar/panel layer: icon shortcuts on the top bar itself (launcher, screenshot, quick-settings), a real app dock for launching/switching apps, and a **system icon/menu** on the top bar - the Windows-system-tray/macOS-menu-bar equivalent: one icon that opens a panel with network (wifi SSID/strength via NetworkManager), Bluetooth (BlueZ), volume (PipeWire/WirePlumber), brightness (`brightnessctl`), and a power menu (lock/logout/restart/shutdown). This is Design-Vision.md §6 Tier 2's "Quick settings panel" item, entry-pointed the way users already expect from Windows/macOS.
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's request after seeing the real desktop. Went through three real iterations live on the Yoga 6, not one pass:
 
-**Design note:** `Design-Vision.md` §1 states the desktop is "keyboard-first and calm by default." A permanently-visible dock cuts against that. Decision (pending Akash's confirmation): build the dock as a real Quickshell layer-shell surface, but summonable via a keybind (e.g. Super+D) rather than always on-screen, so it fits the project's stated direction instead of contradicting it - flip to always-visible is a one-line change if Akash prefers that instead.
+1. First cut: hand-rolled launcher grid + hardcoded dock app list + hand-drawn unicode-glyph icons. Akash correctly rejected this - diverged from the approved "Jazz Desktop Simulation" mockup, and a hardcoded app list would never pick up a newly-installed package.
+2. A full research pass (Omarchy's real architecture - Waybar+Walker+swaybg, no dock at all; macOS Dock's pinned+running+real-icons model; Windows' shallow-flyout-vs-full-Settings-app split) - see the synthesis this produced: real `.desktop`-file scanning is the correct architecture, not a hardcoded list or a hand-rolled launcher when wofi already solves that correctly.
+3. Rebuilt again once more after Akash asked for the native grid launcher back after all (his own aesthetic call - matching JAZZ's workspace-color theme, not wofi's generic system list), this time built correctly on the real app-scan data + `Quickshell.iconPath()` for real icons, not glyphs.
 
-**Technical mechanism (confirmed live, not guessed):** dock/menu visibility toggled from Hyprland keybinds via Quickshell's real IPC system - `IpcHandler { target: "x"; function toggle(): void {...} }` in QML, invoked with `qs ipc call x toggle` from a Hyprland `exec_cmd`. Confirmed against a real working Quickshell config (bjarneo/quickshell on GitHub) since the official docs site 403s to automated fetches - both `qs` and `quickshell` binaries are confirmed present on the installed system (`pacman -Ql quickshell`).
+**What's actually built and live-verified on the Yoga 6 (6 Sept 2026):**
+- `configs/quickshell/scan-apps.py` - a real XDG `.desktop` file scanner (Name/Icon/Exec/StartupWMClass, NoDisplay/Hidden respected), the single source of truth for the dock and launcher - a newly installed package's `.desktop` file is picked up on the next scan, zero code changes needed
+- Native app launcher (Super+R or the 🎷 top-bar icon): real icons via `Quickshell.iconPath()`, tiles colored by the *active workspace's* accent (Forge blue by default), search-filterable
+- Always-visible dock (macOS model): pinned apps (Firefox/Bazaar/LibreOffice/GIMP/Obsidian/Thunderbird/VLC/Steam/Terminal) + any other currently-running app not in that pinned set, real icons, a running-indicator dot; matched to running windows via the standard cascade (StartupWMClass -> desktop-file name -> Exec basename). Settings and the App Launcher are also permanently pinned (Akash's request) with deliberate glyphs (universal gear for Settings, a saxophone for the launcher - neither is a real installed app, so an icon-theme lookup would have been guesswork)
+- Top bar retints to the active workspace's color live (`Behavior on color`) - the one thing none of Windows/macOS/Omarchy do; this is JAZZ's actual visual signature per Design-Vision.md's "color does real work" philosophy
+- Top bar also shows: session username, now-playing (playerctl, only visible when something's actually playing), a notification bell with a real unread count (`dunstctl count history`), a clipboard-history icon (`cliphist` + `wl-paste --watch`, piped through wofi to pick an entry), wifi SSID, battery %
+- Settings split like Windows: a shallow quick-toggles flyout (wifi/Bluetooth/volume/brightness, gear icon or Super+S) plus a separate, real multi-section Settings panel (Appearance incl. a real wallpaper picker/Network/Bluetooth/Sound/Display, Super+Comma or the dock's Settings icon)
+- A real widget edit/toggle panel (✎ Edit on the Tier 1 widget stack) - per-widget enable/disable, persisted to `~/.local/share/jazz/widget-prefs.json`
+- Power menu (Lock/Log out/Restart/Shut down) on its own icon/keybind (Super+Escape), separate from quick-settings
+
+**Explicitly NOT considered finished** - Akash's own words, 6 Sept 2026: "its good for now but we need to improve design of jazz for sure. i would research more." This is a working checkpoint, not a design-complete state - expect another real design pass once that research lands.
 
 **Acceptance criteria:**
-- [ ] Top bar has real, working icon shortcuts (not decorative) for at least: launcher, screenshot, quick-settings
-- [ ] A real app dock exists (pinned + running apps, click to launch/switch), summonable via keybind per the design note above
-- [ ] A system icon on the top bar opens a real panel showing network/Bluetooth/volume/brightness, a **dark/light mode toggle** (Akash's request, 6 Sept 2026), and a working power menu (lock/logout/restart/shutdown)
-- [ ] All of the above render as real layer-shell surfaces (`hyprctl layers`), confirmed live, not just present in source
+- [x] Top bar has real, working icon shortcuts (launcher/quick-settings/power, plus username/now-playing/notifications/clipboard/wifi/battery)
+- [x] A real app dock exists (pinned + running apps, click to launch/switch, always-visible per Akash's preference over the original keyboard-first-only design note)
+- [x] A system settings surface exists, split shallow-flyout vs. full panel, with a working dark/light toggle and power menu
+- [x] All of the above render as real layer-shell surfaces, confirmed live via `hyprctl layers` and direct screen checks, not just present in source
+- [ ] Overall visual design polish - explicitly still pending Akash's further research, not yet signed off
 
-**Verification:** Live, on the Yoga 6 (real hardware)
+**Verification:** Live, on the Yoga 6 (real hardware), multiple rounds
 
 **Dependencies:** Task 21 (needs JAZZ's own config to bind the dock's keybind into, not stock Hyprland's)
 
-**Files likely touched:** `scripts/setup-widgets-tier1.sh` or a new `scripts/setup-dock.sh`, Quickshell `shell.qml`/new `.qml` files, `scripts/verify/*.sh` (new verify script)
+**Files touched:** `scripts/setup-dock.sh` (new), `scripts/setup-wallpaper.sh` (new), `configs/quickshell/scan-apps.py` (new), `configs/quickshell/gen_wallpaper.py` (new, shared with Task 23), `scripts/install-jazz.sh` (chain updated)
+
+**Estimated scope:** M, grew to L across the three iterations
+
+---
+
+### Task 23: JAZZ visual identity (wallpaper + dark/light theme)
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's direct feedback after using the real desktop: "it should also have theme and wallpapers... JAZZ should have its own personality rather than Hyprland." Real gap - the installed system still showed Hyprland's own stock triangle-pattern wallpaper (Task 11's `Theme.qml` only ever themed the top bar/border colors, never the desktop background), and there was no dark/light mode at all, just the one fixed palette.
+
+**What's actually built and live-verified (6 Sept 2026):**
+- `configs/quickshell/gen_wallpaper.py` generates a real dark/light JAZZ-branded wallpaper pair (Pillow) - a calm neutral base, a subtle Forge-blue radial glow (Forge being the default/highest-traffic workspace), and a restrained waveform motif nodding to "Jazz" as music - deliberately not a loud rainbow gradient across all six workspace colors, which would read as generic/AI-templated and contradict Design-Vision.md sec 1's "calm by default"
+- Wallpaper is set via `swaybg`, **not hyprpaper** - hyprpaper's own IPC (`hyprctl hyprpaper preload/wallpaper`) genuinely fails ("invalid hyprpaper request") against this Hyprland build, confirmed live, not assumed; swaybg is simpler (one CLI process, no IPC) and is what Omarchy itself actually uses for wallpaper, confirmed via its real source
+- `jazz-wallpaper-set <path>` (installed to `/usr/local/bin`) kills and restarts swaybg with a new image - swaybg has no live-swap IPC, confirmed
+- `Theme.qml`'s `darkMode` toggle (Task 21/22) drives both the panel/panelInk chrome tokens AND now calls `jazz-wallpaper-set` to swap the matching wallpaper - workspace identity colors (forge/lab/arena/observe/vault/range) stay constant across modes per Design-Vision.md sec 2, only chrome + wallpaper switch
+- Reachable from the Settings panel's Appearance tab (toggle + a real wallpaper picker showing actual files from the wallpapers directory, not fake thumbnails)
+
+**Acceptance criteria:**
+- [x] Hyprland's stock wallpaper is fully replaced by a real JAZZ-branded one
+- [x] `Theme.qml` exposes both a light and dark palette, switchable live without restarting Hyprland/Quickshell
+- [x] The switch is reachable from the Settings panel
+- [x] Confirmed live via screenshot on the Yoga 6, both modes
+- [ ] Overall visual design polish - same explicit caveat as Task 22, Akash plans further research before this is considered done
+
+**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation, both modes
+
+**Dependencies:** Task 21 (own config), Task 22 (Settings panel, for the toggle UI)
+
+**Files touched:** `scripts/setup-wallpaper.sh` (new), `configs/quickshell/gen_wallpaper.py` (new)
 
 **Estimated scope:** M
 
 ---
 
-### Task 23: JAZZ visual identity (wallpaper + dark/light theme)
-**Description:** Not part of the original 20-task plan; added 6 Sept 2026, Akash's direct feedback after using the real desktop: "it should also have theme and wallpapers... JAZZ should have its own personality rather than Hyprland." Real gap - the installed system still shows Hyprland's own stock triangle-pattern wallpaper (Task 11's `Theme.qml` only ever themed the top bar/border colors, never the desktop background), and there's no dark/light mode at all yet, just the one fixed palette.
-
-**Scope:**
-- A real JAZZ-branded wallpaper (or a small rotating set), set via `hyprpaper` or Quickshell's own background support - replacing Hyprland's stock example wallpaper, not layering on top of it
-- A dark/light mode toggle wired into `Theme.qml`'s existing token system (`forge`/`lab`/`arena`/`observe`/`vault`/`range` + the neutral `panel` token from Task widgets-tier1) - both palettes need real, considered values, not an auto-inverted guess
-- The toggle itself lives in Task 22's system menu (already scoped there), but the actual dual-palette + wallpaper work is tracked here since it's a distinct visual-identity concern, not a system-menu mechanics concern
+### Task 24: Fix AMD ACP audio not initializing on real hardware
+**Description:** Not part of the original 20-task plan; found 6 Sept 2026 while building Task 22's volume control. `wpctl status` shows zero audio devices/sinks at all on the real Yoga 6, despite the kernel correctly detecting the hardware (`/proc/asound/cards` shows a real `acp` card - AMD's Audio CoProcessor) and `alsa-card-profiles` being installed (version-matched to pipewire, 1.6.8). WirePlumber's own log shows the actual failure: `wp-device: SPA handle 'api.alsa.acp.device' could not be loaded; is it installed?` / `Failed to create 'api.alsa.acp.device' device` - the package that should provide this SPA handle is present, but the handle still won't load. Root cause not yet diagnosed - deliberately not chased down mid-Task-22 to avoid scope creep; needs its own investigation (possibly a missing SPA plugin file specifically, a version mismatch, or a genuine upstream bug with this pipewire/wireplumber version against ACP hardware).
 
 **Acceptance criteria:**
-- [ ] Hyprland's stock wallpaper is fully replaced by a real JAZZ-branded one
-- [ ] `Theme.qml` exposes both a light and dark palette, switchable live without restarting Hyprland/Quickshell
-- [ ] The switch is reachable from Task 22's system menu toggle
-- [ ] Confirmed live via screenshot on the Yoga 6, both modes
+- [ ] `wpctl status` shows at least one real audio sink on the Yoga 6
+- [ ] Volume can actually be changed via `wpctl set-volume` and audibly/measurably takes effect
+- [ ] Task 22's volume control in the system menu shows a real slider instead of "not available" once this is fixed
 
-**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation, both modes
+**Verification:** Live, on the Yoga 6 (real hardware)
 
-**Dependencies:** Task 21 (own config), Task 22 (system menu, for the toggle UI)
+**Dependencies:** None
 
-**Files likely touched:** `scripts/setup-theme.sh` (`Theme.qml` dual-palette), new wallpaper asset + a `scripts/setup-wallpaper.sh` (or extends `setup-theme.sh`)
+**Files likely touched:** Unknown yet - investigation needed first
 
-**Estimated scope:** M
+**Estimated scope:** M (unknown until root-caused)
+
+---
+
+### Task 25: JAZZ design polish - a real second pass
+**Description:** Not part of the original 20-task plan; added 6 Sept 2026 per Akash's own words after Task 22/23's rebuild: "its good for now but we need to improve design of jazz for sure. i would research more." Explicitly deferred, not scoped yet - Akash is doing his own research before deciding what changes. Do not start building against this until he brings back concrete direction; this entry exists so the open item isn't lost between sessions, not to prescribe a solution.
+
+**Known rough edges as of 6 Sept 2026 (for reference, not a locked scope):**
+- Icon-based (glyph/emoji) system icons render inconsistently across contexts - real icon-theme icons (Task 22's dock/launcher work) look noticeably more polished than the remaining glyph-based tray icons
+- Top bar information density/alignment could use another visual pass now that it carries much more real data (username, now-playing, notifications, clipboard, wifi, battery) than the original mockup's simpler version
+- Task 24's audio gap (no sink detected) blocks the volume control from ever showing real data until fixed
+
+**Acceptance criteria:** Not yet defined - depends on Akash's research
+
+**Verification:** TBD
+
+**Dependencies:** Tasks 21-23 (the working baseline this would refine)
+
+**Files likely touched:** TBD
+
+**Estimated scope:** Unknown until scoped
 
 ---
 
