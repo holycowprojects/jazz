@@ -70,8 +70,8 @@ PanelWindow {
         { id: "agents", title: "Agents", real: true },
         { id: "storage", title: "Storage", real: true },
         { id: "power", title: "Battery & Power", real: true },
-        { id: "security", title: "Security", real: false },
-        { id: "updates", title: "Updates", real: false },
+        { id: "security", title: "Security", real: true },
+        { id: "updates", title: "Updates", real: true },
         { id: "accessibility", title: "Accessibility", real: false },
         { id: "system", title: "System", real: true },
         { id: "developer", title: "Developer", real: false, devOnly: true }
@@ -576,20 +576,84 @@ PanelWindow {
                             Text { text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 12 }
                         }
 
-                        // ===== Security (PENDING) =====
+                        // ===== Security (REAL) =====
                         Column {
+                            id: securityTab
                             visible: settingsPanel.currentPage === "security"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 8
+                            property string firewallStatus: "checking..."
+                            property int firewallRules: 0
+                            property string sshStatus: "checking..."
+                            property string secureBoot: "checking..."
+                            property string diskEncryption: "checking..."
+                            Process {
+                                running: securityTab.visible
+                                command: ["bash", "-c", "sudo -n ufw status verbose 2>/dev/null | head -1 | sed 's/Status: //'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) securityTab.firewallStatus = data } }
+                            }
+                            Process {
+                                running: securityTab.visible
+                                command: ["bash", "-c", "sudo -n ufw status verbose 2>/dev/null | grep -c ALLOW"]
+                                stdout: SplitParser { onRead: function (data) { if (data) securityTab.firewallRules = parseInt(data) } }
+                            }
+                            Process {
+                                running: securityTab.visible
+                                command: ["systemctl", "is-active", "sshd"]
+                                stdout: SplitParser { onRead: function (data) { if (data) securityTab.sshStatus = data } }
+                            }
+                            Process {
+                                running: securityTab.visible
+                                command: ["bash", "-c", "bootctl status 2>/dev/null | grep -i 'Secure Boot' | head -1 | sed 's/.*Secure Boot: //'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) securityTab.secureBoot = data } }
+                            }
+                            Process {
+                                running: securityTab.visible
+                                command: ["bash", "-c", "lsblk -f -no FSTYPE /dev/nvme0n1p5 2>/dev/null | grep -q crypto_LUKS && echo Enabled || echo Off"]
+                                stdout: SplitParser { onRead: function (data) { if (data) securityTab.diskEncryption = data } }
+                            }
                             Text { text: "SECURITY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - firewall/Secure Boot/SSH status land in a later Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text { text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text { text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text { text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 13 }
                         }
 
-                        // ===== Updates (PENDING) =====
+                        // ===== Updates (REAL) =====
                         Column {
+                            id: updatesTab
                             visible: settingsPanel.currentPage === "updates"
                             width: parent.width; spacing: 10
+                            property var pending: []
+                            property bool checked: false
+                            Process {
+                                id: updatesProc
+                                command: ["bash", "-c", "checkupdates 2>/dev/null"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        updatesTab.pending = this.text.split("\n").filter(function(s) { return s.length > 0 })
+                                        updatesTab.checked = true
+                                    }
+                                }
+                            }
+                            function refresh() { updatesTab.checked = false; updatesProc.running = true }
+                            Component.onCompleted: refresh()
                             Text { text: "UPDATES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - a pacman -Qu check lands in a later Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text {
+                                text: !updatesTab.checked ? "Checking..." : (updatesTab.pending.length === 0 ? "System is up to date" : updatesTab.pending.length + " updates available")
+                                color: Theme.panelInk; font.pixelSize: 15
+                            }
+                            Column {
+                                width: parent.width; spacing: 2
+                                Repeater {
+                                    model: updatesTab.pending
+                                    delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 11; font.family: "monospace" }
+                                }
+                            }
+                            Rectangle {
+                                width: 110; height: 26; radius: 6; color: Theme.forge
+                                Text { anchors.centerIn: parent; text: "Check Now"; font.pixelSize: 11; color: "#ffffff" }
+                                MouseArea { anchors.fill: parent; onClicked: updatesTab.refresh() }
+                            }
                         }
 
                         // ===== Accessibility (PENDING) =====

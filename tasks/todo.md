@@ -884,10 +884,14 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 - **AI**: real Ollama status via `/api/tags` (installed models, real param count/quantization/context) and `/api/ps` (currently-loaded model). Both states tested live: idle ("No model currently loaded") and actually running (triggered a real `qwen2.5:0.5b` load via `/api/generate`, confirmed "Running: qwen2.5:0.5b (0 bytes VRAM)" - correctly honest that it's CPU, not GPU, inference).
 - One real bug caught and fixed before commit: forgot to flip the `sections` array's `real: false → true` flag for these two, so the sidebar still showed the "pending" dot next to fully-working sections - caught via screenshot, fixed.
 
-**Still pending (next slices, not yet built):** Desktop, Keyboard & Mouse, Privacy, Security, Updates, Accessibility (real controls required, not stubs), Developer's deeper tools, and Display's rollback timer specifically (needs real resolution-changing logic, deliberately deferred as its own careful piece of work rather than rushed into a slice).
+**Slice 3 DONE, live-verified on the Yoga 6, 7 Sept 2026:**
+- **Security**: real firewall status (`ufw status`, rule count), SSH status, Secure Boot status (`bootctl status`), disk encryption status (`lsblk` LUKS check - confirmed off, plain Btrfs). Needed one new permanent, narrowly-scoped sudoers rule (`/etc/sudoers.d/jazz-settings-firewall`, exactly `ufw status verbose`, nothing broader) since `ufw status` genuinely requires root and there's no non-root path around that - Akash approved this explicitly via AskUserQuestion before it was added, framed correctly as a permanent feature requirement (the real desktop user needs this too), not a debugging shortcut.
+- **Updates**: real `checkupdates` (from `pacman-contrib`, newly installed - official repo, designed specifically to check without needing root or touching the live pacman db/lock) - showed "9 updates available" with the real package list, "Check Now" re-check button.
+
+**Still pending (next slices, not yet built):** Desktop, Keyboard & Mouse, Privacy, Accessibility (real controls required, not stubs), Developer's deeper tools, and Display's rollback timer specifically (needs real resolution-changing logic, deliberately deferred as its own careful piece of work rather than rushed into a slice).
 
 **Acceptance criteria (full task - partially met, see slice notes above):**
-- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **11 of 18 sections real, rest honestly marked pending**
+- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **13 of 18 sections real, rest honestly marked pending**
 - [ ] Settings search returns correct results for at least 5 real spot-check queries — schema/search mechanism built and live, not yet spot-checked against 5 queries
 - [ ] Displays changes have a working rollback timer, confirmed live — not yet built
 - [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — not yet built
