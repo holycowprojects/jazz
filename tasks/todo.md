@@ -833,16 +833,17 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 4. **Warm** (new) - warm-neutral non-blue dark variant, real rationale (blue light late at night).
 
 **Architecture sketch (not yet built):**
-- New `design/tokens/themes.json`, separate from `colors.json` (which stays workspace + status colors only, unaffected by theme choice). Each entry: `label`, `mode` (dark/light), `chrome` (4 tokens), `accent`, `terminal` (16-color kitty palette + bg/fg/cursor), `wallpaper`.
+- New `design/tokens/themes.json`, separate from `colors.json` (which stays workspace + status colors only, unaffected by theme choice). Each entry: `label`, `mode` (dark/light), `chrome` (4 tokens), `accent`, `terminal` (16-color kitty palette + bg/fg/cursor), `wallpapers` (a list, **minimum 2 per theme, Akash's explicit requirement** - matches Omarchy's own per-theme wallpaper-set precedent from the research, not a single fixed background per theme).
 - `scripts/generate-theme-qml.py` extended to be theme-id-driven (bakes ONE chosen theme's literal values into `Theme.qml`, same as it already does for dark/light today) rather than a runtime ternary - switching themes means regenerating + redeploying, not a live in-QML toggle (acceptable - even Omarchy's own switch isn't fully hot-reloaded either).
 - New orchestrator script (working name `jazz-theme-set <id>`) - the actual bundle compiler: regenerates `Theme.qml`, writes real `kitty.conf`/`hyprlock.conf`/`dunstrc` from the theme's tokens (**all three currently have NO real config at all** - `kitty`'s config dir is empty, `hyprlock.conf` doesn't exist, `dunst` has no config dir either, all confirmed from earlier project memory, needs re-confirming live before building), applies the wallpaper via the existing `jazz-wallpaper-set` helper, persists the choice, and relaunches Quickshell via `hyprctl dispatch exec_cmd` (never a bare kill, per the established safe-relaunch rule).
-- `configs/quickshell/gen_wallpaper.py` (Task 23's existing Pillow generator) extended to take theme parameters (base/accent/mode) instead of being dark/light-hardcoded.
-- Settings' Appearance tab: replace the binary Dark/Light toggle with a real theme picker (dropdown, reusing the AI Command Centre's model-picker pattern from Task 26).
+- `configs/quickshell/gen_wallpaper.py` (Task 23's existing Pillow generator) extended to take theme parameters (base/accent/mode) instead of being dark/light-hardcoded, and to produce **at least 2 real variants per theme** (not just re-running the same composition once - e.g. varying the waveform-motif placement/density or a second genuinely different composition within the same palette), so the existing Appearance-tab wallpaper picker (Task 22, already supports picking among multiple images) has real choices within every theme, not just one fixed background.
+- Settings' Appearance tab: replace the binary Dark/Light toggle with a real theme picker (dropdown, reusing the AI Command Centre's model-picker pattern from Task 26); the existing per-wallpaper picker grid stays underneath it, now populated per-theme.
 
 **Acceptance criteria:**
 - [ ] A defined theme bundle format exists and is documented (`design/tokens/themes.json`)
 - [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live
 - [ ] All 4 planned themes (Forge/Daylight/Midnight/Warm) exist as real bundles under this system
+- [ ] **Every theme ships at least 2 real, genuinely different wallpaper variants** (Akash's explicit requirement), each picked from Settings' Appearance tab
 - [ ] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - extend it, don't replace it
 - [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch
 
