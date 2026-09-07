@@ -118,6 +118,7 @@ PanelWindow {
         color: Theme.panel
         border.color: Theme.panelInk
         border.width: 1
+        clip: true
         MouseArea { anchors.fill: parent }
 
         property var wallpapers: []
@@ -224,7 +225,7 @@ PanelWindow {
                 // ---------- Content ----------
                 Flickable {
                     id: contentArea
-                    width: 660; height: parent.height
+                    width: 620; height: parent.height
                     contentHeight: contentCol.height
                     clip: true
 
