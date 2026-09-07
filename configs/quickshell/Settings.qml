@@ -16,6 +16,7 @@
 
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import QtQuick
 
 PanelWindow {
@@ -23,6 +24,7 @@ PanelWindow {
     visible: false
     anchors { top: true; bottom: true; left: true; right: true }
     color: "#00000000"
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     exclusiveZone: -1
 
     property string currentPage: "appearance"
@@ -153,7 +155,9 @@ PanelWindow {
                     color: Theme.panelInk
                     font.pixelSize: 13
                     clip: true
+                    focus: settingsPanel.visible
                     onTextChanged: settingsPanel.searchQuery = text
+                    Keys.onEscapePressed: { text = ""; settingsPanel.searchQuery = "" }
                 }
                 Text {
                     visible: searchInput.text.length === 0

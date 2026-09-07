@@ -98,6 +98,7 @@ sudo -u "$USERNAME" tee "$SHELL_FILE" > /dev/null << 'SHELLQML'
 
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import QtQuick
 
 ShellRoot {
@@ -477,6 +478,7 @@ ShellRoot {
         anchors { top: true; bottom: true; left: true; right: true }
         color: "#00000000"
         exclusiveZone: -1
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
         Rectangle { anchors.fill: parent; color: "#0a090899" }
         MouseArea { anchors.fill: parent; onClicked: launcher.visible = false }
@@ -814,6 +816,7 @@ ShellRoot {
         implicitHeight: 350
         exclusiveZone: -1
         color: Theme.panel
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
         SystemClock { id: worldBase; precision: SystemClock.Minutes }
 
