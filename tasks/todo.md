@@ -762,6 +762,78 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
+### Task 28: Jazz Settings — full expansion
+
+**Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 5b, after Akash's explicit direction that JAZZ must have a real GUI-based settings control, going further than Omarchy in this specific area (confirmed via live research, `omarchy.org/manual`/GitHub, 7 Sept 2026: Omarchy's "Settings" is a `Super+Space` menu + `omarchy` CLI wrapping existing tools, not a panel GUI at all). Task 22 already built a real native Quickshell settings surface (5 tabs: Appearance/Network/Bluetooth/Sound/Display) — this task grows that panel into the full structured surface, not a rebuild.
+
+**Scope:** Add sections: Desktop, Keyboard & Mouse, Applications, AI, Privacy, Agents (ties into Task 30's permission ledger/policy once that exists), Storage, Battery & Power, Security, Updates, Accessibility, System, Developer (hidden by default). Add real settings search, driven by a schema (setting id/title/keywords/page), not hardcoded per-page strings — the same schema can later back the Universal Command idea's settings results (`docs/JAZZ-v2.md` sec 5d) without rework. Displays gets a rollback timer on any change ("Keep these display settings? Reverting in 12s") so a bad monitor config can never permanently blank the screen. Storage gives a friendlier view of Track A's existing Snapper/Btrfs data (used/available by category, snapshot storage, cleanup actions).
+
+**Acceptance criteria:**
+- [ ] Every listed section exists as a real tab/page in the settings app, backed by real live data (not placeholder text) wherever a Track A/B/C script already exposes that data
+- [ ] Settings search returns correct results for at least 5 real spot-check queries (e.g. "touchpad", "wifi", "dark mode", "snapshot", "battery")
+- [ ] Displays changes have a working rollback timer, confirmed live (a deliberately bad resolution change reverts on timeout)
+- [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling
+- [ ] Developer section is hidden by default, toggleable, and never shown to a fresh install without explicit enablement
+- [ ] Terminal remains fully functional for every setting this app exposes — this app is additive, not a terminal replacement (per the confirmed "keep hackable identity" decision, `docs/JAZZ-v2.md` sec 5)
+
+**Verification:** Live, on the Yoga 6 (real hardware)
+
+**Dependencies:** Task 22 (existing settings panel, extended not replaced)
+
+**Files likely touched:** `configs/quickshell/shell.qml` (major growth, likely split into `configs/quickshell/Settings/*.qml` given the size), `scripts/setup-dock.sh` or a new `scripts/setup-settings.sh` if split out
+
+**Estimated scope:** L — real architecture growth of an already-large surface, likely the biggest single JAZZ task yet
+
+---
+
+### Task 29: Jazz Files — real GUI file manager (v1, no AI)
+
+**Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 5a, after Akash's explicit direction that JAZZ must have a real GUI-based file system, going further than Omarchy in this specific area (confirmed live 7 Sept 2026: Omarchy's file manager is plain themed/keybound Nautilus). JAZZ currently has no file-manager story of its own at all (Dolphin, launched via Task 21's `Super+E` keybind, completely stock, zero integration) — actually a step behind Omarchy's current state. This task is v1: real file management only, no AI features (those are a deliberate separate follow-on — see `docs/JAZZ-v2.md` sec 5a — matching the source blueprint's own advice not to build semantic AI until basic file management is reliable).
+
+**Scope (v1):** browse, Grid/List view modes, Recent, Home/Documents/Downloads/Pictures/Videos/Music/Projects sidebar, copy/move/rename/create-folder/open/open-with/properties, delete-to-trash + restore, a real preview pane (image/text/Markdown/PDF at minimum — audio/video/archive preview can slip to a follow-on if genuinely harder), a device sidebar aware of Btrfs (used/available/filesystem/health, mount/unmount/eject), GUI-translated Linux permissions ("You: Read and Write" instead of raw mode bits, with an advanced view for real uid/gid/mode), and a real file-operation transaction log powering Undo for move/rename/batch-organize/delete-to-trash — explicitly **not** the same mechanism as Snapper's system snapshots (user-file undo and OS-snapshot undo are different and shouldn't be conflated).
+
+**Acceptance criteria:**
+- [ ] All v1 operations (browse/copy/move/rename/trash/restore/create-folder/properties) work correctly on real files, confirmed live
+- [ ] Grid and List views both render correctly with real files (images in Grid, source/documents in List with name/type/size/modified/owner columns)
+- [ ] Preview pane works for at least image/text/Markdown/PDF
+- [ ] Device sidebar shows real Btrfs volume info and mount/unmount/eject work live
+- [ ] Permissions are shown in translated form by default, with a working advanced/raw view
+- [ ] Undo works for at least move/rename/delete-to-trash, via a real transaction log (not Snapper)
+- [ ] Dolphin's existing `Super+E` keybind is retired in favor of Jazz Files, or clearly repurposed — no dangling reference to the old placeholder
+
+**Verification:** Live, on the Yoga 6 (real hardware)
+
+**Dependencies:** Task 21 (own config, to rebind the keybind), Task 22 (existing `.desktop`-scan/icon-resolution infra this can reuse for "Open With")
+
+**Files likely touched:** new `configs/quickshell/Files/*.qml`, `scripts/setup-files.sh` (new), `scripts/install-jazz.sh` (chain updated), `scripts/setup-hyprland.sh` (keybind change)
+
+**Estimated scope:** L — genuinely large, comparable to or bigger than Task 22's dock/launcher/settings build
+
+---
+
+### Task 30: Agent permission tiers + Checkpoint → Act → Undo
+
+**Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 5c, promoted early (ahead of any specific AI-action feature) because it's the safety foundation every AI-driven idea in the v2 backlog depends on — the fully-local NL OS control idea (`docs/JAZZ-v2.md` sec 4b) was explicitly missing this piece when first written, and Jazz Files' eventual AI actions (organize/rename/summarize, sec 5a follow-on) will need it too. Deliberately built as a plain script wrapper around Track A's already-working Snapper infrastructure — no Rust service, no new daemon (per the confirmed architecture decision, 7 Sept 2026: stay lightweight, promote to a real service only if it earns it).
+
+**Scope:** A `jazz-agent-action` wrapper (or equivalent) that any future AI-driven script/feature calls instead of acting directly: classify the requested action into a tier (**Green** = auto-execute — launch app, change volume, read status, search approved folders; **Yellow** = confirm — move many files, install a package, close an app, change a setting; **Red** = strong explicit authorization — sudo, disk format, security-policy change, delete system files), create a Snapper checkpoint before anything Yellow/Red, perform the action, verify it took effect, log to a simple activity ledger (what/why/files touched/commands run/snapshot ID/timestamp), and expose Undo. A minimal Quickshell surface (the Agents tab in Task 28's Jazz Settings) shows the ledger and lets a user set default policy (allow/ask/deny) per action type.
+
+**Acceptance criteria:**
+- [ ] Tier classification exists for at least the action types listed above, documented
+- [ ] A Yellow/Red-tier test action creates a real Snapper checkpoint before running, confirmed via `snapper list`
+- [ ] The activity ledger records real entries (what/why/files/commands/snapshot ID/timestamp) for a real test action, readable by the user
+- [ ] Undo works end-to-end for at least one real logged action
+- [ ] A Green-tier action runs with zero prompts; a Yellow-tier action is blocked until confirmed; a Red-tier action requires explicit strong confirmation — all three confirmed live, not just described
+
+**Verification:** Live, on the Yoga 6 (real hardware)
+
+**Dependencies:** Track A (Snapper, already working), Task 28 (Agents tab to surface the ledger/policy UI — backend can be built first, UI wired in once Task 28 lands, in either order)
+
+**Files likely touched:** `scripts/setup-agent-safety.sh` (new) or similar, `scripts/install-jazz.sh` (chain updated), `configs/quickshell/shell.qml` (Agents tab ledger UI, once Task 28 exists)
+
+**Estimated scope:** M — conceptually simple, but real correctness matters here more than almost anywhere else in the project (this is a safety mechanism, not a feature)
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
