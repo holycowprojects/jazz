@@ -758,30 +758,106 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
-### Task 27: Theme-as-bundle system
+### Task 27: Theme-as-bundle system + design foundation
 **Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 3 point 2 (Omarchy research finding, promoted to a real task on Akash's request). Real gap identified: JAZZ's current dark/light toggle (Task 21/23) only ever switches `Theme.qml`'s chrome tokens (`panel`/`panelInk`) + the wallpaper (via `jazz-wallpaper-set`) - two things, switched together but not as part of a real bundling system. Omarchy's actual execution (confirmed via research) is that a "theme" is a **complete bundle** - wallpaper, terminal colors, shell chrome, and lock-screen appearance all restyle together as one atomic switch, with a picker.
 
-**What JAZZ's current dark/light switch does NOT yet touch, that a real bundle would:**
-- **kitty** (the terminal) - has its own independent color config, untouched by `Theme.qml`'s toggle right now. Confirm live what's actually in `~/.config/kitty/` before implementing - likely still whatever `setup-hyprland.sh`/package defaults left it as, never themed.
-- **hyprlock** (the lock screen, installed Task 22 for the power menu's Lock button) - has its own config, untouched by the toggle. Confirm live whether `~/.config/hypr/hyprlock.conf` exists yet or is still using hyprlock's built-in defaults.
-- **dunst** (notifications, installed Task 22) - same gap, its own independent config.
+**Broadened 7 Sept 2026** after Akash shared `Operating_Icons_Themes_Wallpapers_Design_Guide.md` and asked for it to inform this task. That doc is a full OS design-system spec (icon pipeline, cursor theme, GTK/Qt compatibility layers, Matugen dynamic wallpaper theming, Theme CI, a "Design Lab" preview tool, licensed wallpaper collections) - real reference material, but far larger than Task 27's original bundling scope. Broken into subtasks below: the genuinely applicable parts became 27a-27f; everything disproportionate to JAZZ's current single-maintainer scale is listed under "Deliberately not adopted" instead of silently dropped.
 
-**Scope for this task (the bundling architecture, not necessarily many themes):** JAZZ currently has exactly two built-in palettes (dark/light) vs. Omarchy's 22 - the valuable v2 work is the **mechanism**, built so more themes can be added later as pure data (a bundle definition) without new engineering, not authoring a large theme library right now. A theme bundle should be a directory/manifest specifying: `Theme.qml` token values, a wallpaper path, a kitty color config, a hyprlock config, a dunst config. Switching calls one function that atomically applies all of them (`Theme.darkMode` today; generalize to `Theme.currentTheme` or similar) and restarts/reloads whichever of kitty/hyprlock/dunst need it.
+**Tool availability confirmed live on the Yoga 6 before scoping subtasks (JAZZ is pacman-only, no AUR helper - same constraint that shaped Task 15c):**
+- Official repo (`extra`), usable: `papirus-icon-theme`, `kvantum`, `kvantum-qt5`, `matugen`, `ttf-jetbrains-mono`, `inter-font`
+- **AUR-only, NOT usable as packages:** `bibata-cursor-theme`, `adw-gtk3` - the guide's own recommended cursor theme and GTK3 compat layer. Either vendor manually from upstream source (no AUR/pacman involved) or skip - decide per-subtask below, don't block the rest of Task 27 on this.
+
+**What JAZZ's current dark/light switch does NOT yet touch, that a real bundle would:**
+- **kitty** (the terminal) - confirmed live 7 Sept 2026: config dir exists but is completely empty, using kitty's stock defaults, never themed.
+- **hyprlock** (the lock screen, installed Task 22 for the power menu's Lock button) - confirmed live: `~/.config/hypr/hyprlock.conf` does not exist at all, package installed but never configured.
+- **dunst** (notifications, installed Task 22) - confirmed live: no config dir exists either; dunst is running, on stock defaults.
+
+**Scope for this task (the bundling architecture, not necessarily many themes):** JAZZ currently has exactly two built-in palettes (dark/light) vs. Omarchy's 22 - the valuable v2 work is the **mechanism**, built so more themes can be added later as pure data (a bundle definition) without new engineering, not authoring a large theme library right now.
+
+---
+
+#### Task 27a: Brand tokens (single source of truth)
+**Description:** Formalize `Theme.qml`'s current hardcoded values (`panel`/`panelInk`, the 6 workspace colors) plus the missing semantic tokens (surface/surfaceRaised/textPrimary/textSecondary/positive/warning/critical) into real token files, per the guide's §4 schema - stop scattering raw hex values across QML and config files.
 
 **Acceptance criteria:**
-- [ ] A defined theme bundle format (whatever shape - directory of configs, a manifest file) exists and is documented
-- [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live, not just chrome+wallpaper as today
-- [ ] At minimum the existing dark/light pair is rebuilt as real bundles under this system (not necessarily new themes beyond that for the first pass)
+- [ ] `design/tokens/colors.json` exists with semantic names (not "blue1/blue2"), covering both dark and light palettes plus the 6 existing workspace colors
+- [ ] `Theme.qml` reads from this file (or a generated QML companion) instead of hardcoding hex values inline
+- [ ] `design/tokens/typography.json` records the two fonts chosen (see 27e) as data, not just installed packages
+
+**Dependencies:** Task 11 (`Theme.qml` exists)
+**Estimated scope:** S
+
+#### Task 27b: Theme compiler + bundle format (the original Task 27 core)
+**Description:** The bundling mechanism itself - unchanged from the original scope above. A theme bundle (directory/manifest) specifies `Theme.qml` token values + wallpaper path + kitty config + hyprlock config + dunst config; one function applies all of them atomically and reloads whichever of kitty/hyprlock/dunst need it.
+
+**Acceptance criteria:** (the five original criteria, unchanged)
+- [ ] A defined theme bundle format exists and is documented
+- [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live
+- [ ] At minimum the existing dark/light pair is rebuilt as real bundles under this system
 - [ ] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - extend it, don't replace it
-- [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch, not just the shell chrome
+- [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch
 
-**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation that kitty/hyprlock/dunst genuinely restyle, not just Quickshell's own chrome
+**Verification:** Live, on the Yoga 6 - visual confirmation kitty/hyprlock/dunst genuinely restyle, not just Quickshell's chrome
+**Dependencies:** Task 21, Task 22, Task 23, Task 27a (tokens to bundle)
+**Files likely touched:** `scripts/setup-theme.sh`, `configs/quickshell/shell.qml`, new `configs/themes/<name>/` directory, kitty/hyprlock/dunst config files
+**Estimated scope:** L
 
-**Dependencies:** Task 21 (own config), Task 22 (Settings panel to extend), Task 23 (existing wallpaper mechanism to fold in)
+#### Task 27c: JAZZ shell icon system (scoped down from the guide's 60-symbol + full freedesktop tree)
+**Description:** The guide recommends ~60 symbols across a full freedesktop icon-theme directory structure (16/22/24/32/48/scalable/symbolic × apps/actions/devices/places/status/categories). JAZZ doesn't need to theme every possible Linux app icon - Task 22 already solved third-party app icons via `Quickshell.iconPath()` reading real installed icon themes. Scope this to just what JAZZ's own shell chrome actually renders: the icons Quickshell draws itself (wifi/bluetooth/volume tiers/battery/brightness/notifications/power/lock/search + the saxophone launcher glyph and gear Settings glyph already hand-picked in Task 22).
+**Source:** Lucide (ISC license) as primary geometry per the guide's own recommendation - vendor the specific SVGs needed, not the whole library. `papirus-icon-theme` (confirmed official repo) stays the fallback for third-party apps, already effectively in place via Task 22's icon-theme lookup.
 
-**Files likely touched:** `scripts/setup-theme.sh` (extend `Theme.qml`'s single boolean into a real theme-bundle system), `configs/quickshell/shell.qml` (Settings Appearance tab), new theme-bundle config directory (exact location TBD - e.g. `configs/themes/<name>/`), kitty/hyprlock/dunst config files (currently untouched - confirm their actual current state live before writing this)
+**Acceptance criteria:**
+- [ ] ~20-30 SVGs (not 60) covering exactly the symbols JAZZ's shell/dock/settings currently render, normalized to one spec (24x24 canvas, 1.8px stroke, round linecap/linejoin - the guide's §17 spec)
+- [ ] Stored under `design/icons/symbols/`, referenced by Quickshell instead of any remaining unicode/emoji glyphs
+- [ ] `papirus-icon-theme` installed as the confirmed fallback for non-JAZZ apps
 
-**Estimated scope:** L - real architecture work, not a small extension
+**Dependencies:** Task 22 (existing icon-lookup mechanism to extend, not replace)
+**Estimated scope:** M
+
+#### Task 27d: Dynamic wallpaper theming (Matugen)
+**Description:** Confirmed live that `matugen` is an official-repo package - genuinely buildable, not just aspirational. Derive accent-color candidates from the existing Task 23 wallpaper pair (or any future wallpaper) via Matugen, then run them through a JAZZ-specific validation layer (contrast check, reject near-black/near-white/muddy/oversaturated candidates - guide §38-39) before feeding into 27b's compiler. Raw wallpaper colors must never directly override text/background contrast - only accent/tint.
+
+**Acceptance criteria:**
+- [ ] `matugen` installed and produces a palette from JAZZ's existing wallpaper
+- [ ] A validation step rejects unsuitable candidate colors before they reach `Theme.qml` (contrast-tested, not raw Matugen output)
+- [ ] At least one real accent color flows from a wallpaper through Matugen into the live theme, confirmed via screenshot
+
+**Dependencies:** Task 27a (token schema), Task 27b (compiler to feed into), Task 23 (wallpaper mechanism)
+**Estimated scope:** M
+**Note:** genuinely optional relative to 27a/27b/27c - JAZZ's two-palette (dark/light) approach works without this; treat as an enhancement, not a blocker for the rest of Task 27.
+
+#### Task 27e: Qt/GTK compatibility layer
+**Description:** For the third-party Qt/GTK apps in Task 15c's list (not JAZZ's own Quickshell/QML surfaces, which need no compatibility layer). Kvantum (confirmed official repo) for Qt widget apps. GTK3 compat is blocked on `adw-gtk3` being AUR-only - either vendor it manually from its upstream GitHub source (build once, commit the result, no AUR/pacman dependency) or skip GTK3 theming for v1 and revisit only if a real GTK3 app in daily use looks visibly wrong.
+
+**Acceptance criteria:**
+- [ ] `kvantum`/`kvantum-qt5` installed, JAZZ's palette applied to at least one real Qt app from Task 15c's list
+- [ ] Explicit decision recorded on GTK3 (`adw-gtk3` vendored manually, or deliberately skipped) - not left silently undone
+
+**Dependencies:** Task 27a (tokens), Task 15c (app list to test against)
+**Estimated scope:** S
+
+#### Task 27f: Asset licensing record
+**Description:** Lightweight but non-optional given JAZZ's existing public-repo-readiness requirement (project memory: clean history, no unlicensed assets). Every vendored asset from 27c (Lucide SVGs) and 27e (Papirus, Kvantum, any vendored adw-gtk3) needs a source/license/modification record, per the guide's §48 schema.
+
+**Acceptance criteria:**
+- [ ] `licenses/ASSETS.md` exists, one entry per vendored asset (source, author, license, URL, modifications)
+- [ ] Covers everything pulled in by 27c/27d/27e at minimum
+
+**Dependencies:** 27c, 27d, 27e (needs their assets to exist first)
+**Estimated scope:** XS
+
+---
+
+**Deliberately not adopted from the design guide (disproportionate to JAZZ's current single-maintainer scale - matches the "stay lightweight, earn complexity through real pain" architecture decision already made 7 Sept 2026):**
+- Full freedesktop icon-theme tree with hundreds of app/folder/category icons across 6 pixel sizes - Papirus fallback + 27c's ~25 shell symbols covers real usage; JAZZ isn't shipping a competing general-purpose icon theme.
+- Custom cursor theme (Bibata is AUR-only anyway) - use the GTK/Adwaita default cursor, revisit only if it's a real visible problem.
+- `operating-themed` as a dedicated D-Bus service - exactly the kind of standalone daemon JAZZ already decided against; 27b's bundle-switch logic lives as a script/Settings-panel action.
+- Design Lab, Theme CI, visual regression screenshot testing - real engineering overhead for a team of one; revisit if JAZZ gets outside contributors.
+- Full curated wallpaper collection (space/nature/playful families, per-space wallpapers, Blender-authored art), Plymouth boot art, custom greeter - Task 23 already shipped one dark/light pair and `ly` is explicitly called "fine during development" by the guide itself; captured as open backlog ideas in `docs/JAZZ-v2.md`, not this task.
+- Icon/Theme CI pipeline (SVGO/scour validation, contact sheets, automated license-metadata checks) - manual review is enough at this scale.
+
+**Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation for each subtask as scoped above
+**Estimated scope (whole Task 27):** XL, broken into 6 subtasks (27a-27f) so it can land incrementally rather than as one giant PR
 
 ---
 
