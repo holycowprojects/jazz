@@ -64,8 +64,8 @@ PanelWindow {
         { id: "sound", title: "Sound", real: true },
         { id: "network", title: "Network", real: true },
         { id: "bluetooth", title: "Bluetooth", real: true },
-        { id: "apps", title: "Applications", real: false },
-        { id: "ai", title: "AI", real: false },
+        { id: "apps", title: "Applications", real: true },
+        { id: "ai", title: "AI", real: true },
         { id: "privacy", title: "Privacy", real: false },
         { id: "agents", title: "Agents", real: true },
         { id: "storage", title: "Storage", real: true },
@@ -338,20 +338,99 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Applications (PENDING) =====
+                        // ===== Applications (REAL - Task 22's real app catalog) =====
                         Column {
+                            id: appsTab
                             visible: settingsPanel.currentPage === "apps"
                             width: parent.width; spacing: 10
+                            property var apps: []
+                            Process {
+                                id: appsProc
+                                command: ["python3", "@@JAZZ_DATA_DIR@@/scan-apps.py"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        try { appsTab.apps = JSON.parse(this.text) } catch (e) { appsTab.apps = [] }
+                                    }
+                                }
+                            }
+                            Component.onCompleted: appsProc.running = true
                             Text { text: "APPLICATIONS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - per-app management and default-app associations land in a later Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 11 }
+                            Column {
+                                width: parent.width; spacing: 2
+                                Repeater {
+                                    model: appsTab.apps
+                                    delegate: Rectangle {
+                                        width: parent.width; height: 26; radius: 5
+                                        color: appRowMouse.containsMouse ? Theme.surfaceRaised : "#00000000"
+                                        Text {
+                                            anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
+                                            text: modelData.name; color: Theme.panelInk; font.pixelSize: 12
+                                        }
+                                        MouseArea {
+                                            id: appRowMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: Quickshell.execDetached(["bash", "-c", modelData.exec])
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        // ===== AI (PENDING) =====
+                        // ===== AI (REAL - Track C, Ollama) =====
                         Column {
+                            id: aiTab
                             visible: settingsPanel.currentPage === "ai"
                             width: parent.width; spacing: 10
+                            property var installedModels: []
+                            property var runningModels: []
+                            Process {
+                                id: tagsProc
+                                command: ["bash", "-c", "curl -s http://localhost:11434/api/tags"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        try { aiTab.installedModels = JSON.parse(this.text).models || [] } catch (e) { aiTab.installedModels = [] }
+                                    }
+                                }
+                            }
+                            Process {
+                                id: psProc
+                                command: ["bash", "-c", "curl -s http://localhost:11434/api/ps"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        try { aiTab.runningModels = JSON.parse(this.text).models || [] } catch (e) { aiTab.runningModels = [] }
+                                    }
+                                }
+                            }
+                            Component.onCompleted: { tagsProc.running = true; psProc.running = true }
                             Text { text: "AI"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - Ollama model/runtime status lands in a later Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text {
+                                text: aiTab.runningModels.length > 0
+                                    ? ("Running: " + aiTab.runningModels[0].name + " (" + aiTab.runningModels[0].size_vram + " bytes VRAM)")
+                                    : "No model currently loaded"
+                                color: Theme.textSecondary; font.pixelSize: 12
+                            }
+                            Text { text: "INSTALLED MODELS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Column {
+                                width: parent.width; spacing: 4
+                                Repeater {
+                                    model: aiTab.installedModels
+                                    delegate: Rectangle {
+                                        width: parent.width; height: 44; radius: 6; color: Theme.surfaceRaised
+                                        Column {
+                                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 2
+                                            Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 12 }
+                                            Text {
+                                                text: modelData.details.parameter_size + " params, " + modelData.details.quantization_level + ", " + modelData.details.context_length + " ctx"
+                                                color: Theme.textSecondary; font.pixelSize: 10
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // ===== Privacy (PENDING) =====

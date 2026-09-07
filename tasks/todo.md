@@ -879,10 +879,15 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 - Developer Mode toggle verified live both directions: marker file present → "Developer" appears in sidebar with real content; marker absent → correctly hidden, confirmed via screenshot both ways.
 - One real bug caught and fixed before deploy: the Agents tab's policy buttons had a broken/duplicate `color:` binding and no click handler at all (would have been decorative, not functional) - fixed to properly track per-row policy state and call `jazz-agent-action policy set` on click, confirmed working live.
 
-**Still pending (next slices, not yet built):** Desktop, Keyboard & Mouse, Applications, AI, Privacy, Security, Updates, Accessibility (real controls required, not stubs), Developer's deeper tools, and Display's rollback timer specifically (needs real resolution-changing logic, deliberately deferred as its own careful piece of work rather than rushed into this slice).
+**Slice 2 DONE, live-verified on the Yoga 6, 7 Sept 2026:**
+- **Applications**: real 43-app catalog (same `scan-apps.py` source the dock/launcher already use), click-to-launch, confirmed live with a real screenshot.
+- **AI**: real Ollama status via `/api/tags` (installed models, real param count/quantization/context) and `/api/ps` (currently-loaded model). Both states tested live: idle ("No model currently loaded") and actually running (triggered a real `qwen2.5:0.5b` load via `/api/generate`, confirmed "Running: qwen2.5:0.5b (0 bytes VRAM)" - correctly honest that it's CPU, not GPU, inference).
+- One real bug caught and fixed before commit: forgot to flip the `sections` array's `real: false → true` flag for these two, so the sidebar still showed the "pending" dot next to fully-working sections - caught via screenshot, fixed.
+
+**Still pending (next slices, not yet built):** Desktop, Keyboard & Mouse, Privacy, Security, Updates, Accessibility (real controls required, not stubs), Developer's deeper tools, and Display's rollback timer specifically (needs real resolution-changing logic, deliberately deferred as its own careful piece of work rather than rushed into a slice).
 
 **Acceptance criteria (full task - partially met, see slice notes above):**
-- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **9 of 18 sections real, rest honestly marked pending**
+- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **11 of 18 sections real, rest honestly marked pending**
 - [ ] Settings search returns correct results for at least 5 real spot-check queries — schema/search mechanism built and live, not yet spot-checked against 5 queries
 - [ ] Displays changes have a working rollback timer, confirmed live — not yet built
 - [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — not yet built
