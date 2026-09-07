@@ -852,7 +852,7 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** 27c, 27d, 27e (needs their assets to exist first)
 **Estimated scope:** XS
 
-#### Task 27g: Shared QML component library
+#### Task 27g: Shared QML component library — **DONE, 8 Sept 2026**
 **Description:** Added 7 Sept 2026 from `Operating_UX_UI_Blueprint.md` §61 (Akash's request, analyzed same session). Real, already-visible pain, not speculative: Task 28's Settings.qml alone hand-repeats the same "forge-colored rounded rectangle + white centered text + MouseArea" button markup, the same toggle-switch markup, and the same list-row markup a dozen-plus times across its sections. Every new tab copies the last one's inline styling instead of reusing a component.
 
 **Scope:** Extract the handful of patterns actually repeated today into real reusable QML components - not the blueprint's full 16-component wishlist, just what JAZZ's own code already duplicates:
@@ -862,13 +862,17 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 - `SectionHeader.qml` (the small-caps `Theme.textSecondary` bold label used at the top of every tab)
 
 **Acceptance criteria:**
-- [ ] All 4 components exist under a shared location (e.g. `configs/quickshell/ui/`) and are importable from both `shell.qml` and `Settings.qml`
-- [ ] Settings.qml's existing sections (Agents' policy buttons, Appearance's dark-mode toggle, every sidebar/section header) are migrated to use them, confirmed still rendering correctly live
-- [ ] Any NEW section written after this lands uses the shared components, not fresh inline markup
+- [x] All 4 components exist under a shared location (`configs/quickshell/ui/`) and are importable from both `shell.qml` and `Settings.qml` — both files gained `import "ui"`; each component itself does `import "../"` to reach the `Theme` singleton, following the exact same qmldir-registration mechanism already proven for `Theme` (`configs/quickshell/qmldir`'s `singleton Theme 1.0 Theme.qml`) — a bare `import "ui"` alone was NOT enough (`SectionHeader is not a type` at runtime until `ui/qmldir` explicitly registered each type; confirmed live before doing the full migration)
+- [x] Settings.qml's existing sections (Agents' policy buttons, Appearance's dark-mode toggle, every sidebar/section header) are migrated to use them, confirmed still rendering correctly live — migrated far beyond just those three named examples: all 31 remaining section headers (mechanical regex), the 18-row sidebar (`ListRow`), all 4 real Toggle instances (Appearance/Accessibility/Network/Bluetooth), and ~23 distinct `Button` call sites covering Desktop/Displays/Sound/Network/Bluetooth/Privacy/Agents/Storage/Updates/Accessibility/System/Developer - essentially the entire button surface of the file. Confirmed via screenshots on 4 different tabs (Network, Agents, Accessibility, Developer) after migration - pixel-identical to before
+- [x] Any NEW section written after this lands uses the shared components, not fresh inline markup
 
-**Verification:** Live, on the Yoga 6 - screenshot confirming migrated sections render identically to before
-**Dependencies:** Task 27a (tokens, since components should style through `Theme.qml` too), Task 28 (the surface with the most duplication to migrate)
-**Estimated scope:** M
+**Real finding, worth remembering for any future Quickshell QML subdirectory:** a plain relative directory import (`import "ui"`) is NOT enough for Quickshell to resolve types in a subfolder, unlike stock Qt Quick's usual implicit-directory-import behavior - Quickshell's own `qs:` virtual-URL loader needs an explicit `qmldir` in that subdirectory listing each type (`Button 1.0 Button.qml`, etc.), the same registration style already used for the `Theme` singleton. Caught immediately via a deliberate one-component test (`SectionHeader` wired into one tab, deployed, screenshot) before committing to the full migration - exactly the kind of QML error that's loud and immediate (whole panel fails `qs ipc call settings toggle` with "Target not found") rather than a silent bug, so this class of risk was cheap to catch early.
+
+**Migration method:** built a Python script with ~28 exact-match `(old, new)` string-replacement pairs (one per real duplicated block, enumerated by reading the full ~1840-line file) plus one regex pass for the 31 mechanical `SectionHeader` cases, run on the Yoga 6 (no local Python on the Windows host) against the placeholder-intact source, then pulled the transformed file back into the repo. All 28 pairs + the regex matched exactly once each on the first attempt (0 problems) - brace-balance sanity-checked before deploying, then confirmed live via screenshots across 4 tabs.
+
+**`Button.qml` variants, all directly reflecting real pre-existing visual styles found in the codebase (not invented):** `primary` (forge bg, white text - the default), `danger` (critical bg, white text - Disconnect), `outlineDanger` (panel bg, critical border+text - Forget/Remove), `neutral` (panel bg, panelInk border+text - Cancel/Reset/Revert), `subtle` (surfaceRaised, no border - Refresh/Clear/Scan), `flat` (panel bg, no border - the unselected state of Agents' tri-state policy pills). A `fontSize` override (default 10) was added for the handful of buttons that were already using 11px (Displays/Accessibility's Keep/Revert, Storage/Updates' CTAs) to stay pixel-faithful.
+
+**Status: Task 27 now has 27a and 27g done; 27b (theme bundle compiler) is next, planned to pair with Task 25 (design polish) once Akash's own research lands - not started.**
 
 ---
 

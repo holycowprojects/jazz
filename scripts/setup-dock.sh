@@ -53,6 +53,7 @@ HYPR_CONFIG="/home/$USERNAME/.config/hypr/hyprland.lua"
 DATA_DIR="/home/$USERNAME/.local/share/jazz"
 SCAN_SCRIPT_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/scan-apps.py"
 THEME_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/Theme.qml"
+UI_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/ui"
 
 pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi
 
@@ -64,6 +65,11 @@ sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
 # anymore. Regenerate + commit both after editing colors.json, don't
 # hand-edit Theme.qml directly.
 sudo -u "$USERNAME" cp "$THEME_SRC" "$THEME_FILE"
+# Task 27g: shared QML component library (Button/Toggle/ListRow/
+# SectionHeader), used by both shell.qml (imports "ui" below) and
+# Settings.qml.
+sudo -u "$USERNAME" mkdir -p "$QS_DIR/ui"
+sudo -u "$USERNAME" cp "$UI_SRC_DIR"/*.qml "$UI_SRC_DIR/qmldir" "$QS_DIR/ui/"
 
 sudo -u "$USERNAME" tee "$SHELL_FILE" > /dev/null << 'SHELLQML'
 // JAZZ Quickshell config (Tasks 10-11, Tier 1 widgets, Task 22 rebuilt
@@ -77,6 +83,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "ui"
 
 ShellRoot {
     // ---------- Real app catalog (XDG .desktop scan) ----------

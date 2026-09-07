@@ -18,6 +18,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "ui"
 
 PanelWindow {
     id: settingsPanel
@@ -206,21 +207,11 @@ PanelWindow {
                         spacing: 2
                         Repeater {
                             model: settingsPanel.visibleSections()
-                            delegate: Rectangle {
-                                width: parent.width; height: 30; radius: 6
-                                color: settingsPanel.currentPage === modelData.id ? Theme.forge : "#00000000"
-                                Text {
-                                    anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.title
-                                    color: settingsPanel.currentPage === modelData.id ? "#ffffff" : Theme.panelInk
-                                    font.pixelSize: 12
-                                }
-                                Text {
-                                    visible: !modelData.real
-                                    anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                                    text: "•"; color: Theme.textSecondary; font.pixelSize: 12
-                                }
-                                MouseArea { anchors.fill: parent; onClicked: settingsPanel.currentPage = modelData.id }
+                            delegate: ListRow {
+                                label: modelData.title
+                                selected: settingsPanel.currentPage === modelData.id
+                                showMarker: !modelData.real
+                                onClicked: settingsPanel.currentPage = modelData.id
                             }
                         }
                     }
@@ -245,26 +236,20 @@ PanelWindow {
                             visible: settingsPanel.currentPage === "appearance"
                             width: parent.width
                             spacing: 16
-                            Text { text: "APPEARANCE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "APPEARANCE" }
                             Row {
                                 spacing: 10
                                 Text { text: Theme.darkMode ? "Dark mode" : "Light mode"; color: Theme.panelInk; font.pixelSize: 13 }
-                                Rectangle {
-                                    width: 38; height: 20; radius: 10
-                                    color: Theme.darkMode ? Theme.forge : Theme.panelInk
-                                    opacity: Theme.darkMode ? 1 : 0.25
-                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: Theme.darkMode ? parent.width - width - 2 : 2 }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            Theme.darkMode = !Theme.darkMode
-                                            var wp = Theme.darkMode ? "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-dark.png" : "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-light.png"
-                                            Quickshell.execDetached(["jazz-wallpaper-set", wp])
-                                        }
+                                Toggle {
+                                    checked: Theme.darkMode
+                                    onToggled: {
+                                        Theme.darkMode = !Theme.darkMode
+                                        var wp = Theme.darkMode ? "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-dark.png" : "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-light.png"
+                                        Quickshell.execDetached(["jazz-wallpaper-set", wp])
                                     }
                                 }
                             }
-                            Text { text: "Wallpaper"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "Wallpaper" }
                             Flow {
                                 width: parent.width
                                 spacing: 8
@@ -330,10 +315,10 @@ PanelWindow {
                                 desktopTab.statusMsg = name + " reset to default."
                             }
 
-                            Text { text: "DESKTOP"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "DESKTOP" }
                             Row {
                                 width: parent.width; spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Workspaces"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "Workspaces" }
                                 Text { anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 10 }
                             }
                             Column {
@@ -382,22 +367,18 @@ PanelWindow {
                                                     color: desktopTab.isValidHex(wsRow.colorText) ? wsRow.colorText : wsRow.wsData.color
                                                     border.color: Theme.panelInk; border.width: 1
                                                 }
-                                                Rectangle {
-                                                    width: 50; height: 22; radius: 4; color: Theme.forge
-                                                    opacity: (desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0) ? 1 : 0.4
-                                                    Text { anchors.centerIn: parent; text: "Save"; font.pixelSize: 10; color: "#ffffff" }
-                                                    MouseArea {
-                                                        anchors.fill: parent
-                                                        enabled: desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0
-                                                        onClicked: desktopTab.saveOverride(wsRow.wsData.name, wsRow.nameText.trim(), wsRow.colorText)
-                                                    }
+                                                Button {
+                                                    width: 50; height: 22
+                                                    enabled: desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0
+                                                    label: "Save"
+                                                    onClicked: desktopTab.saveOverride(wsRow.wsData.name, wsRow.nameText.trim(), wsRow.colorText)
                                                 }
-                                                Rectangle {
+                                                Button {
                                                     visible: wsRow.hasOverride
-                                                    width: 55; height: 22; radius: 4; color: Theme.panel
-                                                    border.color: Theme.panelInk; border.width: 1
-                                                    Text { anchors.centerIn: parent; text: "Reset"; font.pixelSize: 10; color: Theme.panelInk }
-                                                    MouseArea { anchors.fill: parent; onClicked: desktopTab.resetOverride(wsRow.wsData.name) }
+                                                    width: 55; height: 22
+                                                    variant: "neutral"
+                                                    label: "Reset"
+                                                    onClicked: desktopTab.resetOverride(wsRow.wsData.name)
                                                 }
                                             }
                                         }
@@ -467,7 +448,7 @@ PanelWindow {
                                 displayTab.timerActive = true
                             }
 
-                            Text { text: "DISPLAYS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "DISPLAYS" }
                             Text {
                                 text: displayTab.monitorData
                                     ? (displayTab.monitorData.name + ": " + displayTab.monitorData.width + "x" + displayTab.monitorData.height + "@" + displayTab.monitorData.refreshRate.toFixed(2) + "Hz, scale " + displayTab.monitorData.scale)
@@ -475,7 +456,7 @@ PanelWindow {
                                 color: Theme.panelInk; font.pixelSize: 13
                             }
                             Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 11 }
-                            Text { text: "AVAILABLE MODES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "AVAILABLE MODES" }
                             Flow {
                                 width: parent.width; spacing: 6
                                 Repeater {
@@ -506,22 +487,21 @@ PanelWindow {
                                     Row {
                                         spacing: 10
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        Rectangle {
-                                            width: 70; height: 24; radius: 6; color: Theme.forge
-                                            Text { anchors.centerIn: parent; text: "Keep"; color: "#ffffff"; font.pixelSize: 11 }
-                                            MouseArea { anchors.fill: parent; onClicked: { displayTab.timerActive = false; displayTab.refreshMonitor() } }
+                                        Button {
+                                            width: 70; height: 24
+                                            fontSize: 11
+                                            label: "Keep"
+                                            onClicked: { displayTab.timerActive = false; displayTab.refreshMonitor() }
                                         }
-                                        Rectangle {
-                                            width: 70; height: 24; radius: 6; color: Theme.panel
-                                            border.color: Theme.panelInk; border.width: 1
-                                            Text { anchors.centerIn: parent; text: "Revert"; color: Theme.panelInk; font.pixelSize: 11 }
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: {
-                                                    Quickshell.execDetached(["hyprctl", "eval", displayTab.originalLuaLine])
-                                                    displayTab.timerActive = false
-                                                    revertRefreshDelay.restart()
-                                                }
+                                        Button {
+                                            width: 70; height: 24
+                                            fontSize: 11
+                                            variant: "neutral"
+                                            label: "Revert"
+                                            onClicked: {
+                                                Quickshell.execDetached(["hyprctl", "eval", displayTab.originalLuaLine])
+                                                displayTab.timerActive = false
+                                                revertRefreshDelay.restart()
                                             }
                                         }
                                     }
@@ -559,12 +539,12 @@ PanelWindow {
                                 stdout: StdioCollector { onStreamFinished: { inputTab.keybindsText = this.text } }
                             }
                             Component.onCompleted: keybindsProc.running = true
-                            Text { text: "KEYBOARD & MOUSE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "KEYBOARD & MOUSE" }
                             Text { text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 10 }
-                            Text { text: "KEYBINDS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "KEYBINDS" }
                             Text {
                                 width: parent.width
                                 text: inputTab.keybindsText
@@ -628,7 +608,7 @@ PanelWindow {
                                 soundTab.muted = !soundTab.muted
                             }
 
-                            Text { text: "SOUND"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "SOUND" }
                             Text {
                                 visible: !soundTab.audioAvailable
                                 text: "Not available - no audio device detected."
@@ -645,12 +625,13 @@ PanelWindow {
                                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                                         text: "Volume"; color: Theme.panelInk; font.pixelSize: 12; width: 55
                                     }
-                                    Rectangle {
+                                    Button {
                                         id: muteBtn
                                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                        width: 50; height: 22; radius: 4; color: soundTab.muted ? Theme.range : Theme.surfaceRaised
-                                        Text { anchors.centerIn: parent; text: soundTab.muted ? "Muted" : "Mute"; font.pixelSize: 10; color: soundTab.muted ? "#ffffff" : Theme.panelInk }
-                                        MouseArea { anchors.fill: parent; onClicked: soundTab.toggleMute() }
+                                        width: 50; height: 22
+                                        variant: soundTab.muted ? "danger" : "subtle"
+                                        label: soundTab.muted ? "Muted" : "Mute"
+                                        onClicked: soundTab.toggleMute()
                                     }
                                     Text {
                                         id: pctLabel
@@ -779,7 +760,7 @@ PanelWindow {
                                 forgetProc.running = true
                             }
 
-                            Text { text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "NETWORK" }
                             Row {
                                 spacing: 10
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 13 }
@@ -794,10 +775,12 @@ PanelWindow {
                             Row {
                                 visible: networkTab.radioOn
                                 spacing: 10
-                                Rectangle {
-                                    width: 70; height: 22; radius: 6; color: Theme.surfaceRaised
-                                    Text { anchors.centerIn: parent; text: networkTab.busy ? "..." : "Refresh"; font.pixelSize: 10; color: Theme.panelInk }
-                                    MouseArea { anchors.fill: parent; enabled: !networkTab.busy; onClicked: networkTab.refresh() }
+                                Button {
+                                    width: 70; height: 22
+                                    variant: "subtle"
+                                    enabled: !networkTab.busy
+                                    label: networkTab.busy ? "..." : "Refresh"
+                                    onClicked: networkTab.refresh()
                                 }
                                 Text {
                                     visible: networkTab.statusMsg.length > 0
@@ -842,37 +825,35 @@ PanelWindow {
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     text: "Connected"; color: Theme.forge; font.pixelSize: 11
                                                 }
-                                                Rectangle {
+                                                Button {
                                                     visible: !netData.connected
-                                                    width: 70; height: 22; radius: 4; color: Theme.forge
+                                                    width: 70; height: 22
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    Text { anchors.centerIn: parent; text: "Connect"; font.pixelSize: 10; color: "#ffffff" }
-                                                    MouseArea {
-                                                        anchors.fill: parent
-                                                        onClicked: {
-                                                            if (netData.secured) {
-                                                                networkTab.connectingSsid = (networkTab.connectingSsid === netData.ssid) ? "" : netData.ssid
-                                                                networkTab.pwText = ""
-                                                            } else {
-                                                                networkTab.connectTo(netData.ssid, "")
-                                                            }
+                                                    label: "Connect"
+                                                    onClicked: {
+                                                        if (netData.secured) {
+                                                            networkTab.connectingSsid = (networkTab.connectingSsid === netData.ssid) ? "" : netData.ssid
+                                                            networkTab.pwText = ""
+                                                        } else {
+                                                            networkTab.connectTo(netData.ssid, "")
                                                         }
                                                     }
                                                 }
-                                                Rectangle {
+                                                Button {
                                                     visible: netData.connected
-                                                    width: 80; height: 22; radius: 4; color: Theme.range
+                                                    width: 80; height: 22
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    Text { anchors.centerIn: parent; text: "Disconnect"; font.pixelSize: 10; color: "#ffffff" }
-                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.disconnectWifi() }
+                                                    variant: "danger"
+                                                    label: "Disconnect"
+                                                    onClicked: networkTab.disconnectWifi()
                                                 }
-                                                Rectangle {
+                                                Button {
                                                     visible: netData.connected
-                                                    width: 60; height: 22; radius: 4; color: Theme.panel
-                                                    border.color: Theme.range; border.width: 1
+                                                    width: 60; height: 22
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    Text { anchors.centerIn: parent; text: "Forget"; font.pixelSize: 10; color: Theme.range }
-                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.forgetNetwork(netData.ssid) }
+                                                    variant: "outlineDanger"
+                                                    label: "Forget"
+                                                    onClicked: networkTab.forgetNetwork(netData.ssid)
                                                 }
                                             }
                                         }
@@ -894,16 +875,16 @@ PanelWindow {
                                                         Keys.onReturnPressed: networkTab.connectTo(netData.ssid, networkTab.pwText)
                                                     }
                                                 }
-                                                Rectangle {
-                                                    width: 60; height: 22; radius: 4; color: Theme.forge
-                                                    Text { anchors.centerIn: parent; text: "Connect"; font.pixelSize: 10; color: "#ffffff" }
-                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.connectTo(netData.ssid, networkTab.pwText) }
+                                                Button {
+                                                    width: 60; height: 22
+                                                    label: "Connect"
+                                                    onClicked: networkTab.connectTo(netData.ssid, networkTab.pwText)
                                                 }
-                                                Rectangle {
-                                                    width: 50; height: 22; radius: 4; color: Theme.panel
-                                                    border.color: Theme.panelInk; border.width: 1
-                                                    Text { anchors.centerIn: parent; text: "Cancel"; font.pixelSize: 10; color: Theme.panelInk }
-                                                    MouseArea { anchors.fill: parent; onClicked: { networkTab.connectingSsid = ""; networkTab.pwText = "" } }
+                                                Button {
+                                                    width: 50; height: 22
+                                                    variant: "neutral"
+                                                    label: "Cancel"
+                                                    onClicked: { networkTab.connectingSsid = ""; networkTab.pwText = "" }
                                                 }
                                             }
                                         }
@@ -1006,19 +987,16 @@ PanelWindow {
                                 btActionProc.running = true
                             }
 
-                            Text { text: "BLUETOOTH"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "BLUETOOTH" }
                             Row {
                                 spacing: 10
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 13 }
-                                Rectangle {
-                                    width: 38; height: 20; radius: 10
-                                    color: btTab.powered ? Theme.forge : Theme.panelInk
-                                    opacity: btTab.powered ? 1 : 0.25
-                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: btTab.powered ? parent.width - width - 2 : 2 }
-                                    MouseArea { anchors.fill: parent; onClicked: btTab.togglePower() }
+                                Toggle {
+                                    checked: btTab.powered
+                                    onToggled: btTab.togglePower()
                                 }
                             }
-                            Text { text: "PAIRED DEVICES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "PAIRED DEVICES" }
                             Column {
                                 width: parent.width; spacing: 4
                                 Text { visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 11 }
@@ -1035,16 +1013,17 @@ PanelWindow {
                                                 text: devData.connected ? "Connected" : "Paired"
                                                 color: devData.connected ? Theme.forge : Theme.textSecondary; font.pixelSize: 11
                                             }
-                                            Rectangle {
-                                                width: 80; height: 22; radius: 4; color: devData.connected ? Theme.range : Theme.forge
-                                                Text { anchors.centerIn: parent; text: devData.connected ? "Disconnect" : "Connect"; font.pixelSize: 10; color: "#ffffff" }
-                                                MouseArea { anchors.fill: parent; onClicked: devData.connected ? btTab.btDisconnect(devData.mac) : btTab.btConnect(devData.mac) }
+                                            Button {
+                                                width: 80; height: 22
+                                                variant: devData.connected ? "danger" : "primary"
+                                                label: devData.connected ? "Disconnect" : "Connect"
+                                                onClicked: devData.connected ? btTab.btDisconnect(devData.mac) : btTab.btConnect(devData.mac)
                                             }
-                                            Rectangle {
-                                                width: 60; height: 22; radius: 4; color: Theme.panel
-                                                border.color: Theme.range; border.width: 1
-                                                Text { anchors.centerIn: parent; text: "Remove"; font.pixelSize: 10; color: Theme.range }
-                                                MouseArea { anchors.fill: parent; onClicked: btTab.btRemove(devData.mac) }
+                                            Button {
+                                                width: 60; height: 22
+                                                variant: "outlineDanger"
+                                                label: "Remove"
+                                                onClicked: btTab.btRemove(devData.mac)
                                             }
                                         }
                                     }
@@ -1052,11 +1031,13 @@ PanelWindow {
                             }
                             Row {
                                 spacing: 8
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "NEARBY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                                Rectangle {
-                                    width: 130; height: 22; radius: 6; color: Theme.surfaceRaised
-                                    Text { anchors.centerIn: parent; text: btTab.scanning ? "Scanning..." : "Scan (6s)"; font.pixelSize: 10; color: Theme.panelInk }
-                                    MouseArea { anchors.fill: parent; enabled: !btTab.scanning; onClicked: btTab.startScan() }
+                                SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "NEARBY" }
+                                Button {
+                                    width: 130; height: 22
+                                    variant: "subtle"
+                                    enabled: !btTab.scanning
+                                    label: btTab.scanning ? "Scanning..." : "Scan (6s)"
+                                    onClicked: btTab.startScan()
                                 }
                             }
                             Column {
@@ -1071,10 +1052,10 @@ PanelWindow {
                                         Row {
                                             anchors.fill: parent; anchors.margins: 6; spacing: 8
                                             Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight }
-                                            Rectangle {
-                                                width: 60; height: 22; radius: 4; color: Theme.forge
-                                                Text { anchors.centerIn: parent; text: "Pair"; font.pixelSize: 10; color: "#ffffff" }
-                                                MouseArea { anchors.fill: parent; onClicked: btTab.btPairAndConnect(devData.mac) }
+                                            Button {
+                                                width: 60; height: 22
+                                                label: "Pair"
+                                                onClicked: btTab.btPairAndConnect(devData.mac)
                                             }
                                         }
                                     }
@@ -1102,7 +1083,7 @@ PanelWindow {
                                 }
                             }
                             Component.onCompleted: appsProc.running = true
-                            Text { text: "APPLICATIONS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "APPLICATIONS" }
                             Text { text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 11 }
                             Column {
                                 width: parent.width; spacing: 2
@@ -1152,7 +1133,7 @@ PanelWindow {
                                 }
                             }
                             Component.onCompleted: { tagsProc.running = true; psProc.running = true }
-                            Text { text: "AI"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "AI" }
                             Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 13 }
                             Text {
                                 text: aiTab.runningModels.length > 0
@@ -1160,7 +1141,7 @@ PanelWindow {
                                     : "Nothing loaded in memory right now - Ollama unloads idle models automatically after a few minutes. Installed models (below) reload in seconds the next time you use them."
                                 color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width
                             }
-                            Text { text: "INSTALLED MODELS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "INSTALLED MODELS" }
                             Column {
                                 width: parent.width; spacing: 4
                                 Repeater {
@@ -1221,7 +1202,7 @@ PanelWindow {
                             function clearRecentFiles() { privacyTab.statusMsg = "Recent files list cleared."; privacyActionProc.command = ["bash", "-c", "rm -f ~/.local/share/recently-used.xbel"]; privacyActionProc.running = true }
                             function clearShellHistory() { privacyTab.statusMsg = "Command history cleared."; privacyActionProc.command = ["bash", "-c", "cat /dev/null > ~/.bash_history"]; privacyActionProc.running = true }
 
-                            Text { text: "PRIVACY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "PRIVACY" }
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "JAZZ sends no telemetry. All AI processing runs locally via Ollama - nothing about what you type, ask, or run leaves this machine unless you explicitly configure a cloud service."
@@ -1231,32 +1212,35 @@ PanelWindow {
                                 visible: privacyTab.statusMsg.length > 0
                                 text: privacyTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 11
                             }
-                            Text { text: "ACTIVITY TRACES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "ACTIVITY TRACES" }
                             Row {
                                 width: parent.width; spacing: 10
                                 Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 12 }
-                                Rectangle {
-                                    width: 60; height: 22; radius: 4; color: Theme.range
-                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
-                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearClipboard() }
+                                Button {
+                                    width: 60; height: 22
+                                    variant: "danger"
+                                    label: "Clear"
+                                    onClicked: privacyTab.clearClipboard()
                                 }
                             }
                             Row {
                                 width: parent.width; spacing: 10
                                 Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 12 }
-                                Rectangle {
-                                    width: 60; height: 22; radius: 4; color: Theme.range
-                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
-                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearRecentFiles() }
+                                Button {
+                                    width: 60; height: 22
+                                    variant: "danger"
+                                    label: "Clear"
+                                    onClicked: privacyTab.clearRecentFiles()
                                 }
                             }
                             Row {
                                 width: parent.width; spacing: 10
                                 Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 12 }
-                                Rectangle {
-                                    width: 60; height: 22; radius: 4; color: Theme.range
-                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
-                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearShellHistory() }
+                                Button {
+                                    width: 60; height: 22
+                                    variant: "danger"
+                                    label: "Clear"
+                                    onClicked: privacyTab.clearShellHistory()
                                 }
                             }
                             Text {
@@ -1264,7 +1248,7 @@ PanelWindow {
                                 text: "Clearing command history resets the saved file - any terminal windows already open keep their own history in memory until closed."
                                 color: Theme.textSecondary; font.pixelSize: 10
                             }
-                            Text { text: "MORE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "MORE" }
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "AI action history and permissions live under Agents. Firewall, SSH, and disk-encryption status live under Security."
@@ -1299,7 +1283,7 @@ PanelWindow {
                             function refresh() { policyProc.running = true; ledgerProc.running = true }
                             Component.onCompleted: refresh()
 
-                            Text { text: "AGENT PERMISSIONS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "AGENT PERMISSIONS" }
                             Column {
                                 width: parent.width; spacing: 4
                                 Repeater {
@@ -1323,20 +1307,14 @@ PanelWindow {
                                                 visible: policyRow.rowData.overridable
                                                 Repeater {
                                                     model: ["allow", "ask", "deny"]
-                                                    delegate: Rectangle {
+                                                    delegate: Button {
                                                         property string optionValue: modelData
-                                                        width: 46; height: 20; radius: 4
-                                                        color: optionValue === policyRow.rowData.policy ? Theme.forge : Theme.panel
-                                                        Text {
-                                                            anchors.centerIn: parent; text: optionValue; font.pixelSize: 10
-                                                            color: optionValue === policyRow.rowData.policy ? "#ffffff" : Theme.panelInk
-                                                        }
-                                                        MouseArea {
-                                                            anchors.fill: parent
-                                                            onClicked: {
-                                                                Quickshell.execDetached(["jazz-agent-action", "policy", "set", policyRow.rowData.action_type, optionValue])
-                                                                agentsTab.refresh()
-                                                            }
+                                                        width: 46; height: 20
+                                                        variant: optionValue === policyRow.rowData.policy ? "primary" : "flat"
+                                                        label: optionValue
+                                                        onClicked: {
+                                                            Quickshell.execDetached(["jazz-agent-action", "policy", "set", policyRow.rowData.action_type, optionValue])
+                                                            agentsTab.refresh()
                                                         }
                                                     }
                                                 }
@@ -1349,7 +1327,7 @@ PanelWindow {
                                     }
                                 }
                             }
-                            Text { text: "RECENT ACTIVITY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "RECENT ACTIVITY" }
                             Text {
                                 width: parent.width
                                 text: agentsTab.ledgerText
@@ -1369,13 +1347,14 @@ PanelWindow {
                                 command: ["bash", "-c", "df -h / | tail -1 | awk '{print $2\" total, \"$3\" used, \"$4\" available (\"$5\" used)\"}'"]
                                 stdout: SplitParser { onRead: function (data) { if (data) storageTab.usedLine = data } }
                             }
-                            Text { text: "STORAGE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "STORAGE" }
                             Text { text: storageTab.usedLine; color: Theme.panelInk; font.pixelSize: 13 }
                             Text { text: "Btrfs root, Snapper-protected (Track A)."; color: Theme.textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                width: 180; height: 26; radius: 6; color: Theme.forge
-                                Text { anchors.centerIn: parent; text: "Manage snapshots"; font.pixelSize: 11; color: "#ffffff" }
-                                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["kitty", "-e", "sudo", "snapper", "-c", "root", "list"]) }
+                            Button {
+                                width: 180; height: 26
+                                fontSize: 11
+                                label: "Manage snapshots"
+                                onClicked: Quickshell.execDetached(["kitty", "-e", "sudo", "snapper", "-c", "root", "list"])
                             }
                         }
 
@@ -1402,7 +1381,7 @@ PanelWindow {
                                 command: ["bash", "-c", "cat /sys/class/power_supply/BAT*/power_now 2>/dev/null | head -1"]
                                 stdout: SplitParser { onRead: function (data) { if (data) powerTab.watts = parseInt(data) / 1000000.0 } }
                             }
-                            Text { text: "BATTERY & POWER"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "BATTERY & POWER" }
                             Text { text: powerTab.pct >= 0 ? (powerTab.pct + "% - " + powerTab.status) : "reading..."; color: Theme.panelInk; font.pixelSize: 16 }
                             Text { text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 12 }
                         }
@@ -1442,7 +1421,7 @@ PanelWindow {
                                 command: ["bash", "-c", "lsblk -f -no FSTYPE /dev/nvme0n1p5 2>/dev/null | grep -q crypto_LUKS && echo Enabled || echo Off"]
                                 stdout: SplitParser { onRead: function (data) { if (data) securityTab.diskEncryption = data } }
                             }
-                            Text { text: "SECURITY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "SECURITY" }
                             Text { text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 13 }
                             Text { text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 13 }
                             Text { text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 13 }
@@ -1468,7 +1447,7 @@ PanelWindow {
                             }
                             function refresh() { updatesTab.checked = false; updatesProc.running = true }
                             Component.onCompleted: refresh()
-                            Text { text: "UPDATES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "UPDATES" }
                             Text {
                                 text: !updatesTab.checked ? "Checking..." : (updatesTab.pending.length === 0 ? "System is up to date" : updatesTab.pending.length + " updates available")
                                 color: Theme.panelInk; font.pixelSize: 15
@@ -1480,10 +1459,11 @@ PanelWindow {
                                     delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 11; font.family: "monospace" }
                                 }
                             }
-                            Rectangle {
-                                width: 110; height: 26; radius: 6; color: Theme.forge
-                                Text { anchors.centerIn: parent; text: "Check Now"; font.pixelSize: 11; color: "#ffffff" }
-                                MouseArea { anchors.fill: parent; onClicked: updatesTab.refresh() }
+                            Button {
+                                width: 110; height: 26
+                                fontSize: 11
+                                label: "Check Now"
+                                onClicked: updatesTab.refresh()
                             }
                         }
 
@@ -1539,17 +1519,14 @@ PanelWindow {
                                 accessTab.scaleTimerActive = true
                             }
 
-                            Text { text: "ACCESSIBILITY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "MOTION"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "ACCESSIBILITY" }
+                            SectionHeader { text: "MOTION" }
                             Row {
                                 spacing: 10
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 13 }
-                                Rectangle {
-                                    width: 38; height: 20; radius: 10
-                                    color: Theme.reducedMotion ? Theme.forge : Theme.panelInk
-                                    opacity: Theme.reducedMotion ? 1 : 0.25
-                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: Theme.reducedMotion ? parent.width - width - 2 : 2 }
-                                    MouseArea { anchors.fill: parent; onClicked: Theme.reducedMotion = !Theme.reducedMotion }
+                                Toggle {
+                                    checked: Theme.reducedMotion
+                                    onToggled: Theme.reducedMotion = !Theme.reducedMotion
                                 }
                             }
                             Text {
@@ -1557,7 +1534,7 @@ PanelWindow {
                                 text: "Turns off JAZZ's own color/transition animations (currently: the top bar's workspace-color change). Native app animations aren't affected."
                                 color: Theme.textSecondary; font.pixelSize: 10
                             }
-                            Text { text: "TEXT & UI SIZE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "TEXT & UI SIZE" }
                             Text {
                                 text: accessTab.monitorData ? ("Current: " + Math.round(accessTab.monitorData.scale * 100) + "%") : "loading..."
                                 color: Theme.panelInk; font.pixelSize: 13
@@ -1571,20 +1548,14 @@ PanelWindow {
                                 spacing: 6
                                 Repeater {
                                     model: [1.0, 1.15, 1.25, 1.5, 1.75]
-                                    delegate: Rectangle {
+                                    delegate: Button {
                                         property real scaleVal: modelData
-                                        width: 56; height: 26; radius: 6
-                                        color: accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01 ? Theme.forge : Theme.surfaceRaised
-                                        opacity: accessTab.scaleTimerActive ? 0.4 : 1
-                                        Text {
-                                            anchors.centerIn: parent; text: Math.round(scaleVal * 100) + "%"; font.pixelSize: 11
-                                            color: accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01 ? "#ffffff" : Theme.panelInk
-                                        }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            enabled: !accessTab.scaleTimerActive
-                                            onClicked: accessTab.applyScale(scaleVal)
-                                        }
+                                        width: 56; height: 26
+                                        fontSize: 11
+                                        variant: (accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01) ? "primary" : "subtle"
+                                        enabled: !accessTab.scaleTimerActive
+                                        label: Math.round(scaleVal * 100) + "%"
+                                        onClicked: accessTab.applyScale(scaleVal)
                                     }
                                 }
                             }
@@ -1602,22 +1573,21 @@ PanelWindow {
                                     Row {
                                         spacing: 10
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        Rectangle {
-                                            width: 70; height: 24; radius: 6; color: Theme.forge
-                                            Text { anchors.centerIn: parent; text: "Keep"; color: "#ffffff"; font.pixelSize: 11 }
-                                            MouseArea { anchors.fill: parent; onClicked: { accessTab.scaleTimerActive = false; accessTab.refreshMonitor() } }
+                                        Button {
+                                            width: 70; height: 24
+                                            fontSize: 11
+                                            label: "Keep"
+                                            onClicked: { accessTab.scaleTimerActive = false; accessTab.refreshMonitor() }
                                         }
-                                        Rectangle {
-                                            width: 70; height: 24; radius: 6; color: Theme.panel
-                                            border.color: Theme.panelInk; border.width: 1
-                                            Text { anchors.centerIn: parent; text: "Revert"; color: Theme.panelInk; font.pixelSize: 11 }
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                onClicked: {
-                                                    Quickshell.execDetached(["hyprctl", "eval", accessTab.originalScaleLuaLine])
-                                                    accessTab.scaleTimerActive = false
-                                                    accessRefreshDelay.restart()
-                                                }
+                                        Button {
+                                            width: 70; height: 24
+                                            fontSize: 11
+                                            variant: "neutral"
+                                            label: "Revert"
+                                            onClicked: {
+                                                Quickshell.execDetached(["hyprctl", "eval", accessTab.originalScaleLuaLine])
+                                                accessTab.scaleTimerActive = false
+                                                accessRefreshDelay.restart()
                                             }
                                         }
                                     }
@@ -1660,29 +1630,22 @@ PanelWindow {
                                 command: ["bash", "-c", "lspci | grep VGA | sed 's/.*: //'"]
                                 stdout: SplitParser { onRead: function (data) { if (data) systemTab.gpu = data } }
                             }
-                            Text { text: "ABOUT"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "ABOUT" }
                             Text { text: "JAZZ"; color: Theme.panelInk; font.pixelSize: 18; font.bold: true }
                             Text { text: "Arch Linux, hostname " + systemTab.hostname; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "Kernel " + systemTab.kernel; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "CPU: " + systemTab.cpu; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "GPU: " + systemTab.gpu; color: Theme.panelInk; font.pixelSize: 12 }
                             Text { text: "Memory: " + systemTab.mem; color: Theme.panelInk; font.pixelSize: 12 }
-                            Rectangle {
-                                width: 170; height: 26; radius: 6; color: Theme.forge
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: settingsPanel.devModeEnabled ? "Disable Developer Mode" : "Enable Developer Mode"
-                                    font.pixelSize: 10; color: "#ffffff"
-                                }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        var cmd = settingsPanel.devModeEnabled
-                                            ? "rm -f @@JAZZ_CONFIG_DIR@@/dev-mode.enabled"
-                                            : "mkdir -p @@JAZZ_CONFIG_DIR@@ && touch @@JAZZ_CONFIG_DIR@@/dev-mode.enabled"
-                                        Quickshell.execDetached(["bash", "-c", cmd])
-                                        settingsPanel.devModeEnabled = !settingsPanel.devModeEnabled
-                                    }
+                            Button {
+                                width: 170; height: 26
+                                label: settingsPanel.devModeEnabled ? "Disable Developer Mode" : "Enable Developer Mode"
+                                onClicked: {
+                                    var cmd = settingsPanel.devModeEnabled
+                                        ? "rm -f @@JAZZ_CONFIG_DIR@@/dev-mode.enabled"
+                                        : "mkdir -p @@JAZZ_CONFIG_DIR@@ && touch @@JAZZ_CONFIG_DIR@@/dev-mode.enabled"
+                                    Quickshell.execDetached(["bash", "-c", cmd])
+                                    settingsPanel.devModeEnabled = !settingsPanel.devModeEnabled
                                 }
                             }
                         }
@@ -1742,16 +1705,17 @@ PanelWindow {
                                 busTreeProc.running = true
                             }
 
-                            Text { text: "DEVELOPER"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            SectionHeader { text: "DEVELOPER" }
 
                             Row {
                                 spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG" }
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: Theme.forge; font.pixelSize: 10 }
-                                Rectangle {
-                                    width: 50; height: 20; radius: 4; color: Theme.surfaceRaised
-                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: Theme.panelInk }
-                                    MouseArea { anchors.fill: parent; onClicked: developerTab.eventLines = [] }
+                                Button {
+                                    width: 50; height: 20
+                                    variant: "subtle"
+                                    label: "Clear"
+                                    onClicked: developerTab.eventLines = []
                                 }
                             }
                             Rectangle {
@@ -1775,11 +1739,12 @@ PanelWindow {
 
                             Row {
                                 spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "D-BUS INSPECTOR (session bus)"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                                Rectangle {
-                                    width: 60; height: 20; radius: 4; color: Theme.surfaceRaised
-                                    Text { anchors.centerIn: parent; text: "Refresh"; font.pixelSize: 10; color: Theme.panelInk }
-                                    MouseArea { anchors.fill: parent; onClicked: developerTab.refreshBus() }
+                                SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "D-BUS INSPECTOR (session bus)" }
+                                Button {
+                                    width: 60; height: 20
+                                    variant: "subtle"
+                                    label: "Refresh"
+                                    onClicked: developerTab.refreshBus()
                                 }
                             }
                             Text { text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 10 }
