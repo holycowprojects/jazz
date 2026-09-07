@@ -4,6 +4,29 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
+## Recommended build sequence for remaining tasks (assessed 7 Sept 2026, provisional)
+
+Reasoned out with Akash 7 Sept 2026, covering everything open after Task 30 was scoped. Grouped by dependency, not strictly linear — several tiers can run in parallel:
+
+1. **Task 18** (LICENSE/CHANGELOG) — trivial, no dependencies either direction, do anytime.
+2. **Task 24** (AMD ACP audio) — clears real audio data before Task 22's volume control and Task 28's future Sound tab need it.
+3. **Task 30** (permission tiers + Checkpoint→Act→Undo) — backend can be built standalone now; its UI slots into Task 28's Agents tab whenever that lands. Do before any AI-action feature (Jazz Files' AI follow-on, future NL control).
+4. **Task 28** (Jazz Settings) → **Task 29** (Jazz Files v1) — Settings first since it grows an existing surface and Task 30's UI needs its Agents tab; Files is the bigger, more novel build.
+5. **Task 26** (AI Command Centre) and **Task 27** (theme-as-bundle) — can interleave with tier 4, no strict order between them.
+6. **Task 25** (design polish) — before tier 4/5 if Akash's own research lands soon (avoids re-skinning brand-new apps right after building them); otherwise as one unifying pass after tiers 4/5.
+7. **Task 16** (GPU rental) — fully independent, gated only on Akash's own money/timing decision.
+8. **Task 17 → Task 19 → Task 20** (Phase 4) — must be last; Task 19 explicitly depends on all prior tasks, Task 20 on Task 19.
+
+**Not yet locked in — several tasks have their own explicit "confirm live" flags that should be checked before treating this sequence as final:**
+- Task 26: whether `radeontop`/`amdgpu_top` actually works on the Yoga 6's Vega iGPU (changes whether GPU utilization ships real or "pending")
+- Task 27: real current state of `~/.config/kitty/`, whether `~/.config/hypr/hyprlock.conf` exists yet, dunst's actual config
+- Task 24: root cause still undiagnosed — scope/effort unknown until investigated live
+- Task 29: confirm Dolphin/`Super+E`'s exact current wiring before deciding how cleanly it can be retired
+
+Akash is reconnecting to the Yoga 6 in a few hours (7 Sept 2026) — check these live then, before locking the sequence above as final.
+
+---
+
 ## Phase 0: Foundation
 
 ### Task 1: Repo scaffolding + Gitleaks
