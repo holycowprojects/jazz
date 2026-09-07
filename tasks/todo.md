@@ -4,26 +4,24 @@ Companion to `tasks/plan.md`. Each task is sized S or M (per the planning skill'
 
 ---
 
-## Recommended build sequence for remaining tasks (assessed 7 Sept 2026, provisional)
+## Recommended build sequence for remaining tasks (assessed 7 Sept 2026, locked in)
 
-Reasoned out with Akash 7 Sept 2026, covering everything open after Task 30 was scoped. Grouped by dependency, not strictly linear — several tiers can run in parallel:
+Reasoned out with Akash 7 Sept 2026, covering everything open after Task 30 was scoped. Grouped by dependency, not strictly linear — several tiers can run in parallel. All four live-verification flags below were checked the same day once Akash reconnected to the Yoga 6 — sequence is now final, not provisional.
 
 1. **Task 18** (LICENSE/CHANGELOG) — trivial, no dependencies either direction, do anytime.
-2. **Task 24** (AMD ACP audio) — clears real audio data before Task 22's volume control and Task 28's future Sound tab need it.
+2. ~~**Task 24** (AMD ACP audio)~~ — **DONE 7 Sept 2026**, turned out to already be working (see Task 24's entry) — no longer gates anything below it.
 3. **Task 30** (permission tiers + Checkpoint→Act→Undo) — backend can be built standalone now; its UI slots into Task 28's Agents tab whenever that lands. Do before any AI-action feature (Jazz Files' AI follow-on, future NL control).
-4. **Task 28** (Jazz Settings) → **Task 29** (Jazz Files v1) — Settings first since it grows an existing surface and Task 30's UI needs its Agents tab; Files is the bigger, more novel build.
-5. **Task 26** (AI Command Centre) and **Task 27** (theme-as-bundle) — can interleave with tier 4, no strict order between them.
+4. **Task 28** (Jazz Settings) → **Task 29** (Jazz Files v1) — Settings first since it grows an existing surface and Task 30's UI needs its Agents tab; Files is the bigger, more novel build. Task 29's Dolphin retirement confirmed trivial (one-line keybind change).
+5. **Task 26** (AI Command Centre — GPU panel confirmed shippable with real data via `radeontop`) and **Task 27** (theme-as-bundle, now split into subtasks 27a-27f) — can interleave with tier 4, no strict order between them.
 6. **Task 25** (design polish) — before tier 4/5 if Akash's own research lands soon (avoids re-skinning brand-new apps right after building them); otherwise as one unifying pass after tiers 4/5.
 7. **Task 16** (GPU rental) — fully independent, gated only on Akash's own money/timing decision.
 8. **Task 17 → Task 19 → Task 20** (Phase 4) — must be last; Task 19 explicitly depends on all prior tasks, Task 20 on Task 19.
 
-**Not yet locked in — several tasks have their own explicit "confirm live" flags that should be checked before treating this sequence as final:**
-- Task 26: whether `radeontop`/`amdgpu_top` actually works on the Yoga 6's Vega iGPU (changes whether GPU utilization ships real or "pending")
-- Task 27: real current state of `~/.config/kitty/`, whether `~/.config/hypr/hyprlock.conf` exists yet, dunst's actual config
-- Task 24: root cause still undiagnosed — scope/effort unknown until investigated live
-- Task 29: confirm Dolphin/`Super+E`'s exact current wiring before deciding how cleanly it can be retired
-
-Akash is reconnecting to the Yoga 6 in a few hours (7 Sept 2026) — check these live then, before locking the sequence above as final.
+**All four "confirm live" flags checked 7 Sept 2026, once Akash reconnected to the Yoga 6:**
+- Task 26: `radeontop` confirmed working, returns real live data (VRAM/clocks/per-block utilization) on the Vega iGPU — GPU panel ships real, not "pending."
+- Task 27: kitty config empty (defaults), `hyprlock.conf` doesn't exist, dunst has no config dir — all three genuinely need Task 27's work from scratch, folded into the new subtask breakdown.
+- Task 24: turned out to already work via the plain HDA audio path — **DONE**, downgraded from open investigation to resolved.
+- Task 29: Dolphin/`Super+E` wiring confirmed trivial to retire (single variable, one bind).
 
 ---
 
@@ -892,6 +890,8 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 ### Task 29: Jazz Files — real GUI file manager (v1, no AI)
 
 **Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 5a, after Akash's explicit direction that JAZZ must have a real GUI-based file system, going further than Omarchy in this specific area (confirmed live 7 Sept 2026: Omarchy's file manager is plain themed/keybound Nautilus). JAZZ currently has no file-manager story of its own at all (Dolphin, launched via Task 21's `Super+E` keybind, completely stock, zero integration) — actually a step behind Omarchy's current state. This task is v1: real file management only, no AI features (those are a deliberate separate follow-on — see `docs/JAZZ-v2.md` sec 5a — matching the source blueprint's own advice not to build semantic AI until basic file management is reliable).
+
+**Dolphin/`Super+E` wiring confirmed live 7 Sept 2026 (`~/.config/hypr/hyprland.lua`):** trivial to retire — a single `local fileManager = "dolphin"` variable feeding one bind, `hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))`. No other config, desktop-file association, or wiring depends on Dolphin specifically. Retiring it later is a one-line change (point `fileManager` at Jazz Files' launch command instead) - no cleanup risk.
 
 **Scope (v1):** browse, Grid/List view modes, Recent, Home/Documents/Downloads/Pictures/Videos/Music/Projects sidebar, copy/move/rename/create-folder/open/open-with/properties, delete-to-trash + restore, a real preview pane (image/text/Markdown/PDF at minimum — audio/video/archive preview can slip to a follow-on if genuinely harder), a device sidebar aware of Btrfs (used/available/filesystem/health, mount/unmount/eject), GUI-translated Linux permissions ("You: Read and Write" instead of raw mode bits, with an advanced view for real uid/gid/mode), and a real file-operation transaction log powering Undo for move/rename/batch-organize/delete-to-trash — explicitly **not** the same mechanism as Snapper's system snapshots (user-file undo and OS-snapshot undo are different and shouldn't be conflated).
 
