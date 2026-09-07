@@ -920,14 +920,20 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 **Scope:** A `jazz-agent-action` wrapper (or equivalent) that any future AI-driven script/feature calls instead of acting directly: classify the requested action into a tier (**Green** = auto-execute — launch app, change volume, read status, search approved folders; **Yellow** = confirm — move many files, install a package, close an app, change a setting; **Red** = strong explicit authorization — sudo, disk format, security-policy change, delete system files), create a Snapper checkpoint before anything Yellow/Red, perform the action, verify it took effect, log to a simple activity ledger (what/why/files touched/commands run/snapshot ID/timestamp), and expose Undo. A minimal Quickshell surface (the Agents tab in Task 28's Jazz Settings) shows the ledger and lets a user set default policy (allow/ask/deny) per action type.
 
-**Acceptance criteria:**
-- [ ] Tier classification exists for at least the action types listed above, documented
-- [ ] A Yellow/Red-tier test action creates a real Snapper checkpoint before running, confirmed via `snapper list`
-- [ ] The activity ledger records real entries (what/why/files/commands/snapshot ID/timestamp) for a real test action, readable by the user
-- [ ] Undo works end-to-end for at least one real logged action
-- [ ] A Green-tier action runs with zero prompts; a Yellow-tier action is blocked until confirmed; a Red-tier action requires explicit strong confirmation — all three confirmed live, not just described
+**Status: DONE as of 7 Sept 2026.** Built as `scripts/jazz-agent-action` (Python 3, stdlib only - no new dependency), installed via `scripts/setup-agent-safety.sh`, chained into `install-jazz.sh` right after Track A's Snapper setup. `scripts/verify/agent-safety.sh`: **6/6 passed live on the Yoga 6.**
 
-**Verification:** Live, on the Yoga 6 (real hardware)
+**Real design decision made during implementation, worth remembering:** Undo uses `snapper undochange <pre>..<post>` (a live diff-reverse between two bracketing snapshots), NOT `snapper rollback` - rollback needs a full subvolume swap + reboot and is already confirmed broken on JAZZ's fstab layout (Task 8's finding, see `rollback-manual.sh`). `undochange` has no such dependency - live-tested directly before writing any wrapper code (created a real file, two snapshots, ran `undochange`, confirmed the file reverted) to make sure the mechanism was sound before building on it.
+
+**Acceptance criteria:**
+- [x] Tier classification exists for at least the action types listed above, documented
+- [x] A Yellow/Red-tier test action creates a real Snapper checkpoint before running, confirmed via `snapper list`
+- [x] The activity ledger records real entries (what/why/files/commands/snapshot ID/timestamp) for a real test action, readable by the user
+- [x] Undo works end-to-end for at least one real logged action
+- [x] A Green-tier action runs with zero prompts; a Yellow-tier action is blocked until confirmed; a Red-tier action requires explicit strong confirmation — all three confirmed live, not just described
+
+**One real bug caught during live verification (test bug, not tool bug):** the verify script's red-tier block check grepped output for the blocked command's text, which false-failed because the tool legitimately echoes back the command it refused to run (for transparency) - fixed by checking the documented exit code (3) instead of grepping content.
+
+**Verification:** Live, on the Yoga 6 (real hardware) - confirmed 7 Sept 2026
 
 **Dependencies:** Track A (Snapper, already working), Task 28 (Agents tab to surface the ledger/policy UI — backend can be built first, UI wired in once Task 28 lands, in either order)
 

@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""jazz-agent-action - the safety wrapper every AI-driven JAZZ feature calls
+instead of acting directly (Task 30).
+
+Classifies a requested action into a tier, checkpoints the filesystem before
+anything risky, runs the action, records it to an activity ledger, and can
+undo it afterward. Deliberately a plain script, not a daemon - promote to a
+real service only if this earns it through real pain (7 Sept 2026 decision).
+
+Tiers:
+  green  - auto-execute, no prompt (launch app, change volume, read status,
+           search approved folders)
+  yellow - confirm first (move many files, install a package, close an app,
+           change a setting)
+  red    - strong explicit authorization (sudo, disk format, security-policy
+           change, delete system files)
+
+Undo uses `snapper undochange <pre>..<post>` (a live diff-reverse), NOT
+`snapper rollback` - rollback needs a full subvolume swap + reboot and is
+already confirmed broken on JAZZ's fstab layout (see rollback-manual.sh).
+undochange has no such dependency and was live-verified working (7 Sept
+2026) on this exact install.
+
+Usage:
+  jazz-agent-action classify <action-type>
+  jazz-agent-action run --type <action-type> --description "<what/why>"
+                         [--files "path1,path2"] [--yes] [--confirm-red PHRASE]
+                         -- <command...>
+  jazz-agent-action undo <ledger-id>
+  jazz-agent-action ledger [--limit N]
+
+The Agents tab in Jazz Settings (Task 28) will eventually read the ledger
+and write policy overrides directly - this backend needs no changes when
+that UI lands.
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "jazz"
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "jazz"
+LEDGER_PATH = DATA_DIR / "agent-ledger.jsonl"
+POLICY_PATH = CONFIG_DIR / "agent-policy.json"
+
+# Default tier per action type. Unknown action types default to "yellow" -
+# an unrecognized action getting a confirmation prompt is the safe failure
+# mode; silently auto-allowing something unlisted would defeat the point.
+DEFAULT_TIERS = {
+    # green - auto-execute
+    "launch_app": "green",
+    "change_volume": "green",
+    "read_status": "green",
+    "search_files": "green",
+    # yellow - confirm
+    "move_files": "yellow",
+    "install_package": "yellow",
+    "close_app": "yellow",
+    "change_setting": "yellow",
+    # red - strong explicit authorization
+    "sudo_exec": "red",
+    "disk_format": "red",
+    "security_policy_change": "red",
+    "delete_system_files": "red",
+}
+
+RED_CONFIRM_PHRASE = "I UNDERSTAND"
+
+
+def load_policy() -> dict:
+    """User-set overrides (Task 28's future Agents tab writes here directly).
+    Green defaults to 'allow'. Yellow can be overridden to 'allow' (skip the
+    prompt) or 'deny' (block outright). Red can never be downgraded to
+    'allow' by policy - that would defeat the point of a red tier."""
+    if not POLICY_PATH.exists():
+        return {}
+    try:
+        return json.loads(POLICY_PATH.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def classify(action_type: str) -> str:
+    return DEFAULT_TIERS.get(action_type, "yellow")
+
+
+def effective_policy(action_type: str, tier: str) -> str:
+    override = load_policy().get(action_type)
+    if tier == "red":
+        return "ask"  # red is never downgradeable via policy
+    if override in ("allow", "ask", "deny"):
+        return override
+    return "allow" if tier == "green" else "ask"
+
+
+def run_snapper(*args: str) -> str:
+    result = subprocess.run(
+        ["snapper", "-c", "root", *args],
+        capture_output=True, text=True, check=True,
+    )
+    return result.stdout.strip()
+
+
+def snapshot(description: str) -> int:
+    out = run_snapper("create", "--print-number", "--description", description)
+    return int(out.splitlines()[-1].strip())
+
+
+def append_ledger(entry: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with LEDGER_PATH.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def read_ledger() -> list:
+    if not LEDGER_PATH.exists():
+        return []
+    entries = []
+    with LEDGER_PATH.open() as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                entries.append(json.loads(line))
+    return entries
+
+
+def find_ledger_entry(ledger_id: str) -> dict | None:
+    for entry in read_ledger():
+        if entry.get("id") == ledger_id:
+            return entry
+    return None
+
+
+def cmd_classify(args) -> int:
+    tier = classify(args.action_type)
+    policy = effective_policy(args.action_type, tier)
+    print(f"{args.action_type}: tier={tier} policy={policy}")
+    return 0
+
+
+def cmd_run(args) -> int:
+    action_type = args.type
+    tier = classify(action_type)
+    policy = effective_policy(action_type, tier)
+
+    if policy == "deny":
+        print(f"BLOCKED: '{action_type}' is set to deny by policy.", file=sys.stderr)
+        return 3
+
+    if tier == "yellow" and policy == "ask" and not args.yes:
+        print(f"[yellow] {args.description}")
+        print(f"Command: {' '.join(args.command)}")
+        reply = input("Proceed? [y/N] ").strip().lower()
+        if reply != "y":
+            print("Cancelled.")
+            return 1
+
+    if tier == "red":
+        if args.confirm_red != RED_CONFIRM_PHRASE:
+            print(f"[red] {args.description}")
+            print(f"Command: {' '.join(args.command)}")
+            print(f"This is a red-tier action. Re-run with --confirm-red \"{RED_CONFIRM_PHRASE}\" to proceed.", file=sys.stderr)
+            return 3
+
+    pre_snap = None
+    post_snap = None
+    if tier in ("yellow", "red"):
+        pre_snap = snapshot(f"jazz-agent pre: {action_type} - {args.description}")
+
+    proc = subprocess.run(args.command, capture_output=True, text=True)
+    exit_code = proc.returncode
+    success = exit_code == 0
+
+    if tier in ("yellow", "red"):
+        post_snap = snapshot(f"jazz-agent post: {action_type} - {args.description}")
+
+    entry = {
+        "id": str(uuid.uuid4())[:8],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action_type": action_type,
+        "tier": tier,
+        "description": args.description,
+        "command": args.command,
+        "files": args.files.split(",") if args.files else [],
+        "pre_snapshot": pre_snap,
+        "post_snapshot": post_snap,
+        "exit_code": exit_code,
+        "success": success,
+        "undone": False,
+    }
+    append_ledger(entry)
+
+    if proc.stdout:
+        print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="", file=sys.stderr)
+
+    print(f"[ledger: {entry['id']}] {'OK' if success else 'FAILED'} (exit {exit_code})", file=sys.stderr)
+    return exit_code
+
+
+def cmd_undo(args) -> int:
+    entry = find_ledger_entry(args.ledger_id)
+    if entry is None:
+        print(f"No ledger entry '{args.ledger_id}' found.", file=sys.stderr)
+        return 1
+    if entry.get("undone"):
+        print(f"Ledger entry '{args.ledger_id}' was already undone.", file=sys.stderr)
+        return 1
+    pre_snap = entry.get("pre_snapshot")
+    post_snap = entry.get("post_snapshot")
+    if pre_snap is None or post_snap is None:
+        print(
+            f"Ledger entry '{args.ledger_id}' has no checkpoint to undo "
+            f"(tier={entry.get('tier')} - green-tier actions aren't snapshotted).",
+            file=sys.stderr,
+        )
+        return 2
+
+    result = run_snapper("undochange", f"{pre_snap}..{post_snap}")
+    print(result)
+
+    entry["undone"] = True
+    entry["undone_at"] = datetime.now(timezone.utc).isoformat()
+    append_ledger({
+        "id": str(uuid.uuid4())[:8],
+        "timestamp": entry["undone_at"],
+        "action_type": "undo",
+        "tier": "yellow",
+        "description": f"Undo of {args.ledger_id}: {entry['description']}",
+        "command": ["snapper", "-c", "root", "undochange", f"{pre_snap}..{post_snap}"],
+        "files": entry.get("files", []),
+        "pre_snapshot": None,
+        "post_snapshot": None,
+        "exit_code": 0,
+        "success": True,
+        "undone": False,
+        "undoes": args.ledger_id,
+    })
+    print(f"Undo complete for '{args.ledger_id}'.")
+    return 0
+
+
+def cmd_ledger(args) -> int:
+    entries = read_ledger()[-args.limit:]
+    for e in entries:
+        marker = " [UNDONE]" if e.get("undone") else ""
+        print(f"{e['id']}  {e['timestamp']}  [{e['tier']:6}] {e['action_type']:20} {e['description']}{marker}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="jazz-agent-action")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_classify = sub.add_parser("classify")
+    p_classify.add_argument("action_type")
+    p_classify.set_defaults(func=cmd_classify)
+
+    p_run = sub.add_parser("run")
+    p_run.add_argument("--type", required=True, dest="type")
+    p_run.add_argument("--description", required=True)
+    p_run.add_argument("--files", default="")
+    p_run.add_argument("--yes", action="store_true")
+    p_run.add_argument("--confirm-red", default="")
+    p_run.add_argument("command", nargs=argparse.REMAINDER)
+    p_run.set_defaults(func=cmd_run)
+
+    p_undo = sub.add_parser("undo")
+    p_undo.add_argument("ledger_id")
+    p_undo.set_defaults(func=cmd_undo)
+
+    p_ledger = sub.add_parser("ledger")
+    p_ledger.add_argument("--limit", type=int, default=20)
+    p_ledger.set_defaults(func=cmd_ledger)
+
+    args = parser.parse_args()
+    if args.cmd == "run":
+        if args.command and args.command[0] == "--":
+            args.command = args.command[1:]
+        if not args.command:
+            parser.error("run requires a command after '--'")
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

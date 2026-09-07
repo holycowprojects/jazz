@@ -32,6 +32,9 @@ MODEL="${2:-qwen2.5:0.5b}"
 echo "=== JAZZ install: Track A (filesystem/recovery) ==="
 bash "$SCRIPT_DIR/setup-snapper.sh"
 
+echo "=== JAZZ install: Agent safety (permission tiers + Checkpoint -> Act -> Undo) ==="
+bash "$SCRIPT_DIR/setup-agent-safety.sh" "$USERNAME"
+
 echo "=== JAZZ install: Track B (desktop) ==="
 bash "$SCRIPT_DIR/setup-hyprland.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-quickshell.sh" "$USERNAME"
