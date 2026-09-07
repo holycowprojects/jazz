@@ -695,18 +695,22 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 ### Task 24: Fix AMD ACP audio not initializing on real hardware
 **Description:** Not part of the original 20-task plan; found 6 Sept 2026 while building Task 22's volume control. `wpctl status` shows zero audio devices/sinks at all on the real Yoga 6, despite the kernel correctly detecting the hardware (`/proc/asound/cards` shows a real `acp` card - AMD's Audio CoProcessor) and `alsa-card-profiles` being installed (version-matched to pipewire, 1.6.8). WirePlumber's own log shows the actual failure: `wp-device: SPA handle 'api.alsa.acp.device' could not be loaded; is it installed?` / `Failed to create 'api.alsa.acp.device' device` - the package that should provide this SPA handle is present, but the handle still won't load. Root cause not yet diagnosed - deliberately not chased down mid-Task-22 to avoid scope creep; needs its own investigation (possibly a missing SPA plugin file specifically, a version mismatch, or a genuine upstream bug with this pipewire/wireplumber version against ACP hardware).
 
-**Acceptance criteria:**
-- [ ] `wpctl status` shows at least one real audio sink on the Yoga 6
-- [ ] Volume can actually be changed via `wpctl set-volume` and audibly/measurably takes effect
-- [ ] Task 22's volume control in the system menu shows a real slider instead of "not available" once this is fixed
+**Re-checked live 7 Sept 2026 - functionally resolved, root cause still open but no longer blocking.** `/proc/asound/cards` actually shows three cards, not one: two generic `HDA-Intel` cards plus `acp`. `wpctl status` now shows a real sink (`Ryzen HD Audio Controller Speaker`) and real sources (mic array), both live and controllable - confirmed by actually setting volume (`wpctl set-volume 52 0.7`) and playing `/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga` via `paplay`, which Akash physically heard through the laptop speakers. This sink comes from the plain HDA path (card 1, `Generic_1`), not the `acp` card - the two are independent audio paths on this hardware. The original ACP SPA-handle error still fires every boot (confirmed in this session's journal too), but it no longer blocks real audio output since the HDA path works on its own. Root cause of the ACP-specific failure remains undiagnosed (likely governs a secondary DSP/smart-amp path, not core playback) - worth revisiting later for completeness, but not a blocker for Task 22/28's volume control or Task 26's audio panel.
 
-**Verification:** Live, on the Yoga 6 (real hardware)
+**Acceptance criteria:**
+- [x] `wpctl status` shows at least one real audio sink on the Yoga 6
+- [x] Volume can actually be changed via `wpctl set-volume` and audibly/measurably takes effect - confirmed, Akash heard the test sound
+- [x] Task 22's volume control in the system menu shows a real slider instead of "not available" - confirmed via live screenshot of the Quick Settings panel: Volume renders as a real filled slider, matching Brightness's styling, not placeholder text
+
+**Status: DONE as of 7 Sept 2026.** All three acceptance criteria met live on real hardware. The underlying ACP SPA-handle bug (separate `acp` card, distinct from the working HDA path) remains undiagnosed but is no longer tracked as blocking - split off as a possible future investigation if a real need for it surfaces (e.g. a smart-amp/DSP feature that specifically needs the ACP path), not carried forward as open work here.
+
+**Verification:** Live, on the Yoga 6 (real hardware) - confirmed 7 Sept 2026
 
 **Dependencies:** None
 
-**Files likely touched:** Unknown yet - investigation needed first
+**Files likely touched:** None needed for the core fix (already working) - `configs/quickshell/shell.qml`'s volume control may need re-verification only
 
-**Estimated scope:** M (unknown until root-caused)
+**Estimated scope:** Downgraded from M to XS (just a UI re-check) - the audio-not-working assumption behind the original M estimate no longer holds
 
 ---
 
