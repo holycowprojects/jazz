@@ -848,6 +848,24 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** 27c, 27d, 27e (needs their assets to exist first)
 **Estimated scope:** XS
 
+#### Task 27g: Shared QML component library
+**Description:** Added 7 Sept 2026 from `Operating_UX_UI_Blueprint.md` §61 (Akash's request, analyzed same session). Real, already-visible pain, not speculative: Task 28's Settings.qml alone hand-repeats the same "forge-colored rounded rectangle + white centered text + MouseArea" button markup, the same toggle-switch markup, and the same list-row markup a dozen-plus times across its sections. Every new tab copies the last one's inline styling instead of reusing a component.
+
+**Scope:** Extract the handful of patterns actually repeated today into real reusable QML components - not the blueprint's full 16-component wishlist, just what JAZZ's own code already duplicates:
+- `Button.qml` (the forge-colored action button pattern - text + click handler)
+- `Toggle.qml` (the on/off switch pattern used in Appearance's dark-mode toggle and Agents' policy buttons)
+- `ListRow.qml` (the sidebar-item / policy-row / app-row pattern - label + optional trailing content + selected state)
+- `SectionHeader.qml` (the small-caps `Theme.textSecondary` bold label used at the top of every tab)
+
+**Acceptance criteria:**
+- [ ] All 4 components exist under a shared location (e.g. `configs/quickshell/ui/`) and are importable from both `shell.qml` and `Settings.qml`
+- [ ] Settings.qml's existing sections (Agents' policy buttons, Appearance's dark-mode toggle, every sidebar/section header) are migrated to use them, confirmed still rendering correctly live
+- [ ] Any NEW section written after this lands uses the shared components, not fresh inline markup
+
+**Verification:** Live, on the Yoga 6 - screenshot confirming migrated sections render identically to before
+**Dependencies:** Task 27a (tokens, since components should style through `Theme.qml` too), Task 28 (the surface with the most duplication to migrate)
+**Estimated scope:** M
+
 ---
 
 **Deliberately not adopted from the design guide (disproportionate to JAZZ's current single-maintainer scale - matches the "stay lightweight, earn complexity through real pain" architecture decision already made 7 Sept 2026):**
@@ -859,7 +877,7 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 - Icon/Theme CI pipeline (SVGO/scour validation, contact sheets, automated license-metadata checks) - manual review is enough at this scale.
 
 **Verification:** Live, on the Yoga 6 (real hardware) - visual confirmation for each subtask as scoped above
-**Estimated scope (whole Task 27):** XL, broken into 6 subtasks (27a-27f) so it can land incrementally rather than as one giant PR
+**Estimated scope (whole Task 27):** XL, broken into 7 subtasks (27a-27g) so it can land incrementally rather than as one giant PR
 
 ---
 
@@ -905,18 +923,20 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 **Cross-cutting bug found and fixed 7 Sept 2026, while Akash tested search live on the Yoga 6 (not something either of us could have caught remotely - genuinely needed a real keyboard):** the Settings search box didn't accept typed input at all. Root cause turned out to be system-wide, not Settings-specific - **no custom QML text input anywhere in JAZZ has ever accepted real keyboard input**, confirmed by Akash testing the app launcher (Super+R) and the Notes widget too - neither worked either. Real cause: Quickshell `PanelWindow`s use wlr-layer-shell surfaces, which default to `WlrKeyboardFocus.None` (refuse all keyboard input at the Wayland protocol level) unless a panel explicitly opts in - confirmed against the real `quickshell-examples` GitHub source (`WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand`), not guessed. This is a bug in Task 22 (launcher) and Task 11b (Notes/To-do widgets) as much as Task 28 - fixed all three in the same pass: added `import Quickshell.Wayland` + `WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand` to the launcher and widget panels in `setup-dock.sh`'s `shell.qml` heredoc, and to `Settings.qml`. Confirmed working live by Akash after redeploy - typing now works in all three.
 
-**New scope added 7 Sept 2026 (Akash's request, end of session):** Network and Bluetooth currently just launch an external terminal (`nmtui`/`bluetoothctl`) rather than having a real native UI in the panel - Akash wants this upgraded to proper in-panel controls, matching the rest of Task 28's real sections. Not yet built - scoping notes for next session:
-- **Network**: real Wi-Fi network list (`nmcli -t -f ssid,signal,security dev wifi list`), signal strength, click-to-connect with a real password field for secured networks (now unblocked by this session's keyboard-focus fix - a password TextInput needs the same `WlrLayershell.keyboardFocus` handling), disconnect/forget actions via `nmcli`.
-- **Bluetooth**: real paired-device list + nearby discoverable devices, connect/disconnect/pair/remove actions (`bluetoothctl` scripted non-interactively, or D-Bus via BlueZ directly - check which is more reliable live before committing to one).
+**New scope added 7 Sept 2026 (Akash's request, end of session; UX detail added same day from `Operating_UX_UI_Blueprint.md` §30-31):** Network and Bluetooth currently just launch an external terminal (`nmtui`/`bluetoothctl`) rather than having a real native UI in the panel - Akash wants this upgraded to proper in-panel controls, matching the rest of Task 28's real sections. Not yet built - scoping notes for next session:
+- **Network**: real Wi-Fi network list (`nmcli -t -f ssid,signal,security dev wifi list`), signal strength, connected-network shown separately from available/nearby networks, click-to-connect with a real password field for secured networks (now unblocked by this session's keyboard-focus fix - a password TextInput needs the same `WlrLayershell.keyboardFocus` handling), disconnect/forget actions via `nmcli`.
+- **Bluetooth**: real paired-device list (grouped separately from nearby/discoverable devices) + per-device battery percentage where available, connect/disconnect/pair/remove/profile actions (`bluetoothctl` scripted non-interactively, or D-Bus via BlueZ directly - check which is more reliable live before committing to one).
 - Both are real, contained builds (similar shape to Task 28's other real sections) - a good candidate for the next slice.
 
 **Still pending (next slice, not yet built):** Network/Bluetooth real UI (above), Privacy, Accessibility (real working controls required for reduced motion + UI scaling, not stubs - UI scaling specifically means systematically threading a scale token through every hardcoded pixel size across `shell.qml`/`Settings.qml`, a real refactor deserving its own dedicated pass), Developer's deeper tools.
+
+**Reduced-motion checklist added 7 Sept 2026 (`Operating_UX_UI_Blueprint.md` §54, Akash's request, analyzed same session)** - concrete things for the eventual reduced-motion toggle to actually gate, once built: the top bar's workspace-color `ColorAnimation` (confirmed real, already exists in `shell.qml`'s `topBar`), dock hover/magnification effects (if added later per the same doc's dock spec, not yet built), any future wallpaper-transition/AI-pulsing effects. Recorded so the toggle has real, known targets instead of being scoped blind.
 
 **Acceptance criteria (full task - partially met, see slice notes above):**
 - [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **15 of 18 sections real, rest honestly marked pending**
 - [x] Settings search returns correct results for at least 5 real spot-check queries — all 5 confirmed live 7 Sept 2026, one real word-matching bug found and fixed along the way
 - [x] Displays changes have a working rollback timer, confirmed live — apply/countdown/auto-revert and explicit Keep/Revert all confirmed live on real hardware, 7 Sept 2026
-- [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — not yet built, deliberately deferred as its own dedicated slice given the scope of a real UI-scale mechanism
+- [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — not yet built, deliberately deferred as its own dedicated slice given the scope of a real UI-scale mechanism; reduced-motion now has a concrete checklist (above) to gate against once built
 - [x] Developer section is hidden by default, toggleable, and never shown to a fresh install without explicit enablement — confirmed live both directions
 - [x] Terminal remains fully functional for every setting this app exposes — this app is additive, not a terminal replacement — unchanged, still true
 
@@ -938,10 +958,12 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 **Scope (v1):** browse, Grid/List view modes, Recent, Home/Documents/Downloads/Pictures/Videos/Music/Projects sidebar, copy/move/rename/create-folder/open/open-with/properties, delete-to-trash + restore, a real preview pane (image/text/Markdown/PDF at minimum — audio/video/archive preview can slip to a follow-on if genuinely harder), a device sidebar aware of Btrfs (used/available/filesystem/health, mount/unmount/eject), GUI-translated Linux permissions ("You: Read and Write" instead of raw mode bits, with an advanced view for real uid/gid/mode), and a real file-operation transaction log powering Undo for move/rename/batch-organize/delete-to-trash — explicitly **not** the same mechanism as Snapper's system snapshots (user-file undo and OS-snapshot undo are different and shouldn't be conflated).
 
+**Quick Look interaction spec added 7 Sept 2026 (`Operating_UX_UI_Blueprint.md` §23, Akash's request, analyzed same session):** the preview pane's real trigger should be pressing `Space` on a selected file for an instant full preview overlay, `Escape` to close - sharpens the existing preview-pane requirement below rather than adding new scope.
+
 **Acceptance criteria:**
 - [ ] All v1 operations (browse/copy/move/rename/trash/restore/create-folder/properties) work correctly on real files, confirmed live
 - [ ] Grid and List views both render correctly with real files (images in Grid, source/documents in List with name/type/size/modified/owner columns)
-- [ ] Preview pane works for at least image/text/Markdown/PDF
+- [ ] Preview pane works for at least image/text/Markdown/PDF, reachable via `Space` on a selected file (Quick Look), `Escape` to close
 - [ ] Device sidebar shows real Btrfs volume info and mount/unmount/eject work live
 - [ ] Permissions are shown in translated form by default, with a working advanced/raw view
 - [ ] Undo works for at least move/rename/delete-to-trash, via a real transaction log (not Snapper)

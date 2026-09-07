@@ -140,4 +140,79 @@ Build both as Quickshell-frontend apps calling existing CLI tools/`Process` (sam
 
 ---
 
-## 6. (Space for more v2 items as they come up)
+## 6. A third external blueprint doc: `Operating_UX_UI_Blueprint.md` (Akash + Claude, 7 Sept 2026)
+
+Same calibration approach as §5: real, buildable-at-JAZZ's-scale ideas got promoted straight
+into `tasks/todo.md` as subtask/scope additions (Task 27g shared component library, Task 29's
+Quick Look interaction spec, Task 28's reduced-motion checklist and Network/Bluetooth UX
+detail - see those tasks for the actual specs, not duplicated here). This section is for the
+ideas real enough to keep but too big to build now.
+
+**Two framing conflicts worth stating plainly, not silently ignoring:** this doc opens with
+"the user should rarely need the terminal" and later says explicitly "avoid: button → bash
+script" as an architecture anti-pattern. JAZZ has already decided the opposite on both counts
+(7 Sept 2026, §5f/§5) - hackable/terminal-friendly stays core to the identity, and Task 28's
+entire Settings app (proven live, 15+ real sections) IS a Quickshell `Process` calling real CLI
+tools, deliberately not a D-Bus services platform. Not adopting either framing. Also worth
+naming: this doc's whole "premium consumer OS" personality (sound design, onboarding polish,
+empty-state copywriting as a first-class deliverable) assumes an audience of non-technical
+strangers. JAZZ's actual audience is Akash himself, doing AI engineering work - useful ideas
+get taken from this doc on their own merits, not because JAZZ is trying to be a consumer product.
+
+**Backlog ideas, not yet scoped as tasks:**
+
+- **Universal Command** (`Super + Space`) - combines app launcher + settings search + file
+  search + calculator + AI fallback in one bar, deterministic results appearing instantly with
+  AI only as a fallback for non-deterministic queries. Already listed in §4's original v2 ideas
+  as "Universal Command bar" - this doc adds the concrete UX spec (query examples, result
+  formatting, the deterministic-first principle). Real prerequisite: Task 28's settings schema
+  (id/title/keywords/page) already exists and was explicitly built reusable for exactly this.
+- **AI Sidebar** (`Super + A`) with three distinct modes - Ask (explain/answer), Do (perform
+  approved actions), Automate (build deterministic workflows/rules). The Ask/Do separation is a
+  genuinely good idea for making agent behavior legible - Do's permission model would sit
+  directly on top of Task 30's already-built green/yellow/red tiers, so this becomes much
+  cheaper to build once Task 30's ledger/policy UI (Task 28's Agents tab) has real mileage on
+  it. Automate (a workflow/rule builder) is a much bigger, separate undertaking - defer further.
+- **Operating Store equivalent** - Bazaar (Task 15c) already covers app discovery/install for a
+  single maintainer's real needs; a custom store app with category browsing and rich app cards
+  is real UI polish work without a real functional gap behind it. Revisit only if Bazaar itself
+  becomes a genuine pain point.
+- **Dock polish**: drag-and-drop (files onto apps, files onto AI for an action sheet), smooth
+  pointer-distance magnification, launch/minimize spatial animations (icon compresses → glow →
+  launches; window shrinks toward its dock icon on minimize). JAZZ's dock (Task 22) already has
+  real running-state dots and click-to-launch/focus - this is animation/interaction polish on
+  an already-working foundation, good Task 25 (design polish) input once Akash's research lands.
+- **Status island** - replacing the current full-width top bar with a compact floating
+  top-center element that expands into a Control Center on click. A real visual direction
+  question, not a bug - explicitly Task 25 material (deferred pending Akash's own research),
+  not a standalone task.
+- **Space gestures** (3-finger swipe to switch Spaces, 3-finger up for Overview, 4-finger up for
+  AI) - genuinely unconfirmed whether libinput/Hyprland gesture support is solid on the Yoga
+  6's trackpad; needs a research spike before it's even worth scoping as a real task.
+- **Per-Space wallpaper/accent personality** (Home calm, Build dark-geometric, Research cosmic,
+  Media colorful) - already implicitly compatible with JAZZ's 6 fixed workspace identities
+  (Forge/Lab/Arena/Observe/Vault/Range each already have a real accent color, Design-Vision.md
+  sec 2); extending that to per-workspace wallpaper swaps is a natural but not-yet-built
+  extension of Task 23's existing wallpaper mechanism.
+- **Simple / Balanced / Advanced settings complexity modes** - an onboarding choice that hides
+  advanced sections (firewall, packages, services, developer tools) from a "Simple" profile.
+  Interesting, but real cost: every current and future Settings section would need a complexity
+  tier tag and JAZZ's Settings app (Task 28) is already large - revisit once Task 28's full
+  section set is done, not mid-build.
+- **First-Run Wizard**, expanded - already backlog (§5d); this doc adds a concrete 10-page flow
+  (Welcome/Language/Keyboard/Wi-Fi/Appearance/AI mode/Privacy/Interaction style/Developer
+  profile/Ready) worth using as the real page list whenever that task gets scoped.
+- **System Doctor**, expanded - already backlog (§5d); this doc adds concrete example output
+  (checked items list + one actionable finding like "Snapshots are using 64GB... [Review]") -
+  useful reference for whenever that task gets scoped, ties naturally into Task 30's ledger.
+- **Screenshot UX with AI actions** (blur sensitive info, extract text, ask AI about the
+  capture) - depends on the same AI-action platform as the AI Sidebar's "Do" mode; the plain
+  screenshot capture itself (Area/Window/Screen picker) is a smaller, real, near-term-buildable
+  piece worth splitting out if screenshot support gets scoped before the AI-action layer exists.
+- **Sound design family** (login/notification/success/warning/error/screenshot/device-connected
+  sounds) - low priority given JAZZ's actual audience (Akash, AI engineering work), not a
+  consumer product; revisit only if it becomes a real annoyance to not have.
+- **Lock screen redesign, graphical greeter** - `ly` already explicitly called "fine during
+  development" by this same doc; no new information here beyond what §5e already decided.
+
+## 7. (Space for more v2 items as they come up)
