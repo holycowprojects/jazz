@@ -959,12 +959,14 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 ### Task 18: LICENSE + CHANGELOG
 **Description:** Add the MIT LICENSE (copyright Akash Navet / Holy Cow Studios Pvt Ltd) and start `CHANGELOG.md`.
 
+**Status: DONE as of 7 Sept 2026.**
+
 **Acceptance criteria:**
-- [ ] `LICENSE` present with correct copyright holders
-- [ ] `CHANGELOG.md` exists with at least one entry
+- [x] `LICENSE` present with correct copyright holders
+- [x] `CHANGELOG.md` exists with at least one entry (seeded with real milestones from git history, not a placeholder)
 
 **Verification:**
-- [ ] Manual check
+- [x] Manual check
 
 **Dependencies:** None (can happen any time, listed here for phase grouping)
 
