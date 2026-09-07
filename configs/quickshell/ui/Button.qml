@@ -11,11 +11,12 @@ import "../"
 Rectangle {
     id: root
     property string label: ""
-    // primary (forge, white text) | danger (critical bg, white text) |
-    // outlineDanger (panel bg, critical border+text) | neutral (panel bg,
-    // panelInk border+text) | subtle (surfaceRaised, no border, panelInk
-    // text) | flat (panel bg, no border, panelInk text - the unselected
-    // state of a selectable pill group, e.g. Agents' policy buttons)
+    // primary (active workspace's accent color, white text) | danger
+    // (critical bg, white text) | outlineDanger (panel bg, critical
+    // border+text) | neutral (panel bg, panelInk border+text) | subtle
+    // (surfaceRaised, no border, panelInk text) | flat (panel bg, no
+    // border, panelInk text - the unselected state of a selectable pill
+    // group, e.g. Agents' policy buttons)
     property string variant: "primary"
     property int fontSize: 10
     signal clicked()
@@ -25,7 +26,7 @@ Rectangle {
     radius: 4
     opacity: enabled ? 1 : 0.4
     color: {
-        if (variant === "primary") return Theme.forge
+        if (variant === "primary") return WorkspaceState.activeColor()
         if (variant === "danger") return Theme.critical
         if (variant === "subtle") return Theme.surfaceRaised
         return Theme.panel // neutral | outlineDanger | flat

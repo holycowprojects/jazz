@@ -476,7 +476,7 @@ PanelWindow {
                             Rectangle {
                                 visible: displayTab.timerActive
                                 width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
-                                border.color: Theme.forge; border.width: 1
+                                border.color: WorkspaceState.activeColor(); border.width: 1
                                 Column {
                                     anchors.centerIn: parent; spacing: 8
                                     Text {
@@ -644,7 +644,7 @@ PanelWindow {
                                         anchors.right: pctLabel.left; anchors.rightMargin: 10
                                         anchors.verticalCenter: parent.verticalCenter
                                         height: 8; radius: 4; color: Theme.surfaceRaised
-                                        Rectangle { width: parent.width * (soundTab.muted ? 0 : soundTab.volumePct) / 100; height: parent.height; radius: 4; color: Theme.forge }
+                                        Rectangle { width: parent.width * (soundTab.muted ? 0 : soundTab.volumePct) / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
                                         MouseArea {
                                             anchors.fill: parent
                                             onPressed: (mouse) => soundTab.setVolume(Math.max(0, Math.min(100, Math.round(mouse.x / width * 100))))
@@ -764,12 +764,9 @@ PanelWindow {
                             Row {
                                 spacing: 10
                                 Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 13 }
-                                Rectangle {
-                                    width: 38; height: 20; radius: 10
-                                    color: networkTab.radioOn ? Theme.forge : Theme.panelInk
-                                    opacity: networkTab.radioOn ? 1 : 0.25
-                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: networkTab.radioOn ? parent.width - width - 2 : 2 }
-                                    MouseArea { anchors.fill: parent; onClicked: networkTab.toggleRadio() }
+                                Toggle {
+                                    checked: networkTab.radioOn
+                                    onToggled: networkTab.toggleRadio()
                                 }
                             }
                             Row {
@@ -810,7 +807,7 @@ PanelWindow {
                                                         model: 4
                                                         delegate: Rectangle {
                                                             width: 3; height: 5 + index * 3; x: index * 4; y: 14 - height
-                                                            color: netData.signal >= (index + 1) * 25 ? Theme.forge : Theme.panelInk
+                                                            color: netData.signal >= (index + 1) * 25 ? WorkspaceState.activeColor() : Theme.panelInk
                                                             opacity: netData.signal >= (index + 1) * 25 ? 1 : 0.25
                                                         }
                                                     }
@@ -823,7 +820,7 @@ PanelWindow {
                                                 Text {
                                                     visible: netData.connected
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    text: "Connected"; color: Theme.forge; font.pixelSize: 11
+                                                    text: "Connected"; color: WorkspaceState.activeColor(); font.pixelSize: 11
                                                 }
                                                 Button {
                                                     visible: !netData.connected
@@ -1011,7 +1008,7 @@ PanelWindow {
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: devData.connected ? "Connected" : "Paired"
-                                                color: devData.connected ? Theme.forge : Theme.textSecondary; font.pixelSize: 11
+                                                color: devData.connected ? WorkspaceState.activeColor() : Theme.textSecondary; font.pixelSize: 11
                                             }
                                             Button {
                                                 width: 80; height: 22
@@ -1562,7 +1559,7 @@ PanelWindow {
                             Rectangle {
                                 visible: accessTab.scaleTimerActive
                                 width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
-                                border.color: Theme.forge; border.width: 1
+                                border.color: WorkspaceState.activeColor(); border.width: 1
                                 Column {
                                     anchors.centerIn: parent; spacing: 8
                                     Text {
@@ -1710,7 +1707,7 @@ PanelWindow {
                             Row {
                                 spacing: 10
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG" }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: Theme.forge; font.pixelSize: 10 }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: WorkspaceState.activeColor(); font.pixelSize: 10 }
                                 Button {
                                     width: 50; height: 20
                                     variant: "subtle"
@@ -1763,7 +1760,7 @@ PanelWindow {
                                             delegate: Rectangle {
                                                 property var svcData: modelData
                                                 width: parent.width; height: 18
-                                                color: developerTab.selectedBusName === svcData.name ? Theme.forge : "#00000000"
+                                                color: developerTab.selectedBusName === svcData.name ? WorkspaceState.activeColor() : "#00000000"
                                                 Text {
                                                     anchors.left: parent.left; anchors.leftMargin: 4; anchors.verticalCenter: parent.verticalCenter
                                                     text: svcData.raw

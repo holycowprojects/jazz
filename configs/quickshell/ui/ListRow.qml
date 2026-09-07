@@ -14,7 +14,7 @@ Rectangle {
 
     width: parent ? parent.width : 160
     height: 30; radius: 6
-    color: selected ? Theme.forge : "#00000000"
+    color: selected ? WorkspaceState.activeColor() : "#00000000"
 
     Text {
         anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter

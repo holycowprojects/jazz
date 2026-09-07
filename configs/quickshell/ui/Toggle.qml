@@ -14,7 +14,7 @@ Rectangle {
     signal toggled()
 
     width: 38; height: 20; radius: 10
-    color: checked ? Theme.forge : Theme.panelInk
+    color: checked ? WorkspaceState.activeColor() : Theme.panelInk
     opacity: checked ? 1 : 0.25
 
     Rectangle {

@@ -53,6 +53,7 @@ HYPR_CONFIG="/home/$USERNAME/.config/hypr/hyprland.lua"
 DATA_DIR="/home/$USERNAME/.local/share/jazz"
 SCAN_SCRIPT_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/scan-apps.py"
 THEME_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/Theme.qml"
+WORKSPACE_STATE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/WorkspaceState.qml"
 UI_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/ui"
 
 pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi
@@ -65,6 +66,13 @@ sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
 # anymore. Regenerate + commit both after editing colors.json, don't
 # hand-edit Theme.qml directly.
 sudo -u "$USERNAME" cp "$THEME_SRC" "$THEME_FILE"
+# Task 27g-followup: WorkspaceState singleton (live active-workspace name +
+# color, including workspace-overrides.json), the one source both
+# shell.qml and Settings.qml read so accent colors actually follow the
+# active workspace everywhere, not just the top bar. qmldir registration
+# happens in setup-theme.sh (the one place that owns qmldir), not here.
+sudo -u "$USERNAME" cp "$WORKSPACE_STATE_SRC" "$QS_DIR/WorkspaceState.qml"
+sed -i "s|@@JAZZ_DATA_DIR@@|$DATA_DIR|g" "$QS_DIR/WorkspaceState.qml"
 # Task 27g: shared QML component library (Button/Toggle/ListRow/
 # SectionHeader), used by both shell.qml (imports "ui" below) and
 # Settings.qml.
@@ -132,50 +140,11 @@ ShellRoot {
         return null
     }
 
-    QtObject {
-        id: workspaces
-        property var list: [
-            { name: "Forge", color: Theme.forge, dormant: false },
-            { name: "Lab", color: Theme.lab, dormant: false },
-            { name: "Arena", color: Theme.arena, dormant: false },
-            { name: "Observe", color: Theme.observe, dormant: false },
-            { name: "Vault", color: Theme.vault, dormant: false },
-            { name: "Range", color: Theme.range, dormant: true }
-        ]
-        property string active: "Forge"
-        // Task 28 feedback (Akash): let a workspace's DISPLAY name/color be
-        // customized without touching its real Hyprland identity - so the
-        // Super+1..6 keybinds (which target the real name) never break.
-        // Settings.qml's Desktop tab writes this same file; watchChanges
-        // picks the edit up live, no restart needed.
-        property var overrides: ({})
-        function defaultColor(name) {
-            for (var i = 0; i < list.length; i++) if (list[i].name === name) return list[i].color
-            return Theme.forge
-        }
-        function labelFor(name) {
-            return (overrides[name] && overrides[name].label) ? overrides[name].label : name
-        }
-        function colorFor(name) {
-            return (overrides[name] && overrides[name].color) ? overrides[name].color : defaultColor(name)
-        }
-        function activeColor() { return colorFor(active) }
-    }
-    FileView {
-        id: workspaceOverridesFile
-        path: "@@JAZZ_DATA_DIR@@/workspace-overrides.json"
-        watchChanges: true
-        onLoaded: { try { workspaces.overrides = JSON.parse(workspaceOverridesFile.text()) } catch (e) {} }
-        onFileChanged: workspaceOverridesFile.reload()
-    }
-    Process {
-        id: wsPollProc
-        command: ["bash", "-c", "hyprctl -j activeworkspace | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"name\"])'"]
-        stdout: SplitParser {
-            onRead: function (data) { if (data && data.length > 0) workspaces.active = data }
-        }
-    }
-    Timer { interval: 1000; repeat: true; running: true; onTriggered: wsPollProc.running = true }
+    // Task 27g-followup: active-workspace name/color + display overrides now
+    // live in the WorkspaceState singleton (configs/quickshell/WorkspaceState.qml)
+    // instead of a file-local `workspaces` id, so Settings.qml (a separate
+    // loaded component) and ui/Button.qml/Toggle.qml can read the same live
+    // accent color too - not just this file's top bar.
 
     // Real running-window classes, polled - drives the dock's running-dot
     // and pulls in currently-running apps that aren't in the pinned set
@@ -276,7 +245,7 @@ ShellRoot {
         id: topBar
         anchors { top: true; left: true; right: true }
         implicitHeight: 34
-        color: workspaces.activeColor()
+        color: WorkspaceState.activeColor()
         Behavior on color { enabled: !Theme.reducedMotion; ColorAnimation { duration: 250 } }
 
         QtObject {
@@ -317,9 +286,9 @@ ShellRoot {
                 spacing: 5
                 anchors.verticalCenter: parent.verticalCenter
                 Repeater {
-                    model: workspaces.list
+                    model: WorkspaceState.list
                     delegate: Rectangle {
-                        property bool active: workspaces.active === modelData.name
+                        property bool active: WorkspaceState.active === modelData.name
                         width: pillText.width + 18; height: 20; radius: 10
                         color: active ? "#ffffff" : "#00000000"
                         border.color: active ? "#00000000" : "#ffffff"
@@ -329,13 +298,13 @@ ShellRoot {
                         Row {
                             anchors.centerIn: parent
                             spacing: 5
-                            Rectangle { width: 6; height: 6; radius: 3; color: workspaces.colorFor(modelData.name); anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle { width: 6; height: 6; radius: 3; color: WorkspaceState.colorFor(modelData.name); anchors.verticalCenter: parent.verticalCenter }
                             Text {
                                 id: pillText
-                                text: workspaces.labelFor(modelData.name)
+                                text: WorkspaceState.labelFor(modelData.name)
                                 font.pixelSize: 10
                                 font.italic: modelData.dormant
-                                color: active ? workspaces.colorFor(modelData.name) : "#ffffff"
+                                color: active ? WorkspaceState.colorFor(modelData.name) : "#ffffff"
                             }
                         }
                         MouseArea {
@@ -494,7 +463,7 @@ ShellRoot {
             y: 70
             radius: 14
             color: Theme.panel
-            border.color: workspaces.activeColor()
+            border.color: WorkspaceState.activeColor()
             border.width: 2
             MouseArea { anchors.fill: parent }
 
@@ -535,7 +504,7 @@ ShellRoot {
                         delegate: Rectangle {
                             visible: searchInput.text.length === 0 || modelData.name.toLowerCase().indexOf(searchInput.text.toLowerCase()) !== -1
                             width: 76; height: visible ? 74 : 0; radius: 8
-                            color: launchMouse.containsMouse ? workspaces.activeColor() : "#00000000"
+                            color: launchMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
                             opacity: launchMouse.containsMouse ? 0.18 : 1
                             Column {
                                 anchors.centerIn: parent
@@ -543,7 +512,7 @@ ShellRoot {
                                 Rectangle {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     width: 34; height: 34; radius: 9
-                                    color: workspaces.activeColor()
+                                    color: WorkspaceState.activeColor()
                                     opacity: 0.85
                                     Image {
                                         anchors.centerIn: parent
@@ -652,7 +621,7 @@ ShellRoot {
                 Text { text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 12; width: 110 }
                 Rectangle {
                     width: 34; height: 18; radius: 9
-                    color: quickSettings.btStatus === "yes" ? Theme.forge : Theme.panelInk
+                    color: quickSettings.btStatus === "yes" ? WorkspaceState.activeColor() : Theme.panelInk
                     opacity: quickSettings.btStatus === "yes" ? 1 : 0.25
                     Rectangle {
                         width: 14; height: 14; radius: 7; color: "#ffffff"
@@ -680,7 +649,7 @@ ShellRoot {
                 Rectangle {
                     visible: quickSettings.audioAvailable
                     width: parent.width; height: 6; radius: 3; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 3; color: Theme.forge }
+                    Rectangle { width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 3; color: WorkspaceState.activeColor() }
                     MouseArea {
                         anchors.fill: parent
                         onPressed: (mouse) => { var pct = Math.max(0, Math.min(100, mouse.x / width * 100)); quickSettings.volumeVal = pct; Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)]) }
@@ -694,7 +663,7 @@ ShellRoot {
                 Text { text: "Brightness"; color: Theme.panelInk; font.pixelSize: 12 }
                 Rectangle {
                     width: parent.width; height: 6; radius: 3; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 3; color: Theme.forge }
+                    Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 3; color: WorkspaceState.activeColor() }
                     MouseArea {
                         anchors.fill: parent
                         onPressed: (mouse) => { var pct = Math.max(1, Math.min(100, mouse.x / width * 100)); quickSettings.brightnessVal = pct; Quickshell.execDetached(["brightnessctl", "set", Math.round(pct) + "%"]) }
@@ -703,7 +672,7 @@ ShellRoot {
                 }
             }
             Rectangle {
-                width: parent.width; height: 26; radius: 6; color: Theme.forge
+                width: parent.width; height: 26; radius: 6; color: WorkspaceState.activeColor()
                 Text { anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 11; color: "#ffffff" }
                 MouseArea { anchors.fill: parent; onClicked: { quickSettings.visible = false; Quickshell.execDetached(["qs", "ipc", "call", "settings", "toggle"]) } }
             }
@@ -781,7 +750,7 @@ ShellRoot {
                     spacing: 2
                     Rectangle {
                         width: 36; height: 36; radius: 9
-                        color: dockMouse.containsMouse ? Theme.forge : "#00000000"
+                        color: dockMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
                         anchors.horizontalCenter: parent.horizontalCenter
                         scale: dockMouse.containsMouse ? 1.15 : 1.0
                         Behavior on scale { NumberAnimation { duration: 120 } }
@@ -814,7 +783,7 @@ ShellRoot {
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 4; height: 4; radius: 2
-                        color: Theme.forge
+                        color: WorkspaceState.activeColor()
                         visible: modelData.running
                     }
                 }
@@ -943,7 +912,7 @@ ShellRoot {
                         Rectangle {
                             width: 12; height: 12; radius: 2
                             border.color: Theme.panelInk; border.width: 1
-                            color: model.done ? Theme.lab : "#00000000"
+                            color: model.done ? WorkspaceState.activeColor() : "#00000000"
                             MouseArea { anchors.fill: parent; onClicked: { todoModel.setProperty(index, "done", !model.done); widgetPanel.saveTodo(); } }
                         }
                         Text { text: model.label; color: Theme.panelInk; font.pixelSize: 11; font.strikeout: model.done }
@@ -998,7 +967,7 @@ ShellRoot {
                         Text { text: modelData.label; color: Theme.panelInk; font.pixelSize: 11; width: parent.width - 30 }
                         Rectangle {
                             width: 24; height: 14; radius: 7
-                            color: modelData.enabled ? Theme.forge : Theme.panelInk
+                            color: modelData.enabled ? WorkspaceState.activeColor() : Theme.panelInk
                             opacity: modelData.enabled ? 1 : 0.25
                             Rectangle { width: 10; height: 10; radius: 5; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: modelData.enabled ? parent.width - width - 2 : 2 }
                             MouseArea {

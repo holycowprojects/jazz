@@ -55,6 +55,12 @@ EOF
 if [[ ! -f "$QMLDIR_FILE" ]] || ! grep -q '^singleton Theme ' "$QMLDIR_FILE"; then
     echo "singleton Theme 1.0 Theme.qml" | sudo -u "$USERNAME" tee -a "$QMLDIR_FILE" > /dev/null
 fi
+# Task 27g-followup (8 Sept 2026): WorkspaceState is deployed by setup-dock.sh
+# (which runs after this script), but its qmldir registration lives here
+# alongside Theme's since this is the one place that owns qmldir.
+if [[ ! -f "$QMLDIR_FILE" ]] || ! grep -q '^singleton WorkspaceState ' "$QMLDIR_FILE"; then
+    echo "singleton WorkspaceState 1.0 WorkspaceState.qml" | sudo -u "$USERNAME" tee -a "$QMLDIR_FILE" > /dev/null
+fi
 
 sudo -u "$USERNAME" tee "$SHELL_FILE" > /dev/null << 'EOF'
 // JAZZ Quickshell config (Tasks 10-11). One widget - a live clock in a top
