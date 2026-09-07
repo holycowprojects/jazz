@@ -482,35 +482,415 @@ PanelWindow {
                             Text { text: "Same volume control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
                         }
 
-                        // ===== Network (existing, unchanged) =====
+                        // ===== Network (REAL - live Wi-Fi scan + connect, replaces the old
+                        // "open nmtui in a terminal" launcher per Akash's explicit request) =====
                         Column {
                             id: networkTab
                             visible: settingsPanel.currentPage === "network"
                             width: parent.width; spacing: 10
-                            property string ssid: "checking..."
-                            Text { text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Process {
-                                running: networkTab.visible
-                                command: ["bash", "-c", "nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2"]
-                                stdout: SplitParser { onRead: function (data) { if (data) networkTab.ssid = data } }
+                            property string wifiDevice: ""
+                            property var networks: []
+                            property string connectingSsid: ""
+                            property string pwText: ""
+                            property string statusMsg: ""
+                            property bool busy: false
+                            property bool radioOn: true
+
+                            function refresh() {
+                                networkTab.busy = true
+                                wifiRadioProc.running = true
+                                wifiDeviceProc.running = true
+                                wifiListProc.running = true
                             }
-                            Text { text: "Connected: " + networkTab.ssid; color: Theme.panelInk; font.pixelSize: 12 }
-                            Rectangle {
-                                width: 140; height: 26; radius: 6; color: Theme.forge
-                                Text { anchors.centerIn: parent; text: "Open nmtui"; font.pixelSize: 11; color: "#ffffff" }
-                                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["kitty", "-e", "nmtui"]) }
+                            Component.onCompleted: refresh()
+
+                            Process {
+                                id: wifiRadioProc
+                                command: ["nmcli", "radio", "wifi"]
+                                stdout: SplitParser { onRead: function (data) { if (data) networkTab.radioOn = (data === "enabled") } }
+                            }
+                            Process {
+                                id: wifiRadioToggleProc
+                                onExited: function (exitCode, exitStatus) { networkTab.refresh() }
+                            }
+                            function toggleRadio() {
+                                wifiRadioToggleProc.command = ["nmcli", "radio", "wifi", networkTab.radioOn ? "off" : "on"]
+                                wifiRadioToggleProc.running = true
+                            }
+                            Process {
+                                id: wifiDeviceProc
+                                command: ["bash", "-c", "nmcli -t -f DEVICE,TYPE device status | awk -F: '$2==\"wifi\"{print $1; exit}'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) networkTab.wifiDevice = data } }
+                            }
+                            Process {
+                                id: wifiListProc
+                                command: ["bash", "-c", "nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY dev wifi list 2>/dev/null"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var lines = this.text.split("\n").filter(function (l) { return l.length > 0 })
+                                        var out = []
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var parts = lines[i].split(":")
+                                            var ssid = parts[1]
+                                            if (!ssid) continue
+                                            out.push({
+                                                connected: parts[0] === "*",
+                                                ssid: ssid,
+                                                signal: parseInt(parts[2]) || 0,
+                                                secured: !!(parts[3] && parts[3] !== "--")
+                                            })
+                                        }
+                                        out.sort(function (a, b) { if (a.connected !== b.connected) return a.connected ? -1 : 1; return b.signal - a.signal })
+                                        networkTab.networks = out
+                                        networkTab.busy = false
+                                    }
+                                }
+                            }
+                            Process {
+                                id: connectProc
+                                property string outText: ""
+                                stdout: StdioCollector { onStreamFinished: connectProc.outText += this.text }
+                                stderr: StdioCollector { onStreamFinished: connectProc.outText += this.text }
+                                onExited: function (exitCode, exitStatus) {
+                                    networkTab.statusMsg = exitCode === 0 ? "Connected." : (connectProc.outText.trim() || "Connection failed.")
+                                    networkTab.connectingSsid = ""
+                                    networkTab.pwText = ""
+                                    networkTab.refresh()
+                                }
+                            }
+                            function connectTo(ssid, password) {
+                                connectProc.outText = ""
+                                networkTab.statusMsg = ""
+                                networkTab.busy = true
+                                connectProc.command = password.length > 0
+                                    ? ["nmcli", "device", "wifi", "connect", ssid, "password", password]
+                                    : ["nmcli", "device", "wifi", "connect", ssid]
+                                connectProc.running = true
+                            }
+                            Process {
+                                id: disconnectProc
+                                onExited: function (exitCode, exitStatus) { networkTab.refresh() }
+                            }
+                            function disconnectWifi() {
+                                if (!networkTab.wifiDevice) return
+                                networkTab.busy = true
+                                disconnectProc.command = ["nmcli", "device", "disconnect", networkTab.wifiDevice]
+                                disconnectProc.running = true
+                            }
+                            Process {
+                                id: forgetProc
+                                onExited: function (exitCode, exitStatus) { networkTab.refresh() }
+                            }
+                            function forgetNetwork(ssid) {
+                                networkTab.busy = true
+                                forgetProc.command = ["nmcli", "connection", "delete", ssid]
+                                forgetProc.running = true
+                            }
+
+                            Text { text: "NETWORK"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Row {
+                                spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                Rectangle {
+                                    width: 38; height: 20; radius: 10
+                                    color: networkTab.radioOn ? Theme.forge : Theme.panelInk
+                                    opacity: networkTab.radioOn ? 1 : 0.25
+                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: networkTab.radioOn ? parent.width - width - 2 : 2 }
+                                    MouseArea { anchors.fill: parent; onClicked: networkTab.toggleRadio() }
+                                }
+                            }
+                            Row {
+                                visible: networkTab.radioOn
+                                spacing: 10
+                                Rectangle {
+                                    width: 70; height: 22; radius: 6; color: Theme.surfaceRaised
+                                    Text { anchors.centerIn: parent; text: networkTab.busy ? "..." : "Refresh"; font.pixelSize: 10; color: Theme.panelInk }
+                                    MouseArea { anchors.fill: parent; enabled: !networkTab.busy; onClicked: networkTab.refresh() }
+                                }
+                                Text {
+                                    visible: networkTab.statusMsg.length > 0
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: networkTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 11
+                                }
+                            }
+                            Column {
+                                visible: networkTab.radioOn
+                                width: parent.width; spacing: 4
+                                Text { visible: networkTab.networks.length === 0; text: networkTab.busy ? "Scanning..." : "No networks found."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                Repeater {
+                                    model: networkTab.networks
+                                    delegate: Column {
+                                        width: parent.width
+                                        property var netData: modelData
+                                        spacing: 4
+                                        Rectangle {
+                                            width: parent.width; height: 34; radius: 6
+                                            color: netData.connected ? Theme.surfaceRaised : "#00000000"
+                                            Row {
+                                                anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                                Item {
+                                                    width: 18; height: 22
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    Repeater {
+                                                        model: 4
+                                                        delegate: Rectangle {
+                                                            width: 3; height: 5 + index * 3; x: index * 4; y: 14 - height
+                                                            color: netData.signal >= (index + 1) * 25 ? Theme.forge : Theme.panelInk
+                                                            opacity: netData.signal >= (index + 1) * 25 ? 1 : 0.25
+                                                        }
+                                                    }
+                                                }
+                                                Text {
+                                                    width: 230; anchors.verticalCenter: parent.verticalCenter
+                                                    text: netData.ssid + (netData.secured ? "  🔒" : "")
+                                                    color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight
+                                                }
+                                                Text {
+                                                    visible: netData.connected
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: "Connected"; color: Theme.forge; font.pixelSize: 11
+                                                }
+                                                Rectangle {
+                                                    visible: !netData.connected
+                                                    width: 70; height: 22; radius: 4; color: Theme.forge
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    Text { anchors.centerIn: parent; text: "Connect"; font.pixelSize: 10; color: "#ffffff" }
+                                                    MouseArea {
+                                                        anchors.fill: parent
+                                                        onClicked: {
+                                                            if (netData.secured) {
+                                                                networkTab.connectingSsid = (networkTab.connectingSsid === netData.ssid) ? "" : netData.ssid
+                                                                networkTab.pwText = ""
+                                                            } else {
+                                                                networkTab.connectTo(netData.ssid, "")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                Rectangle {
+                                                    visible: netData.connected
+                                                    width: 80; height: 22; radius: 4; color: Theme.range
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    Text { anchors.centerIn: parent; text: "Disconnect"; font.pixelSize: 10; color: "#ffffff" }
+                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.disconnectWifi() }
+                                                }
+                                                Rectangle {
+                                                    visible: netData.connected
+                                                    width: 60; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: Theme.range; border.width: 1
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    Text { anchors.centerIn: parent; text: "Forget"; font.pixelSize: 10; color: Theme.range }
+                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.forgetNetwork(netData.ssid) }
+                                                }
+                                            }
+                                        }
+                                        Rectangle {
+                                            visible: networkTab.connectingSsid === netData.ssid
+                                            width: parent.width; height: 34; radius: 6; color: Theme.surfaceRaised
+                                            Row {
+                                                anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                                Rectangle {
+                                                    width: 180; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: Theme.panelInk; border.width: 1
+                                                    TextInput {
+                                                        anchors.fill: parent; anchors.margins: 4
+                                                        color: Theme.panelInk; font.pixelSize: 12
+                                                        echoMode: TextInput.Password
+                                                        clip: true
+                                                        focus: networkTab.connectingSsid === netData.ssid
+                                                        onTextChanged: networkTab.pwText = text
+                                                        Keys.onReturnPressed: networkTab.connectTo(netData.ssid, networkTab.pwText)
+                                                    }
+                                                }
+                                                Rectangle {
+                                                    width: 60; height: 22; radius: 4; color: Theme.forge
+                                                    Text { anchors.centerIn: parent; text: "Connect"; font.pixelSize: 10; color: "#ffffff" }
+                                                    MouseArea { anchors.fill: parent; onClicked: networkTab.connectTo(netData.ssid, networkTab.pwText) }
+                                                }
+                                                Rectangle {
+                                                    width: 50; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: Theme.panelInk; border.width: 1
+                                                    Text { anchors.centerIn: parent; text: "Cancel"; font.pixelSize: 10; color: Theme.panelInk }
+                                                    MouseArea { anchors.fill: parent; onClicked: { networkTab.connectingSsid = ""; networkTab.pwText = "" } }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
-                        // ===== Bluetooth (existing, unchanged) =====
+                        // ===== Bluetooth (REAL - paired/nearby device lists + connect/
+                        // disconnect/pair/remove, replaces the old "open bluetoothctl in a
+                        // terminal" launcher per Akash's explicit request) =====
                         Column {
+                            id: btTab
                             visible: settingsPanel.currentPage === "bluetooth"
                             width: parent.width; spacing: 10
+                            property bool powered: false
+                            property var paired: []
+                            property var nearby: []
+                            property bool scanning: false
+
+                            function refresh() { btPowerProc.running = true; btPairedProc.running = true }
+                            Component.onCompleted: refresh()
+
+                            Process {
+                                id: btPowerProc
+                                command: ["bash", "-c", "bluetoothctl show | grep -i Powered | awk '{print $2}'"]
+                                stdout: SplitParser { onRead: function (data) { btTab.powered = (data === "yes") } }
+                            }
+                            Process {
+                                id: btPairedProc
+                                command: ["bash", "-c", "bluetoothctl devices Paired"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var lines = this.text.split("\n").filter(function (l) { return l.indexOf("Device ") === 0 })
+                                        var list = []
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var m = lines[i].match(/^Device (\S+) (.*)$/)
+                                            if (m) list.push({ mac: m[1], name: m[2], connected: false })
+                                        }
+                                        btTab.paired = list
+                                        btConnectedProc.running = true
+                                    }
+                                }
+                            }
+                            Process {
+                                id: btConnectedProc
+                                command: ["bash", "-c", "bluetoothctl devices Connected"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var macs = []
+                                        var lines = this.text.split("\n")
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var m = lines[i].match(/^Device (\S+)/)
+                                            if (m) macs.push(m[1])
+                                        }
+                                        var updated = btTab.paired.map(function (d) { d.connected = macs.indexOf(d.mac) >= 0; return d })
+                                        btTab.paired = updated
+                                    }
+                                }
+                            }
+                            Process {
+                                id: btScanProc
+                                command: ["bash", "-c", "bluetoothctl --timeout 6 scan on"]
+                                onExited: function (exitCode, exitStatus) { btTab.scanning = false; btNearbyProc.running = true }
+                            }
+                            Process {
+                                id: btNearbyProc
+                                command: ["bash", "-c", "bluetoothctl devices"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var lines = this.text.split("\n").filter(function (l) { return l.indexOf("Device ") === 0 })
+                                        var pairedMacs = btTab.paired.map(function (d) { return d.mac })
+                                        var list = []
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var m = lines[i].match(/^Device (\S+) (.*)$/)
+                                            if (m && pairedMacs.indexOf(m[1]) < 0) list.push({ mac: m[1], name: m[2] })
+                                        }
+                                        btTab.nearby = list
+                                    }
+                                }
+                            }
+                            function startScan() { btTab.scanning = true; btTab.nearby = []; btScanProc.running = true }
+                            Process {
+                                id: btPowerToggleProc
+                                onExited: function (exitCode, exitStatus) { btTab.refresh() }
+                            }
+                            function togglePower() {
+                                btPowerToggleProc.command = ["bluetoothctl", "power", btTab.powered ? "off" : "on"]
+                                btPowerToggleProc.running = true
+                            }
+                            Process {
+                                id: btActionProc
+                                onExited: function (exitCode, exitStatus) { btTab.refresh() }
+                            }
+                            function btConnect(mac) { btActionProc.command = ["bluetoothctl", "connect", mac]; btActionProc.running = true }
+                            function btDisconnect(mac) { btActionProc.command = ["bluetoothctl", "disconnect", mac]; btActionProc.running = true }
+                            function btRemove(mac) { btActionProc.command = ["bluetoothctl", "remove", mac]; btActionProc.running = true }
+                            function btPairAndConnect(mac) {
+                                btActionProc.command = ["bash", "-c", "bluetoothctl pair " + mac + "; bluetoothctl trust " + mac + "; bluetoothctl connect " + mac]
+                                btActionProc.running = true
+                            }
+
                             Text { text: "BLUETOOTH"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Rectangle {
-                                width: 160; height: 26; radius: 6; color: Theme.forge
-                                Text { anchors.centerIn: parent; text: "Manage (bluetoothctl)"; font.pixelSize: 11; color: "#ffffff" }
-                                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["kitty", "-e", "bluetoothctl"]) }
+                            Row {
+                                spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                Rectangle {
+                                    width: 38; height: 20; radius: 10
+                                    color: btTab.powered ? Theme.forge : Theme.panelInk
+                                    opacity: btTab.powered ? 1 : 0.25
+                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: btTab.powered ? parent.width - width - 2 : 2 }
+                                    MouseArea { anchors.fill: parent; onClicked: btTab.togglePower() }
+                                }
+                            }
+                            Text { text: "PAIRED DEVICES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Column {
+                                width: parent.width; spacing: 4
+                                Text { visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                Repeater {
+                                    model: btTab.paired
+                                    delegate: Rectangle {
+                                        property var devData: modelData
+                                        width: parent.width; height: 32; radius: 6; color: Theme.surfaceRaised
+                                        Row {
+                                            anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                            Text { width: 200; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight }
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: devData.connected ? "Connected" : "Paired"
+                                                color: devData.connected ? Theme.forge : Theme.textSecondary; font.pixelSize: 11
+                                            }
+                                            Rectangle {
+                                                width: 80; height: 22; radius: 4; color: devData.connected ? Theme.range : Theme.forge
+                                                Text { anchors.centerIn: parent; text: devData.connected ? "Disconnect" : "Connect"; font.pixelSize: 10; color: "#ffffff" }
+                                                MouseArea { anchors.fill: parent; onClicked: devData.connected ? btTab.btDisconnect(devData.mac) : btTab.btConnect(devData.mac) }
+                                            }
+                                            Rectangle {
+                                                width: 60; height: 22; radius: 4; color: Theme.panel
+                                                border.color: Theme.range; border.width: 1
+                                                Text { anchors.centerIn: parent; text: "Remove"; font.pixelSize: 10; color: Theme.range }
+                                                MouseArea { anchors.fill: parent; onClicked: btTab.btRemove(devData.mac) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Row {
+                                spacing: 8
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "NEARBY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                Rectangle {
+                                    width: 130; height: 22; radius: 6; color: Theme.surfaceRaised
+                                    Text { anchors.centerIn: parent; text: btTab.scanning ? "Scanning..." : "Scan (6s)"; font.pixelSize: 10; color: Theme.panelInk }
+                                    MouseArea { anchors.fill: parent; enabled: !btTab.scanning; onClicked: btTab.startScan() }
+                                }
+                            }
+                            Column {
+                                width: parent.width; spacing: 4
+                                Text { visible: !btTab.scanning && btTab.nearby.length === 0; text: "No nearby devices found yet - tap Scan."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                Repeater {
+                                    model: btTab.nearby
+                                    delegate: Rectangle {
+                                        property var devData: modelData
+                                        width: parent.width; height: 32; radius: 6; color: "#00000000"
+                                        border.color: Theme.panelInk; border.width: 1; opacity: 0.7
+                                        Row {
+                                            anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                            Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight }
+                                            Rectangle {
+                                                width: 60; height: 22; radius: 4; color: Theme.forge
+                                                Text { anchors.centerIn: parent; text: "Pair"; font.pixelSize: 10; color: "#ffffff" }
+                                                MouseArea { anchors.fill: parent; onClicked: btTab.btPairAndConnect(devData.mac) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Text {
+                                text: "Some devices need a physical confirmation button pressed on the device itself to finish pairing."
+                                color: Theme.textSecondary; font.pixelSize: 10; wrapMode: Text.Wrap; width: parent.width
                             }
                         }
 
