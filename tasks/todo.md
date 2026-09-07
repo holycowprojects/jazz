@@ -869,21 +869,33 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 **Scope:** Add sections: Desktop, Keyboard & Mouse, Applications, AI, Privacy, Agents (ties into Task 30's permission ledger/policy once that exists), Storage, Battery & Power, Security, Updates, Accessibility, System, Developer (hidden by default). Add real settings search, driven by a schema (setting id/title/keywords/page), not hardcoded per-page strings — the same schema can later back the Universal Command idea's settings results (`docs/JAZZ-v2.md` sec 5d) without rework. Displays gets a rollback timer on any change ("Keep these display settings? Reverting in 12s") so a bad monitor config can never permanently blank the screen. Storage gives a friendlier view of Track A's existing Snapper/Btrfs data (used/available by category, snapshot storage, cleanup actions).
 
-**Acceptance criteria:**
-- [ ] Every listed section exists as a real tab/page in the settings app, backed by real live data (not placeholder text) wherever a Track A/B/C script already exposes that data
-- [ ] Settings search returns correct results for at least 5 real spot-check queries (e.g. "touchpad", "wifi", "dark mode", "snapshot", "battery")
-- [ ] Displays changes have a working rollback timer, confirmed live (a deliberately bad resolution change reverts on timeout)
-- [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling
-- [ ] Developer section is hidden by default, toggleable, and never shown to a fresh install without explicit enablement
-- [ ] Terminal remains fully functional for every setting this app exposes — this app is additive, not a terminal replacement (per the confirmed "keep hackable identity" decision, `docs/JAZZ-v2.md` sec 5)
+**Also informed 7 Sept 2026 by two more sources at Akash's request:** the Agentic AI Linux Desktop Blueprint's §26-58 (concrete per-section control lists) and its Implementation Guide's §15/18/19 - the guide's own "do not implement every page at once" advice plus its recommended v0.1/v0.2/v0.3 sequencing directly validated building this task in slices rather than all 17 sections at once.
 
-**Verification:** Live, on the Yoga 6 (real hardware)
+**Slice 1 DONE, live-verified on the Yoga 6, 7 Sept 2026 (this is a partial pass on an L task, not the full task):**
+- Architecture: the Settings panel outgrew shell.qml's single heredoc (was 1071 lines) - extracted to its own `configs/quickshell/Settings.qml`, loaded via `Loader { source: "Settings.qml" }`, written by a new `scripts/setup-settings.sh` chained after `setup-dock.sh` in `install-jazz.sh`. `Theme.qml` gained two more semantic tokens (`surfaceRaised`, `textSecondary`, pulling forward a slice of Task 27a) so every new section styles through tokens, not hardcoded hex - insurance against Task 25 causing a rebuild later.
+- Full 18-section navigation shell built (all sections from the Settings Home spec Task 28 already scoped), with an honest "•" marker on sections with no backend yet (not fake controls - matches the project's existing "real data or honest pending, never fake" rule).
+- Real schema-driven search implemented (id/title/keywords/page), same shape Universal Command can reuse later per the original scope note.
+- **Real sections shipped this slice:** Appearance/Network/Bluetooth/Sound (carried over unchanged from Task 22) + Display (carried over, rollback timer still pending) + three genuinely new ones: **Agents** (reads `jazz-agent-action ledger`/`policy list` live, policy allow/ask/deny buttons write via a new `jazz-agent-action policy set` subcommand added this session), **Storage** (real `df` data + a "Manage snapshots" button reusing the established Network/Bluetooth pattern of launching a terminal for privileged/complex flows, avoiding any new sudo-in-QML risk), **Battery & Power** (real sysfs capacity/status/power draw), **System/About** (real hostname/kernel/CPU/GPU/memory + a working Developer Mode toggle backed by a real marker file).
+- Developer Mode toggle verified live both directions: marker file present → "Developer" appears in sidebar with real content; marker absent → correctly hidden, confirmed via screenshot both ways.
+- One real bug caught and fixed before deploy: the Agents tab's policy buttons had a broken/duplicate `color:` binding and no click handler at all (would have been decorative, not functional) - fixed to properly track per-row policy state and call `jazz-agent-action policy set` on click, confirmed working live.
+
+**Still pending (next slices, not yet built):** Desktop, Keyboard & Mouse, Applications, AI, Privacy, Security, Updates, Accessibility (real controls required, not stubs), Developer's deeper tools, and Display's rollback timer specifically (needs real resolution-changing logic, deliberately deferred as its own careful piece of work rather than rushed into this slice).
+
+**Acceptance criteria (full task - partially met, see slice notes above):**
+- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **9 of 18 sections real, rest honestly marked pending**
+- [ ] Settings search returns correct results for at least 5 real spot-check queries — schema/search mechanism built and live, not yet spot-checked against 5 queries
+- [ ] Displays changes have a working rollback timer, confirmed live — not yet built
+- [ ] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — not yet built
+- [x] Developer section is hidden by default, toggleable, and never shown to a fresh install without explicit enablement — confirmed live both directions
+- [x] Terminal remains fully functional for every setting this app exposes — this app is additive, not a terminal replacement — unchanged, still true
+
+**Verification:** Live, on the Yoga 6 (real hardware) - slice 1 confirmed 7 Sept 2026 via direct screenshots of every new/changed section
 
 **Dependencies:** Task 22 (existing settings panel, extended not replaced)
 
-**Files likely touched:** `configs/quickshell/shell.qml` (major growth, likely split into `configs/quickshell/Settings/*.qml` given the size), `scripts/setup-dock.sh` or a new `scripts/setup-settings.sh` if split out
+**Files likely touched:** `configs/quickshell/Settings.qml` (new, was going to be shell.qml growth), `scripts/setup-settings.sh` (new), `scripts/setup-dock.sh` (Settings block replaced with a Loader), `scripts/install-jazz.sh` (chained), `scripts/jazz-agent-action` (new `policy` subcommand)
 
-**Estimated scope:** L — real architecture growth of an already-large surface, likely the biggest single JAZZ task yet
+**Estimated scope:** L — real architecture growth of an already-large surface, likely the biggest single JAZZ task yet. First slice done; remaining slices are each roughly S-M.
 
 ---
 

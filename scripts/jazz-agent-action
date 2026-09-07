@@ -142,6 +142,41 @@ def cmd_classify(args) -> int:
     return 0
 
 
+def save_policy(policy: dict) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    POLICY_PATH.write_text(json.dumps(policy, indent=2) + "\n")
+
+
+def cmd_policy_list(args) -> int:
+    """Machine-readable dump for Task 28's Agents tab: one JSON object per
+    known action type, its default tier, and its effective policy."""
+    rows = []
+    for action_type, tier in DEFAULT_TIERS.items():
+        rows.append({
+            "action_type": action_type,
+            "tier": tier,
+            "policy": effective_policy(action_type, tier),
+            "overridable": tier != "red",
+        })
+    print(json.dumps(rows))
+    return 0
+
+
+def cmd_policy_set(args) -> int:
+    tier = classify(args.action_type)
+    if tier == "red":
+        print(f"'{args.action_type}' is red-tier and cannot be overridden via policy.", file=sys.stderr)
+        return 3
+    if args.value not in ("allow", "ask", "deny"):
+        print("Value must be one of: allow, ask, deny", file=sys.stderr)
+        return 2
+    policy = load_policy()
+    policy[args.action_type] = args.value
+    save_policy(policy)
+    print(f"{args.action_type} -> {args.value}")
+    return 0
+
+
 def cmd_run(args) -> int:
     action_type = args.type
     tier = classify(action_type)
@@ -277,6 +312,15 @@ def main() -> int:
     p_ledger = sub.add_parser("ledger")
     p_ledger.add_argument("--limit", type=int, default=20)
     p_ledger.set_defaults(func=cmd_ledger)
+
+    p_policy = sub.add_parser("policy")
+    policy_sub = p_policy.add_subparsers(dest="policy_cmd", required=True)
+    p_policy_list = policy_sub.add_parser("list")
+    p_policy_list.set_defaults(func=cmd_policy_list)
+    p_policy_set = policy_sub.add_parser("set")
+    p_policy_set.add_argument("action_type")
+    p_policy_set.add_argument("value")
+    p_policy_set.set_defaults(func=cmd_policy_set)
 
     args = parser.parse_args()
     if args.cmd == "run":

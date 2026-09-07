@@ -78,6 +78,13 @@ QtObject {
 
     readonly property color panel: darkMode ? "#1e1d24" : "#e9eaec"
     readonly property color panelInk: darkMode ? "#ede9e2" : "#23262b"
+
+    // Task 27a/28: two more semantic tokens (elevated surface + dimmed
+    // text) so new Settings sections never hardcode their own hex values -
+    // a future design pass (Task 25) becomes a token-value edit here, not
+    // a per-section rebuild.
+    readonly property color surfaceRaised: darkMode ? "#26252d" : "#dcdde0"
+    readonly property color textSecondary: darkMode ? "#9b968c" : "#6b6e73"
 }
 EOF
 
@@ -691,169 +698,8 @@ ShellRoot {
         }
     }
 
-    // ---------- Full Settings app (Appearance/Network/Bluetooth/Sound/Display) ----------
-    PanelWindow {
-        id: settingsPanel
-        visible: false
-        anchors { top: true; bottom: true; left: true; right: true }
-        color: "#00000000"
-        exclusiveZone: -1
-
-        Rectangle { anchors.fill: parent; color: "#0a090899" }
-        MouseArea { anchors.fill: parent; onClicked: settingsPanel.visible = false }
-
-        Rectangle {
-            id: settingsBox
-            width: 560; height: 460
-            anchors.centerIn: parent
-            radius: 14
-            color: Theme.panel
-            border.color: Theme.panelInk
-            border.width: 1
-            MouseArea { anchors.fill: parent }
-
-            property var wallpapers: []
-            Process {
-                id: wallListProc
-                command: ["bash", "-c", "ls @@JAZZ_DATA_DIR@@/wallpapers/*.png 2>/dev/null"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        var lines = this.text.split("\n").filter(function(s) { return s.length > 0 })
-                        settingsBox.wallpapers = lines
-                    }
-                }
-            }
-            Component.onCompleted: wallListProc.running = true
-
-            Row {
-                anchors.fill: parent
-                anchors.margins: 16
-                spacing: 20
-
-                Column {
-                    width: 130
-                    spacing: 4
-                    Repeater {
-                        model: ["Appearance", "Network", "Bluetooth", "Sound", "Display"]
-                        delegate: Rectangle {
-                            width: parent.width; height: 30; radius: 6
-                            color: settingsTabs.currentIndex === index ? Theme.forge : "#00000000"
-                            Text {
-                                anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                                text: modelData; color: settingsTabs.currentIndex === index ? "#ffffff" : Theme.panelInk; font.pixelSize: 12
-                            }
-                            MouseArea { anchors.fill: parent; onClicked: settingsTabs.currentIndex = index }
-                        }
-                    }
-                }
-
-                Rectangle { width: 1; height: parent.height; color: Theme.panelInk; opacity: 0.15 }
-
-                Item {
-                    id: settingsTabs
-                    property int currentIndex: 0
-                    width: 380; height: parent.height
-
-                    // Appearance
-                    Column {
-                        visible: settingsTabs.currentIndex === 0
-                        width: parent.width
-                        spacing: 16
-                        Text { text: "APPEARANCE"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Row {
-                            spacing: 10
-                            Text { text: Theme.darkMode ? "Dark mode" : "Light mode"; color: Theme.panelInk; font.pixelSize: 13 }
-                            Rectangle {
-                                width: 38; height: 20; radius: 10
-                                color: Theme.darkMode ? Theme.forge : Theme.panelInk
-                                opacity: Theme.darkMode ? 1 : 0.25
-                                Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: Theme.darkMode ? parent.width - width - 2 : 2 }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        Theme.darkMode = !Theme.darkMode
-                                        var wp = Theme.darkMode ? "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-dark.png" : "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-light.png"
-                                        Quickshell.execDetached(["jazz-wallpaper-set", wp])
-                                    }
-                                }
-                            }
-                        }
-                        Text { text: "Wallpaper"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Flow {
-                            width: parent.width
-                            spacing: 8
-                            Repeater {
-                                model: settingsBox.wallpapers
-                                delegate: Rectangle {
-                                    width: 90; height: 54; radius: 6
-                                    border.color: Theme.panelInk; border.width: 1
-                                    Image { anchors.fill: parent; anchors.margins: 2; source: "file://" + modelData; fillMode: Image.PreserveAspectCrop }
-                                    MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["jazz-wallpaper-set", modelData]) }
-                                }
-                            }
-                        }
-                    }
-
-                    // Network
-                    Column {
-                        id: networkTab
-                        visible: settingsTabs.currentIndex === 1
-                        width: parent.width
-                        spacing: 10
-                        property string ssid: "checking..."
-                        Text { text: "NETWORK"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Process {
-                            running: networkTab.visible
-                            command: ["bash", "-c", "nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2"]
-                            stdout: SplitParser { onRead: function (data) { if (data) networkTab.ssid = data } }
-                        }
-                        Text { text: "Connected: " + networkTab.ssid; color: Theme.panelInk; font.pixelSize: 12 }
-                        Rectangle {
-                            width: 140; height: 26; radius: 6; color: Theme.forge
-                            Text { anchors.centerIn: parent; text: "Open nmtui"; font.pixelSize: 11; color: "#ffffff" }
-                            MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["kitty", "-e", "nmtui"]) }
-                        }
-                    }
-
-                    // Bluetooth
-                    Column {
-                        visible: settingsTabs.currentIndex === 2
-                        width: parent.width
-                        spacing: 10
-                        Text { text: "BLUETOOTH"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Rectangle {
-                            width: 160; height: 26; radius: 6; color: Theme.forge
-                            Text { anchors.centerIn: parent; text: "Manage (bluetoothctl)"; font.pixelSize: 11; color: "#ffffff" }
-                            MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["kitty", "-e", "bluetoothctl"]) }
-                        }
-                    }
-
-                    // Sound
-                    Column {
-                        visible: settingsTabs.currentIndex === 3
-                        width: parent.width
-                        spacing: 10
-                        Text { text: "SOUND"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Text { text: "Same volume control as the quick-settings flyout."; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width }
-                    }
-
-                    // Display
-                    Column {
-                        visible: settingsTabs.currentIndex === 4
-                        width: parent.width
-                        spacing: 10
-                        Text { text: "DISPLAY"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; font.bold: true }
-                        Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width }
-                    }
-                }
-            }
-        }
-
-        IpcHandler {
-            target: "settings"
-            function toggle(): void { settingsPanel.visible = !settingsPanel.visible }
-        }
-    }
+    // ---------- Full Settings app (Task 28: grown out to its own file, Settings.qml - see that file for all sections) ----------
+    Loader { source: "Settings.qml" }
 
     // ---------- Power menu ----------
     PanelWindow {
