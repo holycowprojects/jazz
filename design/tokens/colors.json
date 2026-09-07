@@ -1,0 +1,29 @@
+{
+  "workspaces": {
+    "forge": { "value": "#4c6fa0", "description": "Coding, AI app engineering" },
+    "lab": { "value": "#3e8e76", "description": "Notebooks, PyTorch/Jupyter" },
+    "arena": { "value": "#c98a34", "description": "AI red-teaming" },
+    "observe": { "value": "#7c919a", "description": "Logs, metrics, AI Command Centre" },
+    "vault": { "value": "#3a3d44", "description": "Secrets, sensitive config" },
+    "range": { "value": "#a23a3a", "description": "Reserved - dormant" }
+  },
+  "chrome": {
+    "dark": {
+      "surface": "#1e1d24",
+      "surfaceRaised": "#26252d",
+      "textPrimary": "#ede9e2",
+      "textSecondary": "#9b968c"
+    },
+    "light": {
+      "surface": "#e9eaec",
+      "surfaceRaised": "#dcdde0",
+      "textPrimary": "#23262b",
+      "textSecondary": "#6b6e73"
+    }
+  },
+  "status": {
+    "positive": { "value": "#3e8e76", "source": "workspaces.lab" },
+    "warning": { "value": "#c98a34", "source": "workspaces.arena" },
+    "critical": { "value": "#a23a3a", "source": "workspaces.range" }
+  }
+}

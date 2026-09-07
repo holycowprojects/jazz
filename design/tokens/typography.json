@@ -1,0 +1,14 @@
+{
+  "ui": {
+    "family": "Inter",
+    "package": "inter-font",
+    "role": "General UI text - labels, buttons, body text across the dock/top bar/Settings",
+    "installed": false
+  },
+  "monospace": {
+    "family": "JetBrains Mono",
+    "package": "ttf-jetbrains-mono",
+    "role": "Terminal-style/code text - Keybinds display, Developer tab's event log and D-Bus tree, world clock digits",
+    "installed": false
+  }
+}

@@ -778,13 +778,17 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
-#### Task 27a: Brand tokens (single source of truth)
+#### Task 27a: Brand tokens (single source of truth) — **DONE, 7 Sept 2026**
 **Description:** Formalize `Theme.qml`'s current hardcoded values (`panel`/`panelInk`, the 6 workspace colors) plus the missing semantic tokens (surface/surfaceRaised/textPrimary/textSecondary/positive/warning/critical) into real token files, per the guide's §4 schema - stop scattering raw hex values across QML and config files.
 
 **Acceptance criteria:**
-- [ ] `design/tokens/colors.json` exists with semantic names (not "blue1/blue2"), covering both dark and light palettes plus the 6 existing workspace colors
-- [ ] `Theme.qml` reads from this file (or a generated QML companion) instead of hardcoding hex values inline
-- [ ] `design/tokens/typography.json` records the two fonts chosen (see 27e) as data, not just installed packages
+- [x] `design/tokens/colors.json` exists with semantic names (not "blue1/blue2"), covering both dark and light palettes plus the 6 existing workspace colors
+- [x] `Theme.qml` reads from this file (or a generated QML companion) instead of hardcoding hex values inline — used the generated-companion option: `scripts/generate-theme-qml.py` reads `colors.json` and writes `configs/quickshell/Theme.qml`, which is committed and deployed via a plain `cp` (like Settings.qml), not read live at runtime — avoids a startup flash of default colors while an async file load completes, since every panel needs Theme's values synchronously at launch
+- [x] `design/tokens/typography.json` records the two fonts chosen (Inter for UI, JetBrains Mono for terminal-style text — both confirmed official-repo, neither installed/wired yet, that's later work) as data
+
+**Also added:** `positive`/`warning`/`critical` status tokens, deliberately reusing the existing `lab`/`arena`/`range` workspace hex values rather than inventing new ones — `critical` formalizes what Settings.qml's destructive actions (Disconnect/Forget/Remove/Clear) have already been using via `Theme.range` since Task 28. `panel`/`panelInk` kept as live-bound aliases to the new `surface`/`textPrimary` names so every existing reference across `shell.qml`/`Settings.qml` (dozens of usages) keeps working unchanged — no risky wholesale rename.
+
+**Verification:** Live, on the Yoga 6 — generated `Theme.qml` deployed, Quickshell relaunched, zero QML errors, screenshot confirmed pixel-identical to before (all values are unchanged, purely additive).
 
 **Dependencies:** Task 11 (`Theme.qml` exists)
 **Estimated scope:** S

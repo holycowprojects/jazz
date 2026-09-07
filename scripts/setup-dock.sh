@@ -52,45 +52,18 @@ SHELL_FILE="$QS_DIR/shell.qml"
 HYPR_CONFIG="/home/$USERNAME/.config/hypr/hyprland.lua"
 DATA_DIR="/home/$USERNAME/.local/share/jazz"
 SCAN_SCRIPT_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/scan-apps.py"
+THEME_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/Theme.qml"
 
 pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi
 
 sudo -u "$USERNAME" mkdir -p "$QS_DIR" "$DATA_DIR"
 sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
-
-sudo -u "$USERNAME" tee "$THEME_FILE" > /dev/null << 'EOF'
-pragma Singleton
-import QtQuick
-
-// JAZZ Theme singleton (Task 11, extended Tier 1/22/23). Workspace
-// identity colors are deliberately CONSTANT across light/dark - Design-
-// Vision.md sec 2 reserves dynamic theming for non-semantic UI chrome
-// only, never these. panel/panelInk are the actual light/dark toggle.
-QtObject {
-    property bool darkMode: true
-    // Task 28 Accessibility tab: gates JAZZ's own chrome animations (the
-    // top bar's workspace-color transition below is the one that exists
-    // today). Native app animations are outside JAZZ's control either way.
-    property bool reducedMotion: false
-
-    readonly property color forge: "#4c6fa0"   // Coding, AI app engineering
-    readonly property color lab: "#3e8e76"     // Notebooks, PyTorch/Jupyter
-    readonly property color arena: "#c98a34"   // AI red-teaming
-    readonly property color observe: "#7c919a" // Logs, metrics, AI Command Centre
-    readonly property color vault: "#3a3d44"   // Secrets, sensitive config
-    readonly property color range: "#a23a3a"   // Reserved - dormant
-
-    readonly property color panel: darkMode ? "#1e1d24" : "#e9eaec"
-    readonly property color panelInk: darkMode ? "#ede9e2" : "#23262b"
-
-    // Task 27a/28: two more semantic tokens (elevated surface + dimmed
-    // text) so new Settings sections never hardcode their own hex values -
-    // a future design pass (Task 25) becomes a token-value edit here, not
-    // a per-section rebuild.
-    readonly property color surfaceRaised: darkMode ? "#26252d" : "#dcdde0"
-    readonly property color textSecondary: darkMode ? "#9b968c" : "#6b6e73"
-}
-EOF
+# Task 27a: Theme.qml is now a real, committed, GENERATED file (from
+# design/tokens/colors.json via scripts/generate-theme-qml.py) - just
+# copied like Settings.qml, not hand-authored inline in this heredoc
+# anymore. Regenerate + commit both after editing colors.json, don't
+# hand-edit Theme.qml directly.
+sudo -u "$USERNAME" cp "$THEME_SRC" "$THEME_FILE"
 
 sudo -u "$USERNAME" tee "$SHELL_FILE" > /dev/null << 'SHELLQML'
 // JAZZ Quickshell config (Tasks 10-11, Tier 1 widgets, Task 22 rebuilt
