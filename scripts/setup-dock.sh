@@ -428,6 +428,13 @@ ShellRoot {
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "launcher", "toggle"]) }
             }
             Text {
+                text: "▦"
+                color: "#ffffff"
+                font.pixelSize: 14
+                anchors.verticalCenter: parent.verticalCenter
+                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "widgets", "toggle"]) }
+            }
+            Text {
                 text: "⚙"
                 color: "#ffffff"
                 font.pixelSize: 15
@@ -791,9 +798,15 @@ ShellRoot {
         }
     }
 
-    // ---------- Tier 1 widget panel + edit toggle (unchanged content, now individually toggle-able) ----------
+    // ---------- Tier 1 widget panel + edit toggle. Was permanently visible
+    // on every workspace - Akash's feedback: it got in the way (blocked the
+    // AI Command Centre's chat). Now a real toggleable popup (closed by
+    // default), summoned via the top bar's ▦ icon or `qs ipc call widgets
+    // toggle`, fading in on open (same reduced-motion-gated pattern as the
+    // top bar's own retint). ----------
     PanelWindow {
         id: widgetPanel
+        visible: false
         anchors { bottom: true; right: true }
         margins { bottom: 60; right: 16 }
         implicitWidth: 220
@@ -801,6 +814,11 @@ ShellRoot {
         exclusiveZone: -1
         color: Theme.panel
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+
+        IpcHandler {
+            target: "widgets"
+            function toggle(): void { widgetPanel.visible = !widgetPanel.visible }
+        }
 
         SystemClock { id: worldBase; precision: SystemClock.Minutes }
 
@@ -853,6 +871,8 @@ ShellRoot {
             anchors.fill: parent
             anchors.margins: 10
             spacing: 10
+            opacity: widgetPanel.visible ? 1 : 0
+            Behavior on opacity { enabled: !Theme.reducedMotion; NumberAnimation { duration: 180 } }
 
             Row {
                 width: parent.width
@@ -986,19 +1006,67 @@ ShellRoot {
         }
     }
 
-    // ---------- AI Command Centre (Task 26, Observe workspace dashboard).
+    // ---------- AI Command Centre (Task 26, Observe workspace dashboard,
+    // real Ollama chat added same day per Akash's request).
     // Design-Vision.md sec 4: real system + AI-stack telemetry, scoped to
     // the Observe workspace only - not a global always-visible panel like
     // the dock/widget-stack. Sits at the wlr-layer-shell Background layer
     // (below normal windows, above the wallpaper) so it reads as "this
-    // workspace's content", not an overlay popup. ----------
+    // workspace's content", not an overlay popup. Panel background is
+    // translucent (wallpaper shows through) but content cards stay opaque
+    // for readability - chat gets the majority of the width, telemetry is
+    // a compact sidebar, not the main event anymore. ----------
     PanelWindow {
         id: commandCentre
         visible: WorkspaceState.active === "Observe"
         anchors { top: true; bottom: true; left: true; right: true }
         exclusiveZone: -1
         WlrLayershell.layer: WlrLayer.Background
-        color: Theme.panel
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+        color: Qt.rgba(Theme.panel.r, Theme.panel.g, Theme.panel.b, 0.7)
+
+        property var chatMessages: []
+        property string chatModel: "qwen2.5:0.5b"
+        property string chatInputText: ""
+        property bool chatBusy: false
+
+        function sendChat() {
+            var text = commandCentre.chatInputText.trim()
+            if (text.length === 0 || commandCentre.chatBusy) return
+            var msgs = commandCentre.chatMessages.slice()
+            msgs.push({ role: "user", content: text })
+            var historyForRequest = msgs.slice()
+            msgs.push({ role: "assistant", content: "" })
+            commandCentre.chatMessages = msgs
+            commandCentre.chatInputText = ""
+            chatInputBox.text = ""
+            commandCentre.chatBusy = true
+            chatRequestFile.setText(JSON.stringify({ model: commandCentre.chatModel, messages: historyForRequest, stream: true }))
+        }
+        FileView {
+            id: chatRequestFile
+            path: "@@JAZZ_DATA_DIR@@/chat-request.json"
+            onSaved: chatProc.running = true
+        }
+        Process {
+            id: chatProc
+            command: ["curl", "-s", "-N", "-X", "POST", "http://localhost:11434/api/chat", "--data-binary", "@" + "@@JAZZ_DATA_DIR@@/chat-request.json"]
+            stdout: SplitParser {
+                onRead: function (data) {
+                    if (!data) return
+                    try {
+                        var obj = JSON.parse(data)
+                        var msgs = commandCentre.chatMessages.slice()
+                        var last = msgs[msgs.length - 1]
+                        var chunk = (obj.message && obj.message.content) ? obj.message.content : ""
+                        msgs[msgs.length - 1] = { role: "assistant", content: last.content + chunk }
+                        commandCentre.chatMessages = msgs
+                        if (obj.done) commandCentre.chatBusy = false
+                    } catch (e) {}
+                }
+            }
+            onExited: function (exitCode, exitStatus) { commandCentre.chatBusy = false }
+        }
 
         property real cpuPct: -1
         property real cpuTempC: -1
@@ -1122,137 +1190,217 @@ ShellRoot {
             stdout: SplitParser { onRead: function (data) { if (data) commandCentre.gpuPowerW = parseFloat(data) / 1000000.0 } }
         }
 
-        Flickable {
+        // Anchor-based, not Row+spacing: the chat column's left gap (from
+        // the divider) and right gap (from the panel's own edge) are both
+        // driven by the SAME literal margin value below, so they can't
+        // drift out of sync the way a Row's `spacing` + a separately
+        // hardcoded child `width` formula silently did (real bug, caught
+        // live: changing `spacing` alone didn't update the width formula
+        // that still subtracted the OLD spacing value, breaking the right
+        // edge instead of fixing the left one).
+        Item {
             anchors.fill: parent
             anchors.topMargin: 50
             anchors.bottomMargin: 64
             anchors.leftMargin: 24
             anchors.rightMargin: 24
-            contentHeight: ccCol.height
-            clip: true
+
+            // ----- Compact telemetry sidebar (deliberately small - chat is
+            // the main event now, not this) -----
+            Flickable {
+                id: telemetrySidebar
+                width: 240
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                contentHeight: telCol.height
+                clip: true
+                Column {
+                    id: telCol
+                    width: parent.width
+                    spacing: 14
+                    Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 15; font.bold: true; wrapMode: Text.Wrap; width: parent.width }
+                    Text { text: "Observe"; color: Theme.textSecondary; font.pixelSize: 11 }
+
+                    SectionHeader { text: "SYSTEM" }
+                    Text { text: "CPU " + (commandCentre.cpuPct >= 0 ? commandCentre.cpuPct.toFixed(0) + "%" : "...") + "  ·  " + (commandCentre.cpuTempC >= 0 ? commandCentre.cpuTempC.toFixed(0) + "°C" : "..."); color: "#ffffff"; font.pixelSize: 12 }
+                    Text { text: "Mem " + (commandCentre.memUsedMB >= 0 ? Math.round(commandCentre.memUsedMB) + "/" + Math.round(commandCentre.memTotalMB) + " MB" : "..."); color: "#ffffff"; font.pixelSize: 12 }
+                    Text { text: "Power " + (commandCentre.powerW >= 0 ? commandCentre.powerW.toFixed(1) + " W" : "n/a"); color: "#ffffff"; font.pixelSize: 12 }
+
+                    SectionHeader { text: "AI RUNTIME" }
+                    Text {
+                        width: parent.width; wrapMode: Text.Wrap
+                        text: commandCentre.ollamaRunning.length > 0 ? ("Running: " + commandCentre.ollamaRunning[0].name) : (commandCentre.ollamaInstalled.length + " model(s) installed, idle")
+                        color: "#ffffff"; font.pixelSize: 12
+                    }
+
+                    SectionHeader { text: "CONTAINERS" }
+                    Text { text: commandCentre.containers.length === 0 ? "None running" : (commandCentre.containers.length + " running"); color: "#ffffff"; font.pixelSize: 12 }
+
+                    SectionHeader { text: "GPU - AMD VEGA" }
+                    Text {
+                        width: parent.width; wrapMode: Text.Wrap
+                        text: commandCentre.gpuAvailable
+                            ? (commandCentre.gpuBusyPct.toFixed(0) + "%  ·  " + Math.round(commandCentre.gpuVramUsedMB) + " MB  ·  " + commandCentre.gpuPowerW.toFixed(1) + " W")
+                            : "n/a"
+                        color: "#ffffff"; font.pixelSize: 12
+                    }
+                }
+            }
+
+            Rectangle {
+                id: chatDivider
+                width: 1
+                anchors.left: telemetrySidebar.right
+                anchors.leftMargin: 24
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                color: Theme.panelInk; opacity: 0.15
+            }
+
+            // ----- Chat (the majority of the space, Akash's explicit
+            // request) - left gap from the divider and right gap from the
+            // panel edge are both the same 24px as the sidebar's own outer
+            // margin, so it's symmetric by construction. -----
             Column {
-                id: ccCol
-                width: parent.width
-                spacing: 20
+                anchors.left: chatDivider.right
+                anchors.leftMargin: 24
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                spacing: 10
 
-                Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 20; font.bold: true }
-                Text { text: "Observe - system + AI-stack telemetry"; color: Theme.textSecondary; font.pixelSize: 12 }
+                Row {
+                    width: parent.width; spacing: 10
+                    // Above the message Rectangle below it in this Column's
+                    // own paint order, so the dropdown's popup (which
+                    // overflows below this Row) isn't drawn underneath it.
+                    z: 10
+                    SectionHeader { text: "CHAT"; anchors.verticalCenter: parent.verticalCenter }
 
-                // ----- System -----
-                Rectangle {
-                    width: parent.width; height: sysCol.height + 24; radius: 10; color: Theme.surfaceRaised
-                    Column {
-                        id: sysCol
-                        x: 16; y: 12
-                        width: parent.width - 32
-                        spacing: 8
-                        SectionHeader { text: "SYSTEM" }
-                        Row {
-                            width: parent.width; spacing: 30
-                            Column {
-                                spacing: 2
-                                Text { text: "CPU"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text { text: commandCentre.cpuPct >= 0 ? (commandCentre.cpuPct.toFixed(0) + "%") : "..."; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
-                            }
-                            Column {
-                                spacing: 2
-                                Text { text: "TEMP"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text { text: commandCentre.cpuTempC >= 0 ? (commandCentre.cpuTempC.toFixed(0) + "°C") : "..."; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
-                            }
-                            Column {
-                                spacing: 2
-                                Text { text: "MEMORY"; color: Theme.textSecondary; font.pixelSize: 10 }
+                    // Real dropdown (hand-rolled, no QtQuick.Controls
+                    // dependency elsewhere in this codebase) - a Row of
+                    // pills doesn't scale once more than 2-3 models are
+                    // installed.
+                    Item {
+                        id: modelPicker
+                        width: 170; height: 24
+                        anchors.verticalCenter: parent.verticalCenter
+                        property bool open: false
+
+                        Rectangle {
+                            anchors.fill: parent; radius: 5; color: Theme.surfaceRaised
+                            Row {
+                                anchors.fill: parent; anchors.margins: 6; spacing: 6
                                 Text {
-                                    text: commandCentre.memUsedMB >= 0 ? (Math.round(commandCentre.memUsedMB) + " / " + Math.round(commandCentre.memTotalMB) + " MB") : "..."
-                                    color: "#ffffff"; font.pixelSize: 22; font.bold: true
+                                    text: commandCentre.chatModel; color: "#ffffff"; font.pixelSize: 11
+                                    width: parent.width - 14; elide: Text.ElideRight
                                 }
+                                Text { text: modelPicker.open ? "▲" : "▼"; color: Theme.textSecondary; font.pixelSize: 8 }
                             }
+                            MouseArea { anchors.fill: parent; onClicked: modelPicker.open = !modelPicker.open }
+                        }
+
+                        Rectangle {
+                            visible: modelPicker.open
+                            y: parent.height + 4
+                            width: Math.max(parent.width, 200)
+                            height: modelOptCol.height + 8
+                            radius: 6; color: Theme.surfaceRaised
+                            border.color: Theme.panelInk; border.width: 1
+                            z: 200
                             Column {
-                                spacing: 2
-                                Text { text: "POWER"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text { text: commandCentre.powerW >= 0 ? (commandCentre.powerW.toFixed(1) + " W") : "n/a"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                                id: modelOptCol
+                                x: 4; y: 4
+                                width: parent.width - 8
+                                Text {
+                                    visible: commandCentre.ollamaInstalled.length === 0
+                                    text: "No models installed"; color: Theme.textSecondary; font.pixelSize: 11
+                                }
+                                Repeater {
+                                    model: commandCentre.ollamaInstalled
+                                    delegate: Rectangle {
+                                        width: parent.width; height: 24; radius: 4
+                                        color: commandCentre.chatModel === modelData.name ? WorkspaceState.activeColor() : "#00000000"
+                                        Text {
+                                            anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
+                                            text: modelData.name
+                                            color: commandCentre.chatModel === modelData.name ? "#ffffff" : Theme.panelInk
+                                            font.pixelSize: 11
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: { commandCentre.chatModel = modelData.name; modelPicker.open = false }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                // ----- AI runtime (Ollama) -----
                 Rectangle {
-                    width: parent.width; height: aiCol.height + 24; radius: 10; color: Theme.surfaceRaised
-                    Column {
-                        id: aiCol
-                        x: 16; y: 12
-                        width: parent.width - 32
-                        spacing: 8
-                        SectionHeader { text: "AI RUNTIME - OLLAMA" }
-                        Text {
-                            text: commandCentre.ollamaRunning.length > 0
-                                ? ("Running: " + commandCentre.ollamaRunning[0].name + " (" + commandCentre.ollamaRunning[0].size_vram + " bytes VRAM)")
-                                : "Nothing loaded in memory right now (" + commandCentre.ollamaInstalled.length + " model(s) installed)"
+                    width: parent.width; height: parent.height - 90; radius: 10; color: Theme.surfaceRaised
+                    clip: true
+                    Flickable {
+                        id: chatFlick
+                        anchors.fill: parent; anchors.margins: 16
+                        contentHeight: chatCol.height
+                        clip: true
+                        Column {
+                            id: chatCol
+                            width: parent.width
+                            spacing: 14
+                            onHeightChanged: chatFlick.contentY = Math.max(0, height - chatFlick.height)
+                            Text {
+                                visible: commandCentre.chatMessages.length === 0
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "Ask " + commandCentre.chatModel + " anything - runs fully local via Ollama, nothing leaves this machine."
+                                color: Theme.textSecondary; font.pixelSize: 12
+                            }
+                            Repeater {
+                                model: commandCentre.chatMessages
+                                delegate: Column {
+                                    width: chatCol.width
+                                    property var msg: modelData
+                                    spacing: 2
+                                    Text { text: msg.role === "user" ? "You" : commandCentre.chatModel; color: Theme.textSecondary; font.pixelSize: 10 }
+                                    Text {
+                                        width: chatCol.width
+                                        text: msg.content.length > 0 ? msg.content : "..."
+                                        color: "#ffffff"; font.pixelSize: 13; wrapMode: Text.Wrap
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Row {
+                    width: parent.width; height: 40; spacing: 10
+                    Rectangle {
+                        width: parent.width - 90; height: 40; radius: 8; color: Theme.panel
+                        border.color: Theme.panelInk; border.width: 1
+                        TextInput {
+                            id: chatInputBox
+                            anchors.fill: parent; anchors.margins: 10
                             color: "#ffffff"; font.pixelSize: 13
-                        }
-                    }
-                }
-
-                // ----- Containers (Podman) -----
-                Rectangle {
-                    width: parent.width; height: podCol.height + 24; radius: 10; color: Theme.surfaceRaised
-                    Column {
-                        id: podCol
-                        x: 16; y: 12
-                        width: parent.width - 32
-                        spacing: 8
-                        SectionHeader { text: "CONTAINERS - PODMAN" }
-                        Text { visible: commandCentre.containers.length === 0; text: "No containers running."; color: Theme.textSecondary; font.pixelSize: 12 }
-                        Repeater {
-                            model: commandCentre.containers
-                            delegate: Row {
-                                width: parent.width; spacing: 20
-                                Text { text: modelData.name; color: "#ffffff"; font.pixelSize: 12; width: 160 }
-                                Text { text: "CPU " + modelData.cpu_percent; color: Theme.textSecondary; font.pixelSize: 12; width: 100 }
-                                Text { text: "Mem " + modelData.mem_usage; color: Theme.textSecondary; font.pixelSize: 12; width: 220 }
-                                Text { text: "Net " + modelData.net_io; color: Theme.textSecondary; font.pixelSize: 12 }
+                            clip: true
+                            focus: commandCentre.visible
+                            enabled: !commandCentre.chatBusy
+                            onTextChanged: commandCentre.chatInputText = text
+                            Keys.onReturnPressed: commandCentre.sendChat()
+                            Text {
+                                visible: chatInputBox.text.length === 0
+                                text: "Message..."; color: Theme.textSecondary; font.pixelSize: 13
                             }
                         }
                     }
-                }
-
-                // ----- GPU -----
-                Rectangle {
-                    width: parent.width; height: gpuCol.height + 24; radius: 10; color: Theme.surfaceRaised
-                    Column {
-                        id: gpuCol
-                        x: 16; y: 12
-                        width: parent.width - 32
-                        spacing: 8
-                        SectionHeader { text: "GPU - AMD VEGA (iGPU)" }
-                        Row {
-                            visible: commandCentre.gpuAvailable
-                            width: parent.width; spacing: 30
-                            Column {
-                                spacing: 2
-                                Text { text: "UTILIZATION"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text { text: commandCentre.gpuBusyPct.toFixed(0) + "%"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
-                            }
-                            Column {
-                                spacing: 2
-                                Text { text: "VRAM"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text {
-                                    text: Math.round(commandCentre.gpuVramUsedMB) + " / " + Math.round(commandCentre.gpuVramTotalMB) + " MB"
-                                    color: "#ffffff"; font.pixelSize: 22; font.bold: true
-                                }
-                            }
-                            Column {
-                                spacing: 2
-                                Text { text: "POWER"; color: Theme.textSecondary; font.pixelSize: 10 }
-                                Text { text: commandCentre.gpuPowerW >= 0 ? (commandCentre.gpuPowerW.toFixed(1) + " W") : "n/a"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
-                            }
-                        }
-                        Text {
-                            visible: !commandCentre.gpuAvailable
-                            text: "GPU monitoring not available on this hardware - shown honestly as pending, not faked."
-                            color: Theme.textSecondary; font.pixelSize: 12
-                        }
+                    Button {
+                        width: 80; height: 40
+                        label: commandCentre.chatBusy ? "..." : "Send"
+                        enabled: !commandCentre.chatBusy
+                        onClicked: commandCentre.sendChat()
                     }
                 }
             }
