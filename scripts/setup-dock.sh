@@ -985,6 +985,279 @@ ShellRoot {
             }
         }
     }
+
+    // ---------- AI Command Centre (Task 26, Observe workspace dashboard).
+    // Design-Vision.md sec 4: real system + AI-stack telemetry, scoped to
+    // the Observe workspace only - not a global always-visible panel like
+    // the dock/widget-stack. Sits at the wlr-layer-shell Background layer
+    // (below normal windows, above the wallpaper) so it reads as "this
+    // workspace's content", not an overlay popup. ----------
+    PanelWindow {
+        id: commandCentre
+        visible: WorkspaceState.active === "Observe"
+        anchors { top: true; bottom: true; left: true; right: true }
+        exclusiveZone: -1
+        WlrLayershell.layer: WlrLayer.Background
+        color: Theme.panel
+
+        property real cpuPct: -1
+        property real cpuTempC: -1
+        property real memUsedMB: -1
+        property real memTotalMB: -1
+        property real powerW: -1
+        property var ollamaInstalled: []
+        property var ollamaRunning: []
+        property var containers: []
+        property bool gpuAvailable: false
+        property real gpuBusyPct: -1
+        property real gpuVramUsedMB: -1
+        property real gpuVramTotalMB: -1
+        property real gpuPowerW: -1
+
+        function refresh() {
+            cpuProc.running = true
+            tempProc.running = true
+            memProc.running = true
+            powerProc.running = true
+            ollamaTagsProc.running = true
+            ollamaPsProc.running = true
+            podmanProc.running = true
+            gpuBusyProc.running = true
+            gpuVramProc.running = true
+            gpuPowerProc.running = true
+        }
+        Timer { interval: 2500; repeat: true; running: commandCentre.visible; onTriggered: commandCentre.refresh() }
+        Component.onCompleted: commandCentre.refresh()
+
+        // Real two-sample /proc/stat delta - a single instantaneous read of
+        // /proc/stat can't give a %, needs two samples with a gap (same
+        // fact every real system monitor works around).
+        Process {
+            id: cpuProc
+            command: ["python3", "-c", "import time\ndef sample():\n    v=[int(x) for x in open('/proc/stat').readline().split()[1:]]\n    return sum(v), v[3]+v[4]\nt1,i1=sample()\ntime.sleep(0.4)\nt2,i2=sample()\ntd=t2-t1; idd=i2-i1\nprint(round((td-idd)*100/td) if td>0 else 0)"]
+            stdout: SplitParser { onRead: function (data) { if (data) commandCentre.cpuPct = parseFloat(data) } }
+        }
+        // k10temp's Tctl - the real AMD CPU package sensor, confirmed live
+        // (not acpitz, which exists but isn't the CPU die sensor).
+        Process {
+            id: tempProc
+            command: ["bash", "-c", "grep -l k10temp /sys/class/hwmon/hwmon*/name 2>/dev/null | head -1 | xargs dirname | xargs -I{} cat {}/temp1_input"]
+            stdout: SplitParser { onRead: function (data) { if (data) commandCentre.cpuTempC = parseFloat(data) / 1000.0 } }
+        }
+        Process {
+            id: memProc
+            command: ["bash", "-c", "free -b | awk '/^Mem:/{printf \"%.0f %.0f\", $3/1048576, $2/1048576}'"]
+            stdout: SplitParser {
+                onRead: function (data) {
+                    if (!data) return
+                    var parts = data.split(" ")
+                    commandCentre.memUsedMB = parseFloat(parts[0])
+                    commandCentre.memTotalMB = parseFloat(parts[1])
+                }
+            }
+        }
+        Process {
+            id: powerProc
+            command: ["bash", "-c", "cat /sys/class/power_supply/BAT*/power_now 2>/dev/null | head -1"]
+            stdout: SplitParser { onRead: function (data) { if (data) commandCentre.powerW = parseFloat(data) / 1000000.0 } }
+        }
+        Process {
+            id: ollamaTagsProc
+            command: ["bash", "-c", "curl -s http://localhost:11434/api/tags"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try { commandCentre.ollamaInstalled = JSON.parse(this.text).models || [] } catch (e) { commandCentre.ollamaInstalled = [] }
+                }
+            }
+        }
+        Process {
+            id: ollamaPsProc
+            command: ["bash", "-c", "curl -s http://localhost:11434/api/ps"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try { commandCentre.ollamaRunning = JSON.parse(this.text).models || [] } catch (e) { commandCentre.ollamaRunning = [] }
+                }
+            }
+        }
+        Process {
+            id: podmanProc
+            command: ["bash", "-c", "podman stats --no-stream --format json 2>/dev/null"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try { commandCentre.containers = JSON.parse(this.text) || [] } catch (e) { commandCentre.containers = [] }
+                }
+            }
+        }
+        // Real AMDGPU sysfs data (Vega iGPU on the Yoga 6's Ryzen 4700U) -
+        // confirmed live before building this: gpu_busy_percent/mem_info_
+        // vram_* exist directly under /sys/class/drm/card*/device, no
+        // radeontop/amdgpu_top install needed at all.
+        Process {
+            id: gpuBusyProc
+            command: ["bash", "-c", "cat /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | head -1"]
+            stdout: SplitParser {
+                onRead: function (data) {
+                    if (!data) return
+                    commandCentre.gpuAvailable = true
+                    commandCentre.gpuBusyPct = parseFloat(data)
+                }
+            }
+        }
+        Process {
+            id: gpuVramProc
+            command: ["bash", "-c", "echo $(cat /sys/class/drm/card*/device/mem_info_vram_used 2>/dev/null | head -1) $(cat /sys/class/drm/card*/device/mem_info_vram_total 2>/dev/null | head -1)"]
+            stdout: SplitParser {
+                onRead: function (data) {
+                    if (!data) return
+                    var parts = data.trim().split(" ")
+                    if (parts.length < 2) return
+                    commandCentre.gpuVramUsedMB = parseFloat(parts[0]) / 1048576.0
+                    commandCentre.gpuVramTotalMB = parseFloat(parts[1]) / 1048576.0
+                }
+            }
+        }
+        Process {
+            id: gpuPowerProc
+            command: ["bash", "-c", "grep -l amdgpu /sys/class/hwmon/hwmon*/name 2>/dev/null | head -1 | xargs dirname | xargs -I{} cat {}/power1_input 2>/dev/null"]
+            stdout: SplitParser { onRead: function (data) { if (data) commandCentre.gpuPowerW = parseFloat(data) / 1000000.0 } }
+        }
+
+        Flickable {
+            anchors.fill: parent
+            anchors.topMargin: 50
+            anchors.bottomMargin: 64
+            anchors.leftMargin: 24
+            anchors.rightMargin: 24
+            contentHeight: ccCol.height
+            clip: true
+            Column {
+                id: ccCol
+                width: parent.width
+                spacing: 20
+
+                Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 20; font.bold: true }
+                Text { text: "Observe - system + AI-stack telemetry"; color: Theme.textSecondary; font.pixelSize: 12 }
+
+                // ----- System -----
+                Rectangle {
+                    width: parent.width; height: sysCol.height + 24; radius: 10; color: Theme.surfaceRaised
+                    Column {
+                        id: sysCol
+                        x: 16; y: 12
+                        width: parent.width - 32
+                        spacing: 8
+                        SectionHeader { text: "SYSTEM" }
+                        Row {
+                            width: parent.width; spacing: 30
+                            Column {
+                                spacing: 2
+                                Text { text: "CPU"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { text: commandCentre.cpuPct >= 0 ? (commandCentre.cpuPct.toFixed(0) + "%") : "..."; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                            }
+                            Column {
+                                spacing: 2
+                                Text { text: "TEMP"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { text: commandCentre.cpuTempC >= 0 ? (commandCentre.cpuTempC.toFixed(0) + "°C") : "..."; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                            }
+                            Column {
+                                spacing: 2
+                                Text { text: "MEMORY"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text {
+                                    text: commandCentre.memUsedMB >= 0 ? (Math.round(commandCentre.memUsedMB) + " / " + Math.round(commandCentre.memTotalMB) + " MB") : "..."
+                                    color: "#ffffff"; font.pixelSize: 22; font.bold: true
+                                }
+                            }
+                            Column {
+                                spacing: 2
+                                Text { text: "POWER"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { text: commandCentre.powerW >= 0 ? (commandCentre.powerW.toFixed(1) + " W") : "n/a"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                            }
+                        }
+                    }
+                }
+
+                // ----- AI runtime (Ollama) -----
+                Rectangle {
+                    width: parent.width; height: aiCol.height + 24; radius: 10; color: Theme.surfaceRaised
+                    Column {
+                        id: aiCol
+                        x: 16; y: 12
+                        width: parent.width - 32
+                        spacing: 8
+                        SectionHeader { text: "AI RUNTIME - OLLAMA" }
+                        Text {
+                            text: commandCentre.ollamaRunning.length > 0
+                                ? ("Running: " + commandCentre.ollamaRunning[0].name + " (" + commandCentre.ollamaRunning[0].size_vram + " bytes VRAM)")
+                                : "Nothing loaded in memory right now (" + commandCentre.ollamaInstalled.length + " model(s) installed)"
+                            color: "#ffffff"; font.pixelSize: 13
+                        }
+                    }
+                }
+
+                // ----- Containers (Podman) -----
+                Rectangle {
+                    width: parent.width; height: podCol.height + 24; radius: 10; color: Theme.surfaceRaised
+                    Column {
+                        id: podCol
+                        x: 16; y: 12
+                        width: parent.width - 32
+                        spacing: 8
+                        SectionHeader { text: "CONTAINERS - PODMAN" }
+                        Text { visible: commandCentre.containers.length === 0; text: "No containers running."; color: Theme.textSecondary; font.pixelSize: 12 }
+                        Repeater {
+                            model: commandCentre.containers
+                            delegate: Row {
+                                width: parent.width; spacing: 20
+                                Text { text: modelData.name; color: "#ffffff"; font.pixelSize: 12; width: 160 }
+                                Text { text: "CPU " + modelData.cpu_percent; color: Theme.textSecondary; font.pixelSize: 12; width: 100 }
+                                Text { text: "Mem " + modelData.mem_usage; color: Theme.textSecondary; font.pixelSize: 12; width: 220 }
+                                Text { text: "Net " + modelData.net_io; color: Theme.textSecondary; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                }
+
+                // ----- GPU -----
+                Rectangle {
+                    width: parent.width; height: gpuCol.height + 24; radius: 10; color: Theme.surfaceRaised
+                    Column {
+                        id: gpuCol
+                        x: 16; y: 12
+                        width: parent.width - 32
+                        spacing: 8
+                        SectionHeader { text: "GPU - AMD VEGA (iGPU)" }
+                        Row {
+                            visible: commandCentre.gpuAvailable
+                            width: parent.width; spacing: 30
+                            Column {
+                                spacing: 2
+                                Text { text: "UTILIZATION"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { text: commandCentre.gpuBusyPct.toFixed(0) + "%"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                            }
+                            Column {
+                                spacing: 2
+                                Text { text: "VRAM"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text {
+                                    text: Math.round(commandCentre.gpuVramUsedMB) + " / " + Math.round(commandCentre.gpuVramTotalMB) + " MB"
+                                    color: "#ffffff"; font.pixelSize: 22; font.bold: true
+                                }
+                            }
+                            Column {
+                                spacing: 2
+                                Text { text: "POWER"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { text: commandCentre.gpuPowerW >= 0 ? (commandCentre.gpuPowerW.toFixed(1) + " W") : "n/a"; color: "#ffffff"; font.pixelSize: 22; font.bold: true }
+                            }
+                        }
+                        Text {
+                            visible: !commandCentre.gpuAvailable
+                            text: "GPU monitoring not available on this hardware - shown honestly as pending, not faked."
+                            color: Theme.textSecondary; font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 SHELLQML
 

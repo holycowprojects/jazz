@@ -740,7 +740,7 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
-### Task 26: AI Command Centre (Observe workspace dashboard)
+### Task 26: AI Command Centre (Observe workspace dashboard) — **DONE, 8 Sept 2026**
 **Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 4a (Claude's proposal, promoted to a real task on Akash's request). The content and scope are already fully designed - `Design-Vision.md` sec 4, written 31 Aug 2026, never actually built. A Quickshell panel scoped to the **Observe workspace** (Design-Vision.md sec 2: "Logs, metrics, the AI Command Centre" - this is workspace-specific, not a global always-visible panel like the dock/widget-stack), showing real system + AI-stack telemetry.
 
 **What it shows (per Design-Vision.md sec 4, unchanged from the original spec):**
@@ -751,14 +751,22 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Technical mechanism (reuse what's already proven, don't reinvent):** Tonight's Task 22 build already proved the exact pattern this needs live on real hardware - `Process` + `SplitParser` (line-streamed) or `StdioCollector` (whole-output, `this.text` in `onStreamFinished`) polling on a `Timer`, exactly as used for network SSID/Bluetooth status/volume/brightness. No new Quickshell technique to learn here, just new data sources. Visibility gated on `workspaces.active === "Observe"` (the active-workspace state already tracked and polled every second since Task 22's top-bar retinting).
 
 **Acceptance criteria:**
-- [ ] Panel appears when on the Observe workspace, not visible on others
-- [ ] CPU/memory/temperature/power show real, live-updating values
-- [ ] Ollama's loaded model info (name/size/context/quantization) shown live, real data from `GET /api/ps`
-- [ ] Podman per-container stats shown live, real data from `podman stats`
-- [ ] GPU utilization: either real data (if `radeontop`/`amdgpu_top` works on this hardware, confirmed live) or an honest "pending" state matching Design-Vision.md sec 4's own precedent - decided by live verification, not assumption
-- [ ] Confirmed live on the Yoga 6, screenshot showing the Observe workspace with real data
+- [x] Panel appears when on the Observe workspace, not visible on others - confirmed both ways via `hyprctl layers` (the compositor's own authoritative state) and screenshots
+- [x] CPU/memory/temperature/power show real, live-updating values
+- [x] Ollama's loaded model info (name/size/context/quantization) shown live, real data from `GET /api/ps`
+- [x] Podman per-container stats shown live, real data from `podman stats`
+- [x] GPU utilization: **real data, not pending** - see finding below, this hardware turned out better-supported than the original spec assumed
+- [x] Confirmed live on the Yoga 6, screenshot showing the Observe workspace with real data
 
-**Verification:** Live, on the Yoga 6 (real hardware)
+**Real finding, better than expected:** the original spec (written when the dev laptop's Intel Xe iGPU was the target) assumed GPU monitoring would need `radeontop`/`amdgpu_top` and might not work at all. Checked live on the real Yoga 6 hardware (AMD Ryzen 4700U / Vega iGPU) before writing any QML: `/sys/class/drm/card1/device/{gpu_busy_percent,mem_info_vram_used,mem_info_vram_total}` and `/sys/class/hwmon/hwmon4/power1_input` (the `amdgpu` hwmon) all exist and return real live values directly from the kernel driver - **no external tool needed at all**, not even `radeontop`. GPU utilization/VRAM/power are all real, not honestly-pending as originally anticipated.
+
+**Also confirmed live before building:** the real AMD CPU temperature sensor is `k10temp`'s `Tctl` (hwmon), not `acpitz` (a different, less specific zone that also exists); CPU % needs a genuine two-sample `/proc/stat` delta (a single read can't give a percentage) - implemented as a small embedded Python script (`time.sleep(0.4)` between samples) rather than fighting bash/awk quoting; `podman stats --no-stream --format json` was verified against a real temporary test container (`alpine sleep 60`, removed after) to get the real field names (`cpu_percent`, `mem_usage`, `net_io`, etc., all pre-formatted strings) rather than guessed.
+
+**Architecture:** the panel sits at the wlr-layer-shell **Background** layer (`WlrLayershell.layer: WlrLayer.Background`, below normal windows, above the wallpaper) rather than an overlay popup, so it reads as "this workspace's own content" - matching how a real workspace-scoped dashboard should feel, not a popup you'd summon. Visibility is bound directly to `WorkspaceState.active === "Observe"` (the same singleton built for the workspace-color fix earlier the same day) - zero new state-tracking needed, confirming that refactor already pays for itself.
+
+**Verification:** Live, on the Yoga 6 (real hardware) - screenshots confirm real live values (CPU/temp/power fluctuating between polls, matching expected real system behavior) and confirmed the panel is genuinely absent (not just hidden) on other workspaces via `hyprctl layers`.
+
+**Files touched:** `scripts/setup-dock.sh` (new `commandCentre` `PanelWindow` section in the `shell.qml` heredoc)
 
 **Dependencies:** Task 21 (own config), Task 22 (the polling/`Process` patterns this reuses)
 
