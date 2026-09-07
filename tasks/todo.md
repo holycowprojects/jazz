@@ -819,20 +819,37 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** Task 11 (`Theme.qml` exists)
 **Estimated scope:** S
 
-#### Task 27b: Theme compiler + bundle format (the original Task 27 core)
+#### Task 27b: Theme compiler + bundle format (the original Task 27 core) — real multi-theme system, planned 8 Sept 2026, not yet built
 **Description:** The bundling mechanism itself - unchanged from the original scope above. A theme bundle (directory/manifest) specifies `Theme.qml` token values + wallpaper path + kitty config + hyprlock config + dunst config; one function applies all of them atomically and reloads whichever of kitty/hyprlock/dunst need it.
 
-**Acceptance criteria:** (the five original criteria, unchanged)
-- [ ] A defined theme bundle format exists and is documented
+**Scope locked in 8 Sept 2026** after Akash asked Claude to research why Omarchy's themes/wallpapers look visually appealing (real findings: borrowed proven community palettes rather than invented ones; one `colors.toml` generates config for every app - genuine cohesion because it's architecturally one object; each theme ships a small curated wallpaper set matched to its palette, not a generic pool; a real accessibility floor - Mocha's contrast is 11.3:1, checked not assumed; `matugen`-based Material-You extraction for dynamic wallpaper-derived theming; "omakase" - curated good defaults, not endless raw toggles). Akash then chose (via AskUserQuestion) to build a **real multi-theme system** for JAZZ, not stay single-identity.
+
+**Real architecture decision, not to be silently revisited:** JAZZ's 6 workspace colors (Forge/Lab/Arena/Observe/Vault/Range) stay **constant across every theme** - already documented (`Theme.qml`'s own header comment, `Design-Vision.md` sec 2) as JAZZ's actual signature ("the one thing none of Windows/macOS/Omarchy do"); reshuffling them per-theme like a generic reskin would dilute the one real differentiator JAZZ has over Omarchy. Themes instead control: chrome tokens (surface/textPrimary/textSecondary/surfaceRaised), accent, kitty terminal palette, hyprlock, dunst, and a matched wallpaper - the same `colors.toml`-generates-everything architecture Omarchy uses, applied on top of JAZZ's own fixed-identity system.
+
+**Planned theme set (4, not 22 - quality over quantity, every theme has a real reason to exist, not decoration):**
+1. **Forge** (existing dark, refined) - the current cool-blue dark default.
+2. **Daylight** (existing light, refined) - the current light counterpart.
+3. **Midnight** (new) - near-black, higher-contrast, real OLED/battery/eye-strain rationale.
+4. **Warm** (new) - warm-neutral non-blue dark variant, real rationale (blue light late at night).
+
+**Architecture sketch (not yet built):**
+- New `design/tokens/themes.json`, separate from `colors.json` (which stays workspace + status colors only, unaffected by theme choice). Each entry: `label`, `mode` (dark/light), `chrome` (4 tokens), `accent`, `terminal` (16-color kitty palette + bg/fg/cursor), `wallpaper`.
+- `scripts/generate-theme-qml.py` extended to be theme-id-driven (bakes ONE chosen theme's literal values into `Theme.qml`, same as it already does for dark/light today) rather than a runtime ternary - switching themes means regenerating + redeploying, not a live in-QML toggle (acceptable - even Omarchy's own switch isn't fully hot-reloaded either).
+- New orchestrator script (working name `jazz-theme-set <id>`) - the actual bundle compiler: regenerates `Theme.qml`, writes real `kitty.conf`/`hyprlock.conf`/`dunstrc` from the theme's tokens (**all three currently have NO real config at all** - `kitty`'s config dir is empty, `hyprlock.conf` doesn't exist, `dunst` has no config dir either, all confirmed from earlier project memory, needs re-confirming live before building), applies the wallpaper via the existing `jazz-wallpaper-set` helper, persists the choice, and relaunches Quickshell via `hyprctl dispatch exec_cmd` (never a bare kill, per the established safe-relaunch rule).
+- `configs/quickshell/gen_wallpaper.py` (Task 23's existing Pillow generator) extended to take theme parameters (base/accent/mode) instead of being dark/light-hardcoded.
+- Settings' Appearance tab: replace the binary Dark/Light toggle with a real theme picker (dropdown, reusing the AI Command Centre's model-picker pattern from Task 26).
+
+**Acceptance criteria:**
+- [ ] A defined theme bundle format exists and is documented (`design/tokens/themes.json`)
 - [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live
-- [ ] At minimum the existing dark/light pair is rebuilt as real bundles under this system
+- [ ] All 4 planned themes (Forge/Daylight/Midnight/Warm) exist as real bundles under this system
 - [ ] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - extend it, don't replace it
 - [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch
 
 **Verification:** Live, on the Yoga 6 - visual confirmation kitty/hyprlock/dunst genuinely restyle, not just Quickshell's chrome
 **Dependencies:** Task 21, Task 22, Task 23, Task 27a (tokens to bundle)
-**Files likely touched:** `scripts/setup-theme.sh`, `configs/quickshell/shell.qml`, new `configs/themes/<name>/` directory, kitty/hyprlock/dunst config files
-**Estimated scope:** L
+**Files likely touched:** `design/tokens/themes.json` (new), `scripts/generate-theme-qml.py` (extended), new `scripts/jazz-theme-set` orchestrator, `configs/quickshell/gen_wallpaper.py` (extended), `configs/quickshell/Settings.qml` (Appearance tab theme picker)
+**Estimated scope:** L (grew from the original single-mechanism scope to include designing 2 new real palettes + a wallpaper generator extension + kitty/hyprlock/dunst configs built from scratch)
 
 #### Task 27c: JAZZ shell icon system (scoped down from the guide's 60-symbol + full freedesktop tree)
 **Description:** The guide recommends ~60 symbols across a full freedesktop icon-theme directory structure (16/22/24/32/48/scalable/symbolic × apps/actions/devices/places/status/categories). JAZZ doesn't need to theme every possible Linux app icon - Task 22 already solved third-party app icons via `Quickshell.iconPath()` reading real installed icon themes. Scope this to just what JAZZ's own shell chrome actually renders: the icons Quickshell draws itself (wifi/bluetooth/volume tiers/battery/brightness/notifications/power/lock/search + the saxophone launcher glyph and gear Settings glyph already hand-picked in Task 22).
