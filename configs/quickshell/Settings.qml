@@ -58,9 +58,9 @@ PanelWindow {
 
     readonly property var sections: [
         { id: "appearance", title: "Appearance", real: true },
-        { id: "desktop", title: "Desktop", real: false },
+        { id: "desktop", title: "Desktop", real: true },
         { id: "display", title: "Displays", real: true },
-        { id: "input", title: "Keyboard & Mouse", real: false },
+        { id: "input", title: "Keyboard & Mouse", real: true },
         { id: "sound", title: "Sound", real: true },
         { id: "network", title: "Network", real: true },
         { id: "bluetooth", title: "Bluetooth", real: true },
@@ -274,12 +274,35 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Desktop (PENDING) =====
+                        // ===== Desktop (REAL - informational; layout is fixed by design for v1) =====
                         Column {
                             visible: settingsPanel.currentPage === "desktop"
                             width: parent.width; spacing: 10
                             Text { text: "DESKTOP"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - dock/workspace behavior controls land in a later Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: "Workspaces"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Column {
+                                width: parent.width; spacing: 4
+                                Repeater {
+                                    model: [
+                                        { name: "Forge", desc: "Coding, AI app engineering", color: Theme.forge },
+                                        { name: "Lab", desc: "Notebooks, PyTorch/Jupyter", color: Theme.lab },
+                                        { name: "Arena", desc: "AI red-teaming", color: Theme.arena },
+                                        { name: "Observe", desc: "Logs, metrics, AI Command Centre", color: Theme.observe },
+                                        { name: "Vault", desc: "Secrets, sensitive config", color: Theme.vault },
+                                        { name: "Range", desc: "Reserved - dormant", color: Theme.range }
+                                    ]
+                                    delegate: Row {
+                                        spacing: 8
+                                        Rectangle { width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter; color: modelData.color }
+                                        Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 12; width: 70 }
+                                        Text { text: modelData.desc; color: Theme.textSecondary; font.pixelSize: 11 }
+                                    }
+                                }
+                            }
+                            Text {
+                                text: "Workspace identity, the dock, and top bar are fixed by JAZZ's design for v1 - no auto-hide/hot-corner/icon toggles exist yet, so none are shown here as controls that wouldn't do anything."
+                                color: Theme.textSecondary; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width
+                            }
                         }
 
                         // ===== Displays (existing, unchanged for now - rollback timer is a follow-up slice) =====
@@ -290,12 +313,48 @@ PanelWindow {
                             Text { text: "Same brightness control as the quick-settings flyout. Resolution/refresh-rate controls with a rollback timer are a follow-up Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
                         }
 
-                        // ===== Keyboard & Mouse (PENDING) =====
+                        // ===== Keyboard & Mouse (REAL) =====
                         Column {
+                            id: inputTab
                             visible: settingsPanel.currentPage === "input"
                             width: parent.width; spacing: 10
+                            property string naturalScroll: "..."
+                            property string tapToClick: "..."
+                            property string sensitivity: "..."
+                            property string keybindsText: "loading..."
+                            Process {
+                                running: inputTab.visible
+                                command: ["bash", "-c", "hyprctl getoption input:touchpad:natural_scroll | head -1 | awk '{print $2}'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) inputTab.naturalScroll = data } }
+                            }
+                            Process {
+                                running: inputTab.visible
+                                command: ["bash", "-c", "hyprctl getoption input:touchpad:tap-to-click | head -1 | awk '{print $2}'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) inputTab.tapToClick = data } }
+                            }
+                            Process {
+                                running: inputTab.visible
+                                command: ["bash", "-c", "hyprctl getoption input:sensitivity | head -1 | awk '{print $2}'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) inputTab.sensitivity = data } }
+                            }
+                            Process {
+                                id: keybindsProc
+                                command: ["cat", "@@JAZZ_DATA_DIR@@/Keybinds.md"]
+                                stdout: StdioCollector { onStreamFinished: { inputTab.keybindsText = this.text } }
+                            }
+                            Component.onCompleted: keybindsProc.running = true
                             Text { text: "KEYBOARD & MOUSE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet. JAZZ's real keybind scheme is documented in docs/Keybinds.md until this lands."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 12 }
+                            Text { text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 12 }
+                            Text { text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 12 }
+                            Text { text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 10 }
+                            Text { text: "KEYBINDS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Text {
+                                width: parent.width
+                                text: inputTab.keybindsText
+                                color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"
+                                wrapMode: Text.Wrap
+                            }
                         }
 
                         // ===== Sound (existing, unchanged) =====

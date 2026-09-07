@@ -18,9 +18,11 @@ SETTINGS_FILE="$QS_DIR/Settings.qml"
 DATA_DIR="/home/$USERNAME/.local/share/jazz"
 CONFIG_DIR="/home/$USERNAME/.config/jazz"
 SETTINGS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/Settings.qml"
+KEYBINDS_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../docs" && pwd)/Keybinds.md"
 
-sudo -u "$USERNAME" mkdir -p "$QS_DIR" "$CONFIG_DIR"
+sudo -u "$USERNAME" mkdir -p "$QS_DIR" "$CONFIG_DIR" "$DATA_DIR"
 sudo -u "$USERNAME" cp "$SETTINGS_SRC" "$SETTINGS_FILE"
+sudo -u "$USERNAME" cp "$KEYBINDS_SRC" "$DATA_DIR/Keybinds.md"
 
 sed -i "s|@@JAZZ_DATA_DIR@@|$DATA_DIR|g; s|@@JAZZ_CONFIG_DIR@@|$CONFIG_DIR|g" "$SETTINGS_FILE"
 
