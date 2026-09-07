@@ -68,6 +68,10 @@ import QtQuick
 // only, never these. panel/panelInk are the actual light/dark toggle.
 QtObject {
     property bool darkMode: true
+    // Task 28 Accessibility tab: gates JAZZ's own chrome animations (the
+    // top bar's workspace-color transition below is the one that exists
+    // today). Native app animations are outside JAZZ's control either way.
+    property bool reducedMotion: false
 
     readonly property color forge: "#4c6fa0"   // Coding, AI app engineering
     readonly property color lab: "#3e8e76"     // Notebooks, PyTorch/Jupyter
@@ -273,7 +277,7 @@ ShellRoot {
         anchors { top: true; left: true; right: true }
         implicitHeight: 34
         color: workspaces.activeColor()
-        Behavior on color { ColorAnimation { duration: 250 } }
+        Behavior on color { enabled: !Theme.reducedMotion; ColorAnimation { duration: 250 } }
 
         QtObject {
             id: sessionUser

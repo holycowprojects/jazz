@@ -68,13 +68,13 @@ PanelWindow {
         { id: "bluetooth", title: "Bluetooth", real: true },
         { id: "apps", title: "Applications", real: true },
         { id: "ai", title: "AI", real: true },
-        { id: "privacy", title: "Privacy", real: false },
+        { id: "privacy", title: "Privacy", real: true },
         { id: "agents", title: "Agents", real: true },
         { id: "storage", title: "Storage", real: true },
         { id: "power", title: "Battery & Power", real: true },
         { id: "security", title: "Security", real: true },
         { id: "updates", title: "Updates", real: true },
-        { id: "accessibility", title: "Accessibility", real: false },
+        { id: "accessibility", title: "Accessibility", real: true },
         { id: "system", title: "System", real: true },
         { id: "developer", title: "Developer", real: false, devOnly: true }
     ]
@@ -989,12 +989,95 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Privacy (PENDING) =====
+                        // ===== Privacy (REAL - clears real, on-disk activity traces) =====
                         Column {
+                            id: privacyTab
                             visible: settingsPanel.currentPage === "privacy"
                             width: parent.width; spacing: 10
+                            property int clipboardCount: 0
+                            property int recentFilesCount: 0
+                            property int shellHistoryCount: 0
+                            property string statusMsg: ""
+
+                            function refresh() {
+                                clipboardCountProc.running = true
+                                recentFilesProc.running = true
+                                shellHistoryProc.running = true
+                            }
+                            Component.onCompleted: refresh()
+
+                            Process {
+                                id: clipboardCountProc
+                                command: ["bash", "-c", "cliphist list | wc -l"]
+                                stdout: SplitParser { onRead: function (data) { if (data) privacyTab.clipboardCount = parseInt(data) || 0 } }
+                            }
+                            Process {
+                                id: recentFilesProc
+                                command: ["bash", "-c", "grep -c '<bookmark' ~/.local/share/recently-used.xbel 2>/dev/null || echo 0"]
+                                stdout: SplitParser { onRead: function (data) { if (data) privacyTab.recentFilesCount = parseInt(data) || 0 } }
+                            }
+                            Process {
+                                id: shellHistoryProc
+                                command: ["bash", "-c", "wc -l < ~/.bash_history 2>/dev/null || echo 0"]
+                                stdout: SplitParser { onRead: function (data) { if (data) privacyTab.shellHistoryCount = parseInt(data) || 0 } }
+                            }
+                            Process {
+                                id: privacyActionProc
+                                onExited: function (exitCode, exitStatus) { privacyTab.refresh() }
+                            }
+                            function clearClipboard() { privacyTab.statusMsg = "Clipboard history cleared."; privacyActionProc.command = ["cliphist", "wipe"]; privacyActionProc.running = true }
+                            function clearRecentFiles() { privacyTab.statusMsg = "Recent files list cleared."; privacyActionProc.command = ["bash", "-c", "rm -f ~/.local/share/recently-used.xbel"]; privacyActionProc.running = true }
+                            function clearShellHistory() { privacyTab.statusMsg = "Command history cleared."; privacyActionProc.command = ["bash", "-c", "cat /dev/null > ~/.bash_history"]; privacyActionProc.running = true }
+
                             Text { text: "PRIVACY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - no AI feature tracks file/clipboard/screen access yet, so this page has nothing real to show until one does."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "JAZZ sends no telemetry. All AI processing runs locally via Ollama - nothing about what you type, ask, or run leaves this machine unless you explicitly configure a cloud service."
+                                color: Theme.panelInk; font.pixelSize: 12
+                            }
+                            Text {
+                                visible: privacyTab.statusMsg.length > 0
+                                text: privacyTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 11
+                            }
+                            Text { text: "ACTIVITY TRACES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Row {
+                                width: parent.width; spacing: 10
+                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                Rectangle {
+                                    width: 60; height: 22; radius: 4; color: Theme.range
+                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
+                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearClipboard() }
+                                }
+                            }
+                            Row {
+                                width: parent.width; spacing: 10
+                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                Rectangle {
+                                    width: 60; height: 22; radius: 4; color: Theme.range
+                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
+                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearRecentFiles() }
+                                }
+                            }
+                            Row {
+                                width: parent.width; spacing: 10
+                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                Rectangle {
+                                    width: 60; height: 22; radius: 4; color: Theme.range
+                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: "#ffffff" }
+                                    MouseArea { anchors.fill: parent; onClicked: privacyTab.clearShellHistory() }
+                                }
+                            }
+                            Text {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "Clearing command history resets the saved file - any terminal windows already open keep their own history in memory until closed."
+                                color: Theme.textSecondary; font.pixelSize: 10
+                            }
+                            Text { text: "MORE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Text {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "AI action history and permissions live under Agents. Firewall, SSH, and disk-encryption status live under Security."
+                                color: Theme.textSecondary; font.pixelSize: 11
+                            }
                         }
 
                         // ===== Agents (REAL - Task 30) =====
@@ -1212,12 +1295,142 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Accessibility (PENDING) =====
+                        // ===== Accessibility (REAL - reduced motion + whole-desktop UI scale) =====
                         Column {
+                            id: accessTab
                             visible: settingsPanel.currentPage === "accessibility"
                             width: parent.width; spacing: 10
+                            property var monitorData: null
+                            property string originalScaleLuaLine: ""
+                            property bool scaleTimerActive: false
+                            property int scaleSecondsLeft: 12
+
+                            Process {
+                                id: accessMonitorProc
+                                command: ["bash", "-c", "hyprctl monitors -j"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        try { accessTab.monitorData = JSON.parse(this.text)[0] } catch (e) {}
+                                    }
+                                }
+                            }
+                            function refreshMonitor() { accessMonitorProc.running = true }
+                            Component.onCompleted: refreshMonitor()
+
+                            // Same fire-and-forget/race precaution as the Displays tab (Task 28
+                            // slice 5) - give the compositor a moment before re-querying state.
+                            Timer {
+                                id: accessRefreshDelay
+                                interval: 500; repeat: false
+                                onTriggered: accessTab.refreshMonitor()
+                            }
+                            Timer {
+                                interval: 1000; repeat: true; running: accessTab.scaleTimerActive
+                                onTriggered: {
+                                    accessTab.scaleSecondsLeft -= 1
+                                    if (accessTab.scaleSecondsLeft <= 0) {
+                                        Quickshell.execDetached(["hyprctl", "eval", accessTab.originalScaleLuaLine])
+                                        accessTab.scaleTimerActive = false
+                                        accessRefreshDelay.restart()
+                                    }
+                                }
+                            }
+                            function scaleLuaFor(scaleVal) {
+                                var m = accessTab.monitorData
+                                return 'hl.monitor({ output = "' + m.name + '", mode = "' + m.width + 'x' + m.height + '@' + m.refreshRate.toFixed(2) + '", position = "' + m.x + 'x' + m.y + '", scale = ' + scaleVal + ' })'
+                            }
+                            function applyScale(scaleVal) {
+                                var m = accessTab.monitorData
+                                accessTab.originalScaleLuaLine = accessTab.scaleLuaFor(m.scale)
+                                Quickshell.execDetached(["hyprctl", "eval", accessTab.scaleLuaFor(scaleVal)])
+                                accessTab.scaleSecondsLeft = 12
+                                accessTab.scaleTimerActive = true
+                            }
+
                             Text { text: "ACCESSIBILITY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Not built yet - reduced motion and UI scaling (required by Task 28's acceptance criteria) land in a later slice, as real working controls, not stubs."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text { text: "MOTION"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Row {
+                                spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                Rectangle {
+                                    width: 38; height: 20; radius: 10
+                                    color: Theme.reducedMotion ? Theme.forge : Theme.panelInk
+                                    opacity: Theme.reducedMotion ? 1 : 0.25
+                                    Rectangle { width: 16; height: 16; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: Theme.reducedMotion ? parent.width - width - 2 : 2 }
+                                    MouseArea { anchors.fill: parent; onClicked: Theme.reducedMotion = !Theme.reducedMotion }
+                                }
+                            }
+                            Text {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "Turns off JAZZ's own color/transition animations (currently: the top bar's workspace-color change). Native app animations aren't affected."
+                                color: Theme.textSecondary; font.pixelSize: 10
+                            }
+                            Text { text: "TEXT & UI SIZE"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Text {
+                                text: accessTab.monitorData ? ("Current: " + Math.round(accessTab.monitorData.scale * 100) + "%") : "loading..."
+                                color: Theme.panelInk; font.pixelSize: 13
+                            }
+                            Text {
+                                width: parent.width; wrapMode: Text.Wrap
+                                text: "Scales the entire desktop - dock, top bar, Settings, and every app - not just JAZZ's own panels. Same safety timer as Displays: a bad size always reverts on its own."
+                                color: Theme.textSecondary; font.pixelSize: 10
+                            }
+                            Row {
+                                spacing: 6
+                                Repeater {
+                                    model: [1.0, 1.15, 1.25, 1.5, 1.75]
+                                    delegate: Rectangle {
+                                        property real scaleVal: modelData
+                                        width: 56; height: 26; radius: 6
+                                        color: accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01 ? Theme.forge : Theme.surfaceRaised
+                                        opacity: accessTab.scaleTimerActive ? 0.4 : 1
+                                        Text {
+                                            anchors.centerIn: parent; text: Math.round(scaleVal * 100) + "%"; font.pixelSize: 11
+                                            color: accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01 ? "#ffffff" : Theme.panelInk
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            enabled: !accessTab.scaleTimerActive
+                                            onClicked: accessTab.applyScale(scaleVal)
+                                        }
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                visible: accessTab.scaleTimerActive
+                                width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
+                                border.color: Theme.forge; border.width: 1
+                                Column {
+                                    anchors.centerIn: parent; spacing: 8
+                                    Text {
+                                        text: "Keep this size? Reverting in " + accessTab.scaleSecondsLeft + "s"
+                                        color: Theme.panelInk; font.pixelSize: 13
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                    Row {
+                                        spacing: 10
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        Rectangle {
+                                            width: 70; height: 24; radius: 6; color: Theme.forge
+                                            Text { anchors.centerIn: parent; text: "Keep"; color: "#ffffff"; font.pixelSize: 11 }
+                                            MouseArea { anchors.fill: parent; onClicked: { accessTab.scaleTimerActive = false; accessTab.refreshMonitor() } }
+                                        }
+                                        Rectangle {
+                                            width: 70; height: 24; radius: 6; color: Theme.panel
+                                            border.color: Theme.panelInk; border.width: 1
+                                            Text { anchors.centerIn: parent; text: "Revert"; color: Theme.panelInk; font.pixelSize: 11 }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    Quickshell.execDetached(["hyprctl", "eval", accessTab.originalScaleLuaLine])
+                                                    accessTab.scaleTimerActive = false
+                                                    accessRefreshDelay.restart()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // ===== System (REAL) =====
