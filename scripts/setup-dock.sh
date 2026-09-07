@@ -163,10 +163,30 @@ ShellRoot {
             { name: "Range", color: Theme.range, dormant: true }
         ]
         property string active: "Forge"
-        function activeColor() {
-            for (var i = 0; i < list.length; i++) if (list[i].name === active) return list[i].color
+        // Task 28 feedback (Akash): let a workspace's DISPLAY name/color be
+        // customized without touching its real Hyprland identity - so the
+        // Super+1..6 keybinds (which target the real name) never break.
+        // Settings.qml's Desktop tab writes this same file; watchChanges
+        // picks the edit up live, no restart needed.
+        property var overrides: ({})
+        function defaultColor(name) {
+            for (var i = 0; i < list.length; i++) if (list[i].name === name) return list[i].color
             return Theme.forge
         }
+        function labelFor(name) {
+            return (overrides[name] && overrides[name].label) ? overrides[name].label : name
+        }
+        function colorFor(name) {
+            return (overrides[name] && overrides[name].color) ? overrides[name].color : defaultColor(name)
+        }
+        function activeColor() { return colorFor(active) }
+    }
+    FileView {
+        id: workspaceOverridesFile
+        path: "@@JAZZ_DATA_DIR@@/workspace-overrides.json"
+        watchChanges: true
+        onLoaded: { try { workspaces.overrides = JSON.parse(workspaceOverridesFile.text()) } catch (e) {} }
+        onFileChanged: workspaceOverridesFile.reload()
     }
     Process {
         id: wsPollProc
@@ -329,13 +349,13 @@ ShellRoot {
                         Row {
                             anchors.centerIn: parent
                             spacing: 5
-                            Rectangle { width: 6; height: 6; radius: 3; color: modelData.color; anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle { width: 6; height: 6; radius: 3; color: workspaces.colorFor(modelData.name); anchors.verticalCenter: parent.verticalCenter }
                             Text {
                                 id: pillText
-                                text: modelData.name
+                                text: workspaces.labelFor(modelData.name)
                                 font.pixelSize: 10
                                 font.italic: modelData.dormant
-                                color: active ? modelData.color : "#ffffff"
+                                color: active ? workspaces.colorFor(modelData.name) : "#ffffff"
                             }
                         }
                         MouseArea {
@@ -606,7 +626,7 @@ ShellRoot {
         property real volumeVal: 0
 
         onVisibleChanged: {
-            if (visible) { btProc.running = true; briProc.running = true; volCheckProc.running = true }
+            if (visible) { btProc.running = true; briProc.running = true; volCheckProc.running = true; volReadProc.running = true }
         }
 
         Process {
@@ -623,6 +643,17 @@ ShellRoot {
             id: volCheckProc
             command: ["bash", "-c", "wpctl status 2>/dev/null | awk '/Sinks:/,/Sources:/' | grep -qE '[0-9]+\\.' && echo yes || echo no"]
             stdout: SplitParser { onRead: function (data) { quickSettings.audioAvailable = (data === "yes") } }
+        }
+        Process {
+            id: volReadProc
+            command: ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@"]
+            stdout: SplitParser {
+                onRead: function (data) {
+                    if (!data) return
+                    var m = data.match(/([0-9.]+)/)
+                    if (m) quickSettings.volumeVal = Math.round(parseFloat(m[1]) * 100)
+                }
+            }
         }
 
         Column {

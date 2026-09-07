@@ -280,34 +280,133 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Desktop (REAL - informational; layout is fixed by design for v1) =====
+                        // ===== Desktop (REAL - workspace display-name + color overrides,
+                        // Akash's feedback after using Task 28. Renaming/recoloring here is
+                        // deliberately DISPLAY-ONLY: it edits a small JSON file
+                        // (workspace-overrides.json) that shell.qml's dock/top bar reads
+                        // live (FileView watchChanges) - Hyprland's own real workspace name
+                        // (and the Super+1..6 keybinds that target it) never changes, so
+                        // nothing about how you switch workspaces can break. Layout itself
+                        // (dock position, auto-hide, hot corners) is still fixed by design
+                        // for v1 - no controls shown for things that wouldn't do anything.
                         Column {
+                            id: desktopTab
                             visible: settingsPanel.currentPage === "desktop"
                             width: parent.width; spacing: 10
+                            property var overrides: ({})
+                            property string statusMsg: ""
+
+                            readonly property var workspaceDefs: [
+                                { name: "Forge", desc: "Coding, AI app engineering", color: Theme.forge },
+                                { name: "Lab", desc: "Notebooks, PyTorch/Jupyter", color: Theme.lab },
+                                { name: "Arena", desc: "AI red-teaming", color: Theme.arena },
+                                { name: "Observe", desc: "Logs, metrics, AI Command Centre", color: Theme.observe },
+                                { name: "Vault", desc: "Secrets, sensitive config", color: Theme.vault },
+                                { name: "Range", desc: "Reserved - dormant", color: Theme.range }
+                            ]
+
+                            FileView {
+                                id: workspaceOverridesFile
+                                path: "@@JAZZ_DATA_DIR@@/workspace-overrides.json"
+                                onLoaded: { try { desktopTab.overrides = JSON.parse(workspaceOverridesFile.text()) } catch (e) {} }
+                            }
+                            Component.onCompleted: workspaceOverridesFile.reload()
+
+                            function labelFor(name) { return (desktopTab.overrides[name] && desktopTab.overrides[name].label) ? desktopTab.overrides[name].label : name }
+                            function colorFor(name, fallback) { return (desktopTab.overrides[name] && desktopTab.overrides[name].color) ? desktopTab.overrides[name].color : fallback }
+                            function isValidHex(s) { return /^#[0-9A-Fa-f]{6}$/.test(s) }
+                            function saveOverride(name, label, color) {
+                                var next = JSON.parse(JSON.stringify(desktopTab.overrides))
+                                next[name] = { label: label, color: color }
+                                desktopTab.overrides = next
+                                workspaceOverridesFile.setText(JSON.stringify(next))
+                                desktopTab.statusMsg = name + " updated."
+                            }
+                            function resetOverride(name) {
+                                var next = JSON.parse(JSON.stringify(desktopTab.overrides))
+                                delete next[name]
+                                desktopTab.overrides = next
+                                workspaceOverridesFile.setText(JSON.stringify(next))
+                                desktopTab.statusMsg = name + " reset to default."
+                            }
+
                             Text { text: "DESKTOP"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Workspaces"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Row {
+                                width: parent.width; spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Workspaces"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                Text { anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 10 }
+                            }
                             Column {
-                                width: parent.width; spacing: 4
+                                width: parent.width; spacing: 8
                                 Repeater {
-                                    model: [
-                                        { name: "Forge", desc: "Coding, AI app engineering", color: Theme.forge },
-                                        { name: "Lab", desc: "Notebooks, PyTorch/Jupyter", color: Theme.lab },
-                                        { name: "Arena", desc: "AI red-teaming", color: Theme.arena },
-                                        { name: "Observe", desc: "Logs, metrics, AI Command Centre", color: Theme.observe },
-                                        { name: "Vault", desc: "Secrets, sensitive config", color: Theme.vault },
-                                        { name: "Range", desc: "Reserved - dormant", color: Theme.range }
-                                    ]
-                                    delegate: Row {
-                                        spacing: 8
-                                        Rectangle { width: 10; height: 10; radius: 5; anchors.verticalCenter: parent.verticalCenter; color: modelData.color }
-                                        Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 12; width: 70 }
-                                        Text { text: modelData.desc; color: Theme.textSecondary; font.pixelSize: 11 }
+                                    model: desktopTab.workspaceDefs
+                                    delegate: Rectangle {
+                                        id: wsRow
+                                        property var wsData: modelData
+                                        property string nameText: desktopTab.labelFor(wsData.name)
+                                        property string colorText: desktopTab.colorFor(wsData.name, wsData.color)
+                                        property bool hasOverride: desktopTab.overrides[wsData.name] !== undefined
+                                        width: parent.width; height: 62; radius: 8; color: Theme.surfaceRaised
+                                        Column {
+                                            anchors.fill: parent; anchors.margins: 8; spacing: 4
+                                            Row {
+                                                width: parent.width; spacing: 8
+                                                Text { text: "Real name: " + wsRow.wsData.name; color: Theme.textSecondary; font.pixelSize: 10; width: 120 }
+                                                Text { text: wsRow.wsData.desc; color: Theme.textSecondary; font.pixelSize: 10 }
+                                            }
+                                            Row {
+                                                width: parent.width; spacing: 8
+                                                Rectangle {
+                                                    width: 140; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: Theme.panelInk; border.width: 1
+                                                    TextInput {
+                                                        anchors.fill: parent; anchors.margins: 4
+                                                        color: Theme.panelInk; font.pixelSize: 11; clip: true
+                                                        text: wsRow.nameText
+                                                        onTextChanged: wsRow.nameText = text
+                                                    }
+                                                }
+                                                Rectangle {
+                                                    width: 90; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: desktopTab.isValidHex(wsRow.colorText) ? Theme.panelInk : Theme.range
+                                                    border.width: 1
+                                                    TextInput {
+                                                        anchors.fill: parent; anchors.margins: 4
+                                                        color: Theme.panelInk; font.pixelSize: 11; clip: true
+                                                        text: wsRow.colorText
+                                                        onTextChanged: wsRow.colorText = text
+                                                    }
+                                                }
+                                                Rectangle {
+                                                    width: 18; height: 18; radius: 9; anchors.verticalCenter: parent.verticalCenter
+                                                    color: desktopTab.isValidHex(wsRow.colorText) ? wsRow.colorText : wsRow.wsData.color
+                                                    border.color: Theme.panelInk; border.width: 1
+                                                }
+                                                Rectangle {
+                                                    width: 50; height: 22; radius: 4; color: Theme.forge
+                                                    opacity: (desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0) ? 1 : 0.4
+                                                    Text { anchors.centerIn: parent; text: "Save"; font.pixelSize: 10; color: "#ffffff" }
+                                                    MouseArea {
+                                                        anchors.fill: parent
+                                                        enabled: desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0
+                                                        onClicked: desktopTab.saveOverride(wsRow.wsData.name, wsRow.nameText.trim(), wsRow.colorText)
+                                                    }
+                                                }
+                                                Rectangle {
+                                                    visible: wsRow.hasOverride
+                                                    width: 55; height: 22; radius: 4; color: Theme.panel
+                                                    border.color: Theme.panelInk; border.width: 1
+                                                    Text { anchors.centerIn: parent; text: "Reset"; font.pixelSize: 10; color: Theme.panelInk }
+                                                    MouseArea { anchors.fill: parent; onClicked: desktopTab.resetOverride(wsRow.wsData.name) }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                             Text {
-                                text: "Workspace identity, the dock, and top bar are fixed by JAZZ's design for v1 - no auto-hide/hot-corner/icon toggles exist yet, so none are shown here as controls that wouldn't do anything."
-                                color: Theme.textSecondary; font.pixelSize: 11; wrapMode: Text.Wrap; width: parent.width
+                                text: "Renaming here only changes the display label shown in the dock, top bar, and this list - Hyprland's own workspace identity (and your Super+1..6 keybinds) stay exactly as they are, so nothing about how you switch workspaces can break. Color changes also retint the top bar when that workspace is active. Window-border colors from the existing per-workspace rule stay on the original color for now. Dock/hot-corner/auto-hide behavior is still fixed by design for v1."
+                                color: Theme.textSecondary; font.pixelSize: 10; wrapMode: Text.Wrap; width: parent.width
                             }
                         }
 
@@ -474,12 +573,105 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Sound (existing, unchanged) =====
+                        // ===== Sound (REAL - was a one-line stub; now a real volume slider +
+                        // mute + output device, backed by wpctl same as the quick-settings
+                        // flyout, but this time actually reading and showing the real level) =====
                         Column {
+                            id: soundTab
                             visible: settingsPanel.currentPage === "sound"
                             width: parent.width; spacing: 10
+                            property bool audioAvailable: false
+                            property real volumePct: 0
+                            property bool muted: false
+                            property string outputName: "..."
+
+                            function refresh() {
+                                soundCheckProc.running = true
+                                soundVolProc.running = true
+                                soundOutputProc.running = true
+                            }
+                            Component.onCompleted: refresh()
+
+                            Process {
+                                id: soundCheckProc
+                                command: ["bash", "-c", "wpctl status 2>/dev/null | awk '/Sinks:/,/Sources:/' | grep -qE '[0-9]+\\.' && echo yes || echo no"]
+                                stdout: SplitParser { onRead: function (data) { soundTab.audioAvailable = (data === "yes") } }
+                            }
+                            Process {
+                                id: soundVolProc
+                                command: ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@"]
+                                stdout: SplitParser {
+                                    onRead: function (data) {
+                                        if (!data) return
+                                        soundTab.muted = data.indexOf("MUTED") >= 0
+                                        var m = data.match(/([0-9.]+)/)
+                                        if (m) soundTab.volumePct = Math.round(parseFloat(m[1]) * 100)
+                                    }
+                                }
+                            }
+                            Process {
+                                id: soundOutputProc
+                                command: ["bash", "-c", "wpctl status 2>/dev/null | awk '/Sinks:/,/Sources:/' | grep '\\*' | sed -E 's/^[^0-9]*[0-9]+\\. *//; s/ *\\[vol.*//'"]
+                                stdout: SplitParser { onRead: function (data) { if (data) soundTab.outputName = data } }
+                            }
+                            Process {
+                                id: soundSetProc
+                            }
+                            function setVolume(pct) {
+                                soundTab.volumePct = pct
+                                soundSetProc.command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)]
+                                soundSetProc.running = true
+                            }
+                            function toggleMute() {
+                                soundSetProc.command = ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]
+                                soundSetProc.running = true
+                                soundTab.muted = !soundTab.muted
+                            }
+
                             Text { text: "SOUND"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Same volume control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            Text {
+                                visible: !soundTab.audioAvailable
+                                text: "Not available - no audio device detected."
+                                color: Theme.textSecondary; font.pixelSize: 12
+                            }
+                            Column {
+                                visible: soundTab.audioAvailable
+                                width: parent.width; spacing: 10
+                                Text { text: "Output: " + soundTab.outputName; color: Theme.panelInk; font.pixelSize: 12 }
+                                Item {
+                                    width: parent.width; height: 26
+                                    Text {
+                                        id: volLabel
+                                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                        text: "Volume"; color: Theme.panelInk; font.pixelSize: 12; width: 55
+                                    }
+                                    Rectangle {
+                                        id: muteBtn
+                                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                        width: 50; height: 22; radius: 4; color: soundTab.muted ? Theme.range : Theme.surfaceRaised
+                                        Text { anchors.centerIn: parent; text: soundTab.muted ? "Muted" : "Mute"; font.pixelSize: 10; color: soundTab.muted ? "#ffffff" : Theme.panelInk }
+                                        MouseArea { anchors.fill: parent; onClicked: soundTab.toggleMute() }
+                                    }
+                                    Text {
+                                        id: pctLabel
+                                        anchors.right: muteBtn.left; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter
+                                        text: soundTab.volumePct + "%"; color: Theme.textSecondary; font.pixelSize: 11
+                                        width: 34; horizontalAlignment: Text.AlignRight
+                                    }
+                                    Rectangle {
+                                        anchors.left: volLabel.right; anchors.leftMargin: 10
+                                        anchors.right: pctLabel.left; anchors.rightMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        height: 8; radius: 4; color: Theme.surfaceRaised
+                                        Rectangle { width: parent.width * (soundTab.muted ? 0 : soundTab.volumePct) / 100; height: parent.height; radius: 4; color: Theme.forge }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onPressed: (mouse) => soundTab.setVolume(Math.max(0, Math.min(100, Math.round(mouse.x / width * 100))))
+                                            onPositionChanged: (mouse) => { if (pressed) soundTab.setVolume(Math.max(0, Math.min(100, Math.round(mouse.x / width * 100)))) }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // ===== Network (REAL - live Wi-Fi scan + connect, replaces the old
@@ -964,9 +1156,9 @@ PanelWindow {
                             Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 13 }
                             Text {
                                 text: aiTab.runningModels.length > 0
-                                    ? ("Running: " + aiTab.runningModels[0].name + " (" + aiTab.runningModels[0].size_vram + " bytes VRAM)")
-                                    : "No model currently loaded"
-                                color: Theme.textSecondary; font.pixelSize: 12
+                                    ? ("Running in memory: " + aiTab.runningModels[0].name + " (" + aiTab.runningModels[0].size_vram + " bytes VRAM)")
+                                    : "Nothing loaded in memory right now - Ollama unloads idle models automatically after a few minutes. Installed models (below) reload in seconds the next time you use them."
+                                color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width
                             }
                             Text { text: "INSTALLED MODELS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
                             Column {
