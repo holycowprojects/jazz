@@ -88,14 +88,16 @@ PanelWindow {
 
     function searchResults() {
         if (searchQuery.length === 0) return []
-        var q = searchQuery.toLowerCase()
+        // Match per-word (not one contiguous substring) so a query like "dark
+        // mode" finds a title like "Dark / Light mode" - each word just needs
+        // to appear somewhere across the title + keywords, in any order.
+        var words = searchQuery.toLowerCase().split(/\s+/).filter(function(w) { return w.length > 0 })
         var out = []
         for (var i = 0; i < schema.length; i++) {
             var e = schema[i]
-            if (e.title.toLowerCase().indexOf(q) >= 0) { out.push(e); continue }
-            for (var k = 0; k < e.keywords.length; k++) {
-                if (e.keywords[k].toLowerCase().indexOf(q) >= 0) { out.push(e); break }
-            }
+            var haystack = e.title.toLowerCase() + " " + e.keywords.join(" ").toLowerCase()
+            var allWordsFound = words.every(function(w) { return haystack.indexOf(w) >= 0 })
+            if (allWordsFound) out.push(e)
         }
         return out
     }
