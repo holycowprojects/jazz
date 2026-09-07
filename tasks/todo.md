@@ -881,7 +881,7 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
-### Task 28: Jazz Settings — full expansion
+### Task 28: Jazz Settings — full expansion — **DONE, 7 Sept 2026**
 
 **Description:** Not part of the original 20-task plan; scoped 7 Sept 2026 from `docs/JAZZ-v2.md` sec 5b, after Akash's explicit direction that JAZZ must have a real GUI-based settings control, going further than Omarchy in this specific area (confirmed via live research, `omarchy.org/manual`/GitHub, 7 Sept 2026: Omarchy's "Settings" is a `Super+Space` menu + `omarchy` CLI wrapping existing tools, not a panel GUI at all). Task 22 already built a real native Quickshell settings surface (5 tabs: Appearance/Network/Bluetooth/Sound/Display) — this task grows that panel into the full structured surface, not a rebuild.
 
@@ -936,12 +936,16 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 - Both sections' `real` flag flipped true, confirmed via screenshot (no more "•" pending marker in the sidebar for either).
 - Scale-button clicking and the reduce-motion toggle weren't click-tested live this session (only screenshotted in their default state) - same category as the Network/Bluetooth gap two sections up; low risk since both reuse already-proven mechanisms (Displays' scale/timer pattern, the darkMode/Bluetooth toggle pattern), but worth a quick real click if Akash wants full confidence.
 
-**Still pending (next slice, not yet built):** Developer's deeper tools (Hyprland event log, D-Bus inspector, etc. - the basic Developer Mode toggle already works).
+**Developer's deeper tools DONE, 7 Sept 2026 (Akash's request, built and confirmed live on the Yoga 6 via screenshot same session):**
+- **Hyprland Event Log**: a real live feed of Hyprland's own IPC event stream (`.socket2.sock` - the same socket every status bar/widget ecosystem reads from), captured via a new tiny stdlib-only script (`configs/quickshell/jazz-hypr-events.py`, deployed by `setup-settings.sh` alongside Keybinds.md) rather than installing `socat`/`nc` (neither was on the box) - Python's own `socket` module connects to the AF_UNIX socket directly, same "no new dependency" precedent as `scan-apps.py`/`jazz-agent-action`. Runs only while the Developer tab is open (`running: developerTab.visible`), rolling 40-line buffer, auto-scrolls, Clear button. Confirmed live: triggered two real `hyprctl dispatch` workspace switches and watched the exact real events (`createworkspace>>Lab`, `workspace>>Lab`, `destroyworkspace>>Forge`, ...) appear.
+- **D-Bus Inspector**: real session-bus service list (`busctl --user list`, confirmed 59 real services live - Hyprland, Quickshell, dunst, wireplumber, xdg-desktop-portal, etc.), click a row to inspect its object tree (`busctl --user tree <name>`, confirmed fast/safe with a `timeout 3` guard).
+- Developer Mode toggle re-tested both directions again after adding this (enabled to test, disabled again before handing back) - unaffected, still works correctly both ways.
+- Developer section's `real` flag flipped true. **All 18 of 18 Task 28 Settings sections are now real - the task's full section-coverage acceptance criterion is met.**
 
 **Reduced-motion checklist added 7 Sept 2026 (`Operating_UX_UI_Blueprint.md` §54, Akash's request, analyzed same session)** - concrete things for the eventual reduced-motion toggle to actually gate, once built: the top bar's workspace-color `ColorAnimation` (confirmed real, already exists in `shell.qml`'s `topBar`), dock hover/magnification effects (if added later per the same doc's dock spec, not yet built), any future wallpaper-transition/AI-pulsing effects. Recorded so the toggle has real, known targets instead of being scoped blind.
 
-**Acceptance criteria (full task - partially met, see slice notes above):**
-- [~] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **17 of 18 sections real, only Developer's deeper tools still pending**
+**Acceptance criteria (full task - all met):**
+- [x] Every listed section exists as a real tab/page in the settings app, backed by real live data wherever a Track A/B/C script already exposes that data — **18 of 18 sections real, confirmed 7 Sept 2026**
 - [x] Settings search returns correct results for at least 5 real spot-check queries — all 5 confirmed live 7 Sept 2026, one real word-matching bug found and fixed along the way
 - [x] Displays changes have a working rollback timer, confirmed live — apply/countdown/auto-revert and explicit Keep/Revert all confirmed live on real hardware, 7 Sept 2026
 - [x] Accessibility section has real, working controls (not stubs) for at least reduced motion and UI scaling — DONE, confirmed live via screenshot; reduced motion gates the top bar's `ColorAnimation`, UI scaling reuses Displays' real `hl.monitor` scale mechanism + rollback timer (no big refactor needed - see slice note above)

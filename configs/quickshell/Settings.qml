@@ -76,7 +76,7 @@ PanelWindow {
         { id: "updates", title: "Updates", real: true },
         { id: "accessibility", title: "Accessibility", real: true },
         { id: "system", title: "System", real: true },
-        { id: "developer", title: "Developer", real: false, devOnly: true }
+        { id: "developer", title: "Developer", real: true, devOnly: true }
     ]
 
     function visibleSections() {
@@ -1495,12 +1495,141 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Developer (PENDING, hidden by default) =====
+                        // ===== Developer (REAL, hidden by default - Hyprland event log +
+                        // D-Bus inspector, reading Hyprland's real .socket2.sock IPC feed
+                        // via a tiny stdlib Python script, same "no new dependency" pattern
+                        // as scan-apps.py) =====
                         Column {
+                            id: developerTab
                             visible: settingsPanel.currentPage === "developer"
                             width: parent.width; spacing: 10
+                            property var eventLines: []
+                            property var busNames: []
+                            property string selectedBusName: ""
+                            property string treeText: ""
+
+                            Process {
+                                id: hyprEventsProc
+                                running: developerTab.visible
+                                command: ["python3", "@@JAZZ_DATA_DIR@@/jazz-hypr-events.py"]
+                                stdout: SplitParser {
+                                    onRead: function (data) {
+                                        if (!data) return
+                                        var arr = developerTab.eventLines.concat([data])
+                                        if (arr.length > 40) arr = arr.slice(arr.length - 40)
+                                        developerTab.eventLines = arr
+                                    }
+                                }
+                            }
+
+                            function refreshBus() { busListProc.running = true }
+                            Component.onCompleted: refreshBus()
+                            Process {
+                                id: busListProc
+                                command: ["bash", "-c", "busctl --user list --no-legend"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var lines = this.text.split("\n").filter(function (l) { return l.trim().length > 0 })
+                                        var out = []
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var name = lines[i].trim().split(/\s+/)[0]
+                                            out.push({ raw: lines[i].trim(), name: name })
+                                        }
+                                        developerTab.busNames = out
+                                    }
+                                }
+                            }
+                            Process {
+                                id: busTreeProc
+                                stdout: StdioCollector { onStreamFinished: developerTab.treeText = this.text }
+                            }
+                            function inspectBus(name) {
+                                developerTab.selectedBusName = name
+                                developerTab.treeText = "loading..."
+                                busTreeProc.command = ["bash", "-c", "timeout 3 busctl --user tree '" + name + "' 2>&1"]
+                                busTreeProc.running = true
+                            }
+
                             Text { text: "DEVELOPER"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Developer Mode is on. Deeper tools (Hyprland event log, D-Bus inspector) land in a later Task 28 slice - for now, use the Agents tab's ledger and a terminal."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+
+                            Row {
+                                spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: Theme.forge; font.pixelSize: 10 }
+                                Rectangle {
+                                    width: 50; height: 20; radius: 4; color: Theme.surfaceRaised
+                                    Text { anchors.centerIn: parent; text: "Clear"; font.pixelSize: 10; color: Theme.panelInk }
+                                    MouseArea { anchors.fill: parent; onClicked: developerTab.eventLines = [] }
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width; height: 220; radius: 6; color: Theme.surfaceRaised
+                                clip: true
+                                Flickable {
+                                    id: eventFlick
+                                    anchors.fill: parent; anchors.margins: 6
+                                    contentHeight: eventText.height
+                                    contentWidth: width
+                                    Text {
+                                        id: eventText
+                                        width: eventFlick.width
+                                        text: developerTab.eventLines.length > 0 ? developerTab.eventLines.join("\n") : "Waiting for events - switch workspaces, open a window, or plug/unplug something to see live IPC events here."
+                                        color: Theme.panelInk; font.pixelSize: 10; font.family: "monospace"
+                                        wrapMode: Text.Wrap
+                                        onTextChanged: eventFlick.contentY = Math.max(0, height - eventFlick.height)
+                                    }
+                                }
+                            }
+
+                            Row {
+                                spacing: 10
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "D-BUS INSPECTOR (session bus)"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                                Rectangle {
+                                    width: 60; height: 20; radius: 4; color: Theme.surfaceRaised
+                                    Text { anchors.centerIn: parent; text: "Refresh"; font.pixelSize: 10; color: Theme.panelInk }
+                                    MouseArea { anchors.fill: parent; onClicked: developerTab.refreshBus() }
+                                }
+                            }
+                            Text { text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 10 }
+                            Rectangle {
+                                width: parent.width; height: 180; radius: 6; color: Theme.surfaceRaised
+                                clip: true
+                                Flickable {
+                                    anchors.fill: parent; anchors.margins: 6
+                                    contentHeight: busCol.height
+                                    contentWidth: width
+                                    Column {
+                                        id: busCol
+                                        width: parent.width; spacing: 1
+                                        Repeater {
+                                            model: developerTab.busNames
+                                            delegate: Rectangle {
+                                                property var svcData: modelData
+                                                width: parent.width; height: 18
+                                                color: developerTab.selectedBusName === svcData.name ? Theme.forge : "#00000000"
+                                                Text {
+                                                    anchors.left: parent.left; anchors.leftMargin: 4; anchors.verticalCenter: parent.verticalCenter
+                                                    text: svcData.raw
+                                                    color: developerTab.selectedBusName === svcData.name ? "#ffffff" : Theme.panelInk
+                                                    font.pixelSize: 9; font.family: "monospace"
+                                                }
+                                                MouseArea { anchors.fill: parent; onClicked: developerTab.inspectBus(svcData.name) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Column {
+                                visible: developerTab.selectedBusName.length > 0
+                                width: parent.width; spacing: 4
+                                Text { text: developerTab.selectedBusName; color: Theme.panelInk; font.pixelSize: 11; font.bold: true }
+                                Text {
+                                    width: parent.width
+                                    text: developerTab.treeText
+                                    color: Theme.panelInk; font.pixelSize: 10; font.family: "monospace"
+                                    wrapMode: Text.Wrap
+                                }
+                            }
                         }
                     }
                 }
