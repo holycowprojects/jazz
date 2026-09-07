@@ -305,12 +305,123 @@ PanelWindow {
                             }
                         }
 
-                        // ===== Displays (existing, unchanged for now - rollback timer is a follow-up slice) =====
+                        // ===== Displays (REAL - resolution control + rollback timer, Task 28's required safety mechanism) =====
                         Column {
+                            id: displayTab
                             visible: settingsPanel.currentPage === "display"
                             width: parent.width; spacing: 10
-                            Text { text: "DISPLAY"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Same brightness control as the quick-settings flyout. Resolution/refresh-rate controls with a rollback timer are a follow-up Task 28 slice."; color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width }
+                            property var monitorData: null
+                            property string originalLuaLine: ""
+                            property bool timerActive: false
+                            property int secondsLeft: 12
+
+                            Process {
+                                id: monitorProc
+                                command: ["bash", "-c", "hyprctl monitors -j"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        try { displayTab.monitorData = JSON.parse(this.text)[0] } catch (e) {}
+                                    }
+                                }
+                            }
+                            function refreshMonitor() { monitorProc.running = true }
+                            Component.onCompleted: refreshMonitor()
+
+                            // A revert issued via Quickshell.execDetached is fire-and-forget - querying
+                            // hyprctl immediately after can race ahead of the compositor actually
+                            // applying it, showing stale data even though the revert itself succeeded.
+                            // Give it a moment to land before re-querying.
+                            Timer {
+                                id: revertRefreshDelay
+                                interval: 500; repeat: false
+                                onTriggered: displayTab.refreshMonitor()
+                            }
+
+                            Timer {
+                                interval: 1000; repeat: true; running: displayTab.timerActive
+                                onTriggered: {
+                                    displayTab.secondsLeft -= 1
+                                    if (displayTab.secondsLeft <= 0) {
+                                        Quickshell.execDetached(["hyprctl", "eval", displayTab.originalLuaLine])
+                                        displayTab.timerActive = false
+                                        revertRefreshDelay.restart()
+                                    }
+                                }
+                            }
+
+                            function luaFor(mode) {
+                                var m = displayTab.monitorData
+                                return 'hl.monitor({ output = "' + m.name + '", mode = "' + mode + '", position = "' + m.x + 'x' + m.y + '", scale = ' + m.scale + ' })'
+                            }
+                            function applyMode(modeStr) {
+                                var m = displayTab.monitorData
+                                var clean = modeStr.replace("Hz", "")
+                                displayTab.originalLuaLine = luaFor(m.width + "x" + m.height + "@" + m.refreshRate.toFixed(2))
+                                Quickshell.execDetached(["hyprctl", "eval", luaFor(clean)])
+                                displayTab.secondsLeft = 12
+                                displayTab.timerActive = true
+                            }
+
+                            Text { text: "DISPLAYS"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Text {
+                                text: displayTab.monitorData
+                                    ? (displayTab.monitorData.name + ": " + displayTab.monitorData.width + "x" + displayTab.monitorData.height + "@" + displayTab.monitorData.refreshRate.toFixed(2) + "Hz, scale " + displayTab.monitorData.scale)
+                                    : "loading..."
+                                color: Theme.panelInk; font.pixelSize: 13
+                            }
+                            Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 11 }
+                            Text { text: "AVAILABLE MODES"; color: Theme.textSecondary; font.pixelSize: 11; font.bold: true }
+                            Flow {
+                                width: parent.width; spacing: 6
+                                Repeater {
+                                    model: displayTab.monitorData ? displayTab.monitorData.availableModes : []
+                                    delegate: Rectangle {
+                                        width: 140; height: 26; radius: 6; color: Theme.surfaceRaised
+                                        opacity: displayTab.timerActive ? 0.4 : 1
+                                        Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 10; color: Theme.panelInk }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            enabled: !displayTab.timerActive
+                                            onClicked: displayTab.applyMode(modelData)
+                                        }
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                visible: displayTab.timerActive
+                                width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
+                                border.color: Theme.forge; border.width: 1
+                                Column {
+                                    anchors.centerIn: parent; spacing: 8
+                                    Text {
+                                        text: "Keep these display settings? Reverting in " + displayTab.secondsLeft + "s"
+                                        color: Theme.panelInk; font.pixelSize: 13
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                    Row {
+                                        spacing: 10
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        Rectangle {
+                                            width: 70; height: 24; radius: 6; color: Theme.forge
+                                            Text { anchors.centerIn: parent; text: "Keep"; color: "#ffffff"; font.pixelSize: 11 }
+                                            MouseArea { anchors.fill: parent; onClicked: { displayTab.timerActive = false; displayTab.refreshMonitor() } }
+                                        }
+                                        Rectangle {
+                                            width: 70; height: 24; radius: 6; color: Theme.panel
+                                            border.color: Theme.panelInk; border.width: 1
+                                            Text { anchors.centerIn: parent; text: "Revert"; color: Theme.panelInk; font.pixelSize: 11 }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    Quickshell.execDetached(["hyprctl", "eval", displayTab.originalLuaLine])
+                                                    displayTab.timerActive = false
+                                                    revertRefreshDelay.restart()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // ===== Keyboard & Mouse (REAL) =====
