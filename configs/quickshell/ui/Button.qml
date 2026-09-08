@@ -50,6 +50,7 @@ Rectangle {
         anchors.centerIn: parent
         text: root.label
         font.pixelSize: root.fontSize
+        font.family: Theme.uiFont
         color: {
             if (root.variant === "primary" || root.variant === "danger") return "#ffffff"
             if (root.variant === "outlineDanger") return Theme.critical

@@ -25,6 +25,7 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 colors = json.loads((ROOT / "design/tokens/colors.json").read_text())
 themes = json.loads((ROOT / "design/tokens/themes.json").read_text())["themes"]
+typography = json.loads((ROOT / "design/tokens/typography.json").read_text())
 out_path = ROOT / "configs/quickshell/Theme.qml"
 
 workspaces = colors["workspaces"]
@@ -106,6 +107,25 @@ lines += [
     "        watchChanges: true",
     "        onLoaded: { try { var s = JSON.parse(root.themeStateFile.text()); if (s.activeTheme) root.activeTheme = s.activeTheme } catch (e) {} }",
     "        onFileChanged: root.themeStateFile.reload()",
+    "    }",
+    "",
+    "    // Fonts (Task 27 font-picker follow-up) - a separate, orthogonal choice",
+    "    // from theme: stays constant across a theme switch, same principle as",
+    "    // the workspace colors. Persisted the same way as activeTheme above -",
+    "    // jazz-font-set writes font-state.json, this FileView picks it up live.",
+    '    property string uiFont: "%s"' % typography["ui"]["default"],
+    '    property string monoFont: "%s"' % typography["monospace"]["default"],
+    "    property FileView fontStateFile: FileView {",
+    '        path: "@@JAZZ_DATA_DIR@@/font-state.json"',
+    "        watchChanges: true",
+    "        onLoaded: {",
+    "            try {",
+    "                var s = JSON.parse(root.fontStateFile.text())",
+    "                if (s.uiFont) root.uiFont = s.uiFont",
+    "                if (s.monoFont) root.monoFont = s.monoFont",
+    "            } catch (e) {}",
+    "        }",
+    "        onFileChanged: root.fontStateFile.reload()",
     "    }",
     "}",
     "",

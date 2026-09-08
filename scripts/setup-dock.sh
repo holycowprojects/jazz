@@ -57,7 +57,9 @@ WORKSPACE_STATE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell"
 UI_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/ui"
 ICONS_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../design/icons" && pwd)/symbols"
 
-pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi papirus-icon-theme
+pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi papirus-icon-theme \
+    inter-font ttf-ibm-plex ttf-mona-sans ttf-fira-sans \
+    ttf-jetbrains-mono ttc-iosevka ttf-cascadia-code
 
 sudo -u "$USERNAME" mkdir -p "$QS_DIR" "$DATA_DIR"
 sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
@@ -350,7 +352,7 @@ ShellRoot {
                 text: Qt.formatTime(clock.date, "hh:mm:ss")
                 color: "#ffffff"
                 font.pixelSize: 21
-                font.family: "monospace"
+                font.family: Theme.monoFont
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -417,7 +419,7 @@ ShellRoot {
                 spacing: 4
                 anchors.verticalCenter: parent.verticalCenter
                 Image { source: "icons/symbols/notifications.svg"; width: 20; height: 20; anchors.verticalCenter: parent.verticalCenter }
-                Text { visible: trayState.notifCount > 0; text: trayState.notifCount; color: "#ffffff"; opacity: 0.8; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
+                Text { font.family: Theme.uiFont; visible: trayState.notifCount > 0; text: trayState.notifCount; color: "#ffffff"; opacity: 0.8; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["dunstctl", "history-pop"]) }
             }
 
@@ -426,7 +428,7 @@ ShellRoot {
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
                 Image { source: "icons/symbols/wifi.svg"; width: 18; height: 18; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
+                Text { font.family: Theme.uiFont; text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "quicksettings", "toggle"]) }
             }
 
@@ -435,7 +437,7 @@ ShellRoot {
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
                 Image { source: "icons/symbols/battery.svg"; width: 18; height: 18; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: trayState.batteryPct + "%"; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
+                Text { font.family: Theme.uiFont; text: trayState.batteryPct + "%"; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Text {
@@ -634,13 +636,13 @@ ShellRoot {
 
             Row {
                 width: parent.width
-                Text { text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 18; width: parent.width - 50 }
-                Text { text: "on"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 16 }
+                Text { font.family: Theme.uiFont; text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 18; width: parent.width - 50 }
+                Text { font.family: Theme.uiFont; text: "on"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 16 }
             }
             Row {
                 width: parent.width
                 spacing: 12
-                Text { text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
+                Text { font.family: Theme.uiFont; text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
                 Rectangle {
                     width: 51; height: 27; radius: 14
                     color: quickSettings.btStatus === "yes" ? WorkspaceState.activeColor() : Theme.panelInk
@@ -662,7 +664,7 @@ ShellRoot {
             Column {
                 width: parent.width
                 spacing: 6
-                Text { text: "Volume"; color: Theme.panelInk; font.pixelSize: 18 }
+                Text { font.family: Theme.uiFont; text: "Volume"; color: Theme.panelInk; font.pixelSize: 18 }
                 Text {
                     visible: !quickSettings.audioAvailable
                     text: "Not available - no audio device"
@@ -682,7 +684,7 @@ ShellRoot {
             Column {
                 width: parent.width
                 spacing: 6
-                Text { text: "Brightness"; color: Theme.panelInk; font.pixelSize: 18 }
+                Text { font.family: Theme.uiFont; text: "Brightness"; color: Theme.panelInk; font.pixelSize: 18 }
                 Rectangle {
                     width: parent.width; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
                     Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
@@ -695,7 +697,7 @@ ShellRoot {
             }
             Rectangle {
                 width: parent.width; height: 39; radius: 9; color: WorkspaceState.activeColor()
-                Text { anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 16; color: "#ffffff" }
+                Text { font.family: Theme.uiFont; anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 16; color: "#ffffff" }
                 MouseArea { anchors.fill: parent; onClicked: { quickSettings.visible = false; Quickshell.execDetached(["qs", "ipc", "call", "settings", "toggle"]) } }
             }
         }
@@ -893,7 +895,7 @@ ShellRoot {
 
             Row {
                 width: parent.width
-                Text { text: "WIDGETS"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true; width: parent.width - 40 }
+                Text { font.family: Theme.uiFont; text: "WIDGETS"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true; width: parent.width - 40 }
                 Text {
                     text: "✎ Edit"; color: Theme.panelInk; font.pixelSize: 15
                     MouseArea { anchors.fill: parent; onClicked: widgetEditPopup.visible = !widgetEditPopup.visible }
@@ -904,18 +906,18 @@ ShellRoot {
                 visible: isWidgetEnabled("worldclock")
                 spacing: 3
                 width: parent.width
-                Text { text: "WORLD CLOCK"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
+                Text { font.family: Theme.uiFont; text: "WORLD CLOCK"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
                 Row { spacing: 12
-                    Text { text: "Goa"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
-                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(worldBase.date, "hh:mm") }
+                    Text { font.family: Theme.uiFont; text: "Goa"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: Theme.monoFont; text: Qt.formatTime(worldBase.date, "hh:mm") }
                 }
                 Row { spacing: 12
-                    Text { text: "UTC"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
-                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000), "hh:mm") }
+                    Text { font.family: Theme.uiFont; text: "UTC"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: Theme.monoFont; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000), "hh:mm") }
                 }
                 Row { spacing: 12
-                    Text { text: "SF"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
-                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000 - 7 * 3600000), "hh:mm") }
+                    Text { font.family: Theme.uiFont; text: "SF"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: Theme.monoFont; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000 - 7 * 3600000), "hh:mm") }
                 }
             }
 
@@ -923,7 +925,7 @@ ShellRoot {
                 visible: isWidgetEnabled("notes")
                 width: parent.width
                 spacing: 3
-                Text { text: "NOTES"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
+                Text { font.family: Theme.uiFont; text: "NOTES"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
                 Rectangle {
                     width: parent.width; height: 75
                     color: "#00000000"; border.color: Theme.panelInk; border.width: 1; radius: 6
@@ -941,7 +943,7 @@ ShellRoot {
                 visible: isWidgetEnabled("todo")
                 width: parent.width
                 spacing: 4
-                Text { text: "TO-DO"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
+                Text { font.family: Theme.uiFont; text: "TO-DO"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
                 Repeater {
                     model: todoModel
                     delegate: Row {
@@ -952,7 +954,7 @@ ShellRoot {
                             color: model.done ? WorkspaceState.activeColor() : "#00000000"
                             MouseArea { anchors.fill: parent; onClicked: { todoModel.setProperty(index, "done", !model.done); widgetPanel.saveTodo(); } }
                         }
-                        Text { text: model.label; color: Theme.panelInk; font.pixelSize: 16; font.strikeout: model.done }
+                        Text { font.family: Theme.uiFont; text: model.label; color: Theme.panelInk; font.pixelSize: 16; font.strikeout: model.done }
                     }
                 }
             }
@@ -961,7 +963,7 @@ ShellRoot {
                 visible: isWidgetEnabled("pomodoro")
                 spacing: 12
                 Text {
-                    color: Theme.panelInk; font.pixelSize: 21; font.family: "monospace"
+                    color: Theme.panelInk; font.pixelSize: 21; font.family: Theme.monoFont
                     text: {
                         var m = Math.floor(pomo.remaining / 60);
                         var s = pomo.remaining % 60;
@@ -970,12 +972,12 @@ ShellRoot {
                 }
                 Rectangle {
                     width: 66; height: 27; radius: 6; color: Theme.arena
-                    Text { anchors.centerIn: parent; text: pomo.running ? "Pause" : "Start"; font.pixelSize: 14; color: "#ffffff" }
+                    Text { font.family: Theme.uiFont; anchors.centerIn: parent; text: pomo.running ? "Pause" : "Start"; font.pixelSize: 14; color: "#ffffff" }
                     MouseArea { anchors.fill: parent; onClicked: pomo.running = !pomo.running }
                 }
                 Rectangle {
                     width: 66; height: 27; radius: 6; color: Theme.vault
-                    Text { anchors.centerIn: parent; text: "Reset"; font.pixelSize: 14; color: "#ffffff" }
+                    Text { font.family: Theme.uiFont; anchors.centerIn: parent; text: "Reset"; font.pixelSize: 14; color: "#ffffff" }
                     MouseArea { anchors.fill: parent; onClicked: { pomo.running = false; pomo.remaining = pomo.totalSeconds; } }
                 }
             }
@@ -1001,7 +1003,7 @@ ShellRoot {
                     model: widgetCatalog.items
                     delegate: Row {
                         width: parent.width
-                        Text { text: modelData.label; color: Theme.panelInk; font.pixelSize: 16; width: parent.width - 30 }
+                        Text { font.family: Theme.uiFont; text: modelData.label; color: Theme.panelInk; font.pixelSize: 16; width: parent.width - 30 }
                         Rectangle {
                             width: 36; height: 21; radius: 10
                             color: modelData.enabled ? WorkspaceState.activeColor() : Theme.panelInk
@@ -1236,13 +1238,13 @@ ShellRoot {
                     id: telCol
                     width: parent.width
                     spacing: 21
-                    Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 22; font.bold: true; wrapMode: Text.Wrap; width: parent.width }
-                    Text { text: "Observe"; color: Theme.textSecondary; font.pixelSize: 16 }
+                    Text { font.family: Theme.uiFont; text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 22; font.bold: true; wrapMode: Text.Wrap; width: parent.width }
+                    Text { font.family: Theme.uiFont; text: "Observe"; color: Theme.textSecondary; font.pixelSize: 16 }
 
                     SectionHeader { text: "SYSTEM" }
-                    Text { text: "CPU " + (commandCentre.cpuPct >= 0 ? commandCentre.cpuPct.toFixed(0) + "%" : "...") + "  ·  " + (commandCentre.cpuTempC >= 0 ? commandCentre.cpuTempC.toFixed(0) + "°C" : "..."); color: "#ffffff"; font.pixelSize: 18 }
-                    Text { text: "Mem " + (commandCentre.memUsedMB >= 0 ? Math.round(commandCentre.memUsedMB) + "/" + Math.round(commandCentre.memTotalMB) + " MB" : "..."); color: "#ffffff"; font.pixelSize: 18 }
-                    Text { text: "Power " + (commandCentre.powerW >= 0 ? commandCentre.powerW.toFixed(1) + " W" : "n/a"); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { font.family: Theme.uiFont; text: "CPU " + (commandCentre.cpuPct >= 0 ? commandCentre.cpuPct.toFixed(0) + "%" : "...") + "  ·  " + (commandCentre.cpuTempC >= 0 ? commandCentre.cpuTempC.toFixed(0) + "°C" : "..."); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { font.family: Theme.uiFont; text: "Mem " + (commandCentre.memUsedMB >= 0 ? Math.round(commandCentre.memUsedMB) + "/" + Math.round(commandCentre.memTotalMB) + " MB" : "..."); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { font.family: Theme.uiFont; text: "Power " + (commandCentre.powerW >= 0 ? commandCentre.powerW.toFixed(1) + " W" : "n/a"); color: "#ffffff"; font.pixelSize: 18 }
 
                     SectionHeader { text: "AI RUNTIME" }
                     Text {
@@ -1252,7 +1254,7 @@ ShellRoot {
                     }
 
                     SectionHeader { text: "CONTAINERS" }
-                    Text { text: commandCentre.containers.length === 0 ? "None running" : (commandCentre.containers.length + " running"); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { font.family: Theme.uiFont; text: commandCentre.containers.length === 0 ? "None running" : (commandCentre.containers.length + " running"); color: "#ffffff"; font.pixelSize: 18 }
 
                     SectionHeader { text: "GPU - AMD VEGA" }
                     Text {
@@ -1313,7 +1315,7 @@ ShellRoot {
                                     text: commandCentre.chatModel; color: "#ffffff"; font.pixelSize: 16
                                     width: parent.width - 14; elide: Text.ElideRight
                                 }
-                                Text { text: modelPicker.open ? "▲" : "▼"; color: Theme.textSecondary; font.pixelSize: 12 }
+                                Text { font.family: Theme.uiFont; text: modelPicker.open ? "▲" : "▼"; color: Theme.textSecondary; font.pixelSize: 12 }
                             }
                             MouseArea { anchors.fill: parent; onClicked: modelPicker.open = !modelPicker.open }
                         }
@@ -1381,7 +1383,7 @@ ShellRoot {
                                     width: chatCol.width
                                     property var msg: modelData
                                     spacing: 3
-                                    Text { text: msg.role === "user" ? "You" : commandCentre.chatModel; color: Theme.textSecondary; font.pixelSize: 15 }
+                                    Text { font.family: Theme.uiFont; text: msg.role === "user" ? "You" : commandCentre.chatModel; color: Theme.textSecondary; font.pixelSize: 15 }
                                     Text {
                                         width: chatCol.width
                                         text: msg.content.length > 0 ? msg.content : "..."

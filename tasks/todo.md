@@ -819,6 +819,19 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** Task 11 (`Theme.qml` exists)
 **Estimated scope:** S
 
+**Task 27a-followup: real font picker — DONE, 8 Sept 2026.** Akash asked for a Settings dropdown to actually pick fonts (following the same "curated options" pattern as the theme picker), which meant finally installing/wiring the fonts recorded above but never applied. Curated 4 real options per role (checked live via `pacman -Si`/`fc-match` on the Yoga 6, not assumed - Geist and Manrope turned out to not exist in Arch's official repos at all, swapped for confirmed-available alternatives):
+- UI: Inter (default), IBM Plex Sans, Mona Sans, Fira Sans
+- Monospace: JetBrains Mono (default), IBM Plex Mono, Iosevka, Cascadia Code
+
+`Theme.qml` gained `uiFont`/`monoFont` properties, same live-FileView pattern as `activeTheme` (Task 27b) - a new `jazz-font-set "<ui>" "<mono>"` writes `~/.config/fontconfig/fonts.conf` (the real ArchWiki-documented `sans-serif`/`monospace` alias mechanism, so GTK/Qt apps pick it up too, not just JAZZ's own shell) plus `font-state.json`, confirmed live with zero relaunch.
+
+**Real architecture snag, found and fixed:** first attempt set `font.family: Theme.uiFont` directly on each top-level `PanelWindow` intending QML's font-inheritance to cascade to every descendant `Text` - crashed instantly (`Cannot assign to non-existent property "font"` - `PanelWindow` is a Window type, not an Item, and only Items have the grouped `font` property Quickshell/Qt Quick inherits through). Real fix: wired `font.family: Theme.uiFont` into the 3 shared `ui/` components (`Button`/`ListRow`/`SectionHeader`, covering most of Settings' text through reuse) plus a scoped regex pass adding it to every single-line `Text`/`TextInput` element in `shell.qml`/`Settings.qml` that didn't already set one (skipping the font-dropdown's own preview rows, which intentionally render each option in its own typeface) - 74 elements, reviewed via diff before deploying, zero corruption.
+
+Deliberately NOT theme-dependent - fonts stay constant across all 4 themes, same principle as the workspace colors (a font is a personal preference, not part of a theme's visual identity).
+
+**Verification:** Live, on the Yoga 6 - switched UI/mono fonts via `jazz-font-set` directly, screenshot confirmed visibly different letterforms (Mona Sans vs Inter) applying with no relaunch; Settings' own dropdown UI (2 pickers, each option previewed in its own font) confirmed rendering correctly via screenshot.
+**Files touched:** `design/tokens/typography.json`, `scripts/generate-theme-qml.py`, `scripts/jazz-font-set` (new), `scripts/setup-dock.sh` (font packages + shell.qml heredoc), `scripts/setup-theme-bundle.sh` (jazz-font-set deployment + default apply), `configs/quickshell/Theme.qml`, `configs/quickshell/Settings.qml`, `configs/quickshell/ui/{Button,ListRow,SectionHeader}.qml`
+
 #### Task 27b: Theme compiler + bundle format (the original Task 27 core) — real multi-theme system, mechanism BUILT and live-verified 8 Sept 2026 (commit `82206e1`); wallpaper completeness still open
 **Description:** The bundling mechanism itself - unchanged from the original scope above. A theme bundle (directory/manifest) specifies `Theme.qml` token values + wallpaper path + kitty config + hyprlock config + dunst config; one function applies all of them atomically and reloads whichever of kitty/hyprlock/dunst need it.
 

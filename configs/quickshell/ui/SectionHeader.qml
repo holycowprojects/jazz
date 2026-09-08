@@ -8,4 +8,5 @@ Text {
     color: Theme.textSecondary
     font.pixelSize: 16
     font.bold: true
+    font.family: Theme.uiFont
 }

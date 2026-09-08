@@ -24,12 +24,21 @@ DATA_DIR="$HOME_DIR/.local/share/jazz"
 HYPR_CONFIG="$HOME_DIR/.config/hypr/hyprland.lua"
 THEMES_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../design/tokens" && pwd)/themes.json"
 THEME_SET_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jazz-theme-set"
+FONT_SET_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jazz-font-set"
 GEN_WALLPAPER_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/gen_wallpaper.py"
 
 sudo -u "$USERNAME" mkdir -p "$DATA_DIR"
 sudo -u "$USERNAME" cp "$THEMES_SRC" "$DATA_DIR/themes.json"
 
 install -m 755 "$THEME_SET_SRC" /usr/local/bin/jazz-theme-set
+install -m 755 "$FONT_SET_SRC" /usr/local/bin/jazz-font-set
+
+# Fonts (setup-dock.sh installs the packages) - apply the defaults from
+# design/tokens/typography.json now, so the fontconfig alias/font-state.json
+# exist immediately instead of only Inter/JetBrains Mono looking right by
+# accident (they're Quickshell's own hardcoded Theme.qml defaults) while
+# GTK/Qt apps stay on whatever fontconfig picked before this ran.
+sudo -u "$USERNAME" env JAZZ_DATA_DIR="$DATA_DIR" /usr/local/bin/jazz-font-set "Inter" "JetBrains Mono"
 
 # Bootstrap any theme's wallpaper files that don't exist on disk yet
 # (Midnight/Warm have no curated art yet - gen_wallpaper.py fills the gap

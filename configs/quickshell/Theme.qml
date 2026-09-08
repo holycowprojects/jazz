@@ -68,4 +68,23 @@ QtObject {
         onLoaded: { try { var s = JSON.parse(root.themeStateFile.text()); if (s.activeTheme) root.activeTheme = s.activeTheme } catch (e) {} }
         onFileChanged: root.themeStateFile.reload()
     }
+
+    // Fonts (Task 27 font-picker follow-up) - a separate, orthogonal choice
+    // from theme: stays constant across a theme switch, same principle as
+    // the workspace colors. Persisted the same way as activeTheme above -
+    // jazz-font-set writes font-state.json, this FileView picks it up live.
+    property string uiFont: "Inter"
+    property string monoFont: "JetBrains Mono"
+    property FileView fontStateFile: FileView {
+        path: "@@JAZZ_DATA_DIR@@/font-state.json"
+        watchChanges: true
+        onLoaded: {
+            try {
+                var s = JSON.parse(root.fontStateFile.text())
+                if (s.uiFont) root.uiFont = s.uiFont
+                if (s.monoFont) root.monoFont = s.monoFont
+            } catch (e) {}
+        }
+        onFileChanged: root.fontStateFile.reload()
+    }
 }

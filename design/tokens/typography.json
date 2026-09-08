@@ -1,14 +1,25 @@
 {
+  "_comment": "Task 27 font-picker follow-up (8 Sept 2026). Two roles only - ui and monospace - matching Theme.qml's uiFont/monoFont. Fonts stay CONSTANT across themes (same principle as the 6 workspace colors, Design-Vision.md sec 2) - picking a font is a separate, orthogonal choice from picking a theme, not part of the theme bundle. Every package below confirmed installed and its exact fontconfig family name confirmed live via `fc-match` on the Yoga 6, 8 Sept 2026 - not assumed from a package name.",
   "ui": {
-    "family": "Inter",
-    "package": "inter-font",
-    "role": "General UI text - labels, buttons, body text across the dock/top bar/Settings",
-    "installed": false
+    "default": "Inter",
+    "options": [
+      { "family": "Inter", "package": "inter-font" },
+      { "family": "IBM Plex Sans", "package": "ttf-ibm-plex" },
+      { "family": "Mona Sans", "package": "ttf-mona-sans" },
+      { "family": "Fira Sans", "package": "ttf-fira-sans" }
+    ],
+    "role": "General UI text - labels, buttons, body text across the dock/top bar/Settings/Command Centre",
+    "installed": true
   },
   "monospace": {
-    "family": "JetBrains Mono",
-    "package": "ttf-jetbrains-mono",
-    "role": "Terminal-style/code text - Keybinds display, Developer tab's event log and D-Bus tree, world clock digits",
-    "installed": false
+    "default": "JetBrains Mono",
+    "options": [
+      { "family": "JetBrains Mono", "package": "ttf-jetbrains-mono" },
+      { "family": "IBM Plex Mono", "package": "ttf-ibm-plex" },
+      { "family": "Iosevka", "package": "ttc-iosevka" },
+      { "family": "Cascadia Code", "package": "ttf-cascadia-code" }
+    ],
+    "role": "Terminal-style/code text - Keybinds display, Developer tab's event log and D-Bus tree, top-bar clock",
+    "installed": true
   }
 }

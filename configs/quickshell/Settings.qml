@@ -138,6 +138,10 @@ PanelWindow {
             { id: "midnight", label: "Midnight" },
             { id: "warm", label: "Warm" }
         ]
+        // Font-picker follow-up (Task 27) - matches
+        // design/tokens/typography.json's curated options exactly.
+        property var uiFontList: ["Inter", "IBM Plex Sans", "Mona Sans", "Fira Sans"]
+        property var monoFontList: ["JetBrains Mono", "IBM Plex Mono", "Iosevka", "Cascadia Code"]
         Process {
             id: wallListProc
             command: ["bash", "-c", "ls @@JAZZ_DATA_DIR@@/wallpapers/*.png 2>/dev/null"]
@@ -249,7 +253,7 @@ PanelWindow {
                             width: parent.width
                             spacing: 24
                             SectionHeader { text: "APPEARANCE" }
-                            Text { text: "Theme"; color: Theme.textSecondary; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "Theme"; color: Theme.textSecondary; font.pixelSize: 18 }
                             Flow {
                                 width: parent.width
                                 spacing: 12
@@ -270,6 +274,125 @@ PanelWindow {
                                         MouseArea {
                                             anchors.fill: parent
                                             onClicked: Quickshell.execDetached(["jazz-theme-set", modelData.id])
+                                        }
+                                    }
+                                }
+                            }
+                            SectionHeader { text: "Fonts" }
+                            Row {
+                                spacing: 24
+                                z: 10
+                                Column {
+                                    spacing: 6
+                                    Text { font.family: Theme.uiFont; text: "Interface"; color: Theme.textSecondary; font.pixelSize: 12 }
+                                    Item {
+                                        id: uiFontPicker
+                                        width: 220; height: 36
+                                        property bool open: false
+                                        Rectangle {
+                                            anchors.fill: parent; radius: 8; color: Theme.surfaceRaised
+                                            border.color: Theme.textSecondary; border.width: 1
+                                            Row {
+                                                anchors.fill: parent; anchors.margins: 8; spacing: 8
+                                                Text {
+                                                    text: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 16
+                                                    width: parent.width - 20; elide: Text.ElideRight
+                                                }
+                                                Text { font.family: Theme.uiFont; text: uiFontPicker.open ? "\u25B2" : "\u25BC"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                            }
+                                            MouseArea { anchors.fill: parent; onClicked: uiFontPicker.open = !uiFontPicker.open }
+                                        }
+                                        Rectangle {
+                                            visible: uiFontPicker.open
+                                            y: parent.height + 4
+                                            width: parent.width
+                                            height: uiOptCol.height + 8
+                                            radius: 8; color: Theme.surfaceRaised
+                                            border.color: Theme.textSecondary; border.width: 1
+                                            z: 200
+                                            Column {
+                                                id: uiOptCol
+                                                x: 4; y: 4
+                                                width: parent.width - 8
+                                                Repeater {
+                                                    model: settingsBox.uiFontList
+                                                    delegate: Rectangle {
+                                                        width: parent.width; height: 32; radius: 6
+                                                        color: Theme.uiFont === modelData ? WorkspaceState.activeColor() : "#00000000"
+                                                        Text {
+                                                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                                            text: modelData
+                                                            font.family: modelData
+                                                            color: Theme.uiFont === modelData ? "#ffffff" : Theme.panelInk
+                                                            font.pixelSize: 15
+                                                        }
+                                                        MouseArea {
+                                                            anchors.fill: parent
+                                                            onClicked: {
+                                                                Quickshell.execDetached(["jazz-font-set", modelData, Theme.monoFont])
+                                                                uiFontPicker.open = false
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Column {
+                                    spacing: 6
+                                    Text { font.family: Theme.uiFont; text: "Monospace"; color: Theme.textSecondary; font.pixelSize: 12 }
+                                    Item {
+                                        id: monoFontPicker
+                                        width: 220; height: 36
+                                        property bool open: false
+                                        Rectangle {
+                                            anchors.fill: parent; radius: 8; color: Theme.surfaceRaised
+                                            border.color: Theme.textSecondary; border.width: 1
+                                            Row {
+                                                anchors.fill: parent; anchors.margins: 8; spacing: 8
+                                                Text {
+                                                    text: Theme.monoFont; color: Theme.panelInk; font.pixelSize: 16
+                                                    width: parent.width - 20; elide: Text.ElideRight
+                                                }
+                                                Text { font.family: Theme.uiFont; text: monoFontPicker.open ? "\u25B2" : "\u25BC"; color: Theme.textSecondary; font.pixelSize: 10 }
+                                            }
+                                            MouseArea { anchors.fill: parent; onClicked: monoFontPicker.open = !monoFontPicker.open }
+                                        }
+                                        Rectangle {
+                                            visible: monoFontPicker.open
+                                            y: parent.height + 4
+                                            width: parent.width
+                                            height: monoOptCol.height + 8
+                                            radius: 8; color: Theme.surfaceRaised
+                                            border.color: Theme.textSecondary; border.width: 1
+                                            z: 200
+                                            Column {
+                                                id: monoOptCol
+                                                x: 4; y: 4
+                                                width: parent.width - 8
+                                                Repeater {
+                                                    model: settingsBox.monoFontList
+                                                    delegate: Rectangle {
+                                                        width: parent.width; height: 32; radius: 6
+                                                        color: Theme.monoFont === modelData ? WorkspaceState.activeColor() : "#00000000"
+                                                        Text {
+                                                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                                                            text: modelData
+                                                            font.family: modelData
+                                                            color: Theme.monoFont === modelData ? "#ffffff" : Theme.panelInk
+                                                            font.pixelSize: 15
+                                                        }
+                                                        MouseArea {
+                                                            anchors.fill: parent
+                                                            onClicked: {
+                                                                Quickshell.execDetached(["jazz-font-set", Theme.uiFont, modelData])
+                                                                monoFontPicker.open = false
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -344,7 +467,7 @@ PanelWindow {
                             Row {
                                 width: parent.width; spacing: 15
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "Workspaces" }
-                                Text { anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 15 }
+                                Text { font.family: Theme.uiFont; anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 15 }
                             }
                             Column {
                                 width: parent.width; spacing: 12
@@ -361,8 +484,8 @@ PanelWindow {
                                             anchors.fill: parent; anchors.margins: 12; spacing: 6
                                             Row {
                                                 width: parent.width; spacing: 12
-                                                Text { text: "Real name: " + wsRow.wsData.name; color: Theme.textSecondary; font.pixelSize: 15; width: 180 }
-                                                Text { text: wsRow.wsData.desc; color: Theme.textSecondary; font.pixelSize: 15 }
+                                                Text { font.family: Theme.uiFont; text: "Real name: " + wsRow.wsData.name; color: Theme.textSecondary; font.pixelSize: 15; width: 180 }
+                                                Text { font.family: Theme.uiFont; text: wsRow.wsData.desc; color: Theme.textSecondary; font.pixelSize: 15 }
                                             }
                                             Row {
                                                 width: parent.width; spacing: 12
@@ -480,7 +603,7 @@ PanelWindow {
                                     : "loading..."
                                 color: Theme.panelInk; font.pixelSize: 20
                             }
-                            Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 16 }
+                            Text { font.family: Theme.uiFont; text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 16 }
                             SectionHeader { text: "AVAILABLE MODES" }
                             Flow {
                                 width: parent.width; spacing: 9
@@ -489,7 +612,7 @@ PanelWindow {
                                     delegate: Rectangle {
                                         width: 210; height: 39; radius: 9; color: Theme.surfaceRaised
                                         opacity: displayTab.timerActive ? 0.4 : 1
-                                        Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 15; color: Theme.panelInk }
+                                        Text { font.family: Theme.uiFont; anchors.centerIn: parent; text: modelData; font.pixelSize: 15; color: Theme.panelInk }
                                         MouseArea {
                                             anchors.fill: parent
                                             enabled: !displayTab.timerActive
@@ -565,15 +688,15 @@ PanelWindow {
                             }
                             Component.onCompleted: keybindsProc.running = true
                             SectionHeader { text: "KEYBOARD & MOUSE" }
-                            Text { text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 15 }
+                            Text { font.family: Theme.uiFont; text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 15 }
                             SectionHeader { text: "KEYBINDS" }
                             Text {
                                 width: parent.width
                                 text: inputTab.keybindsText
-                                color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"
+                                color: Theme.panelInk; font.pixelSize: 16; font.family: Theme.monoFont
                                 wrapMode: Text.Wrap
                             }
                         }
@@ -642,7 +765,7 @@ PanelWindow {
                             Column {
                                 visible: soundTab.audioAvailable
                                 width: parent.width; spacing: 15
-                                Text { text: "Output: " + soundTab.outputName; color: Theme.panelInk; font.pixelSize: 18 }
+                                Text { font.family: Theme.uiFont; text: "Output: " + soundTab.outputName; color: Theme.panelInk; font.pixelSize: 18 }
                                 Item {
                                     width: parent.width; height: 39
                                     Text {
@@ -788,7 +911,7 @@ PanelWindow {
                             SectionHeader { text: "NETWORK" }
                             Row {
                                 spacing: 15
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 20 }
+                                Text { font.family: Theme.uiFont; anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: networkTab.radioOn
                                     onToggled: networkTab.toggleRadio()
@@ -813,7 +936,7 @@ PanelWindow {
                             Column {
                                 visible: networkTab.radioOn
                                 width: parent.width; spacing: 6
-                                Text { visible: networkTab.networks.length === 0; text: networkTab.busy ? "Scanning..." : "No networks found."; color: Theme.textSecondary; font.pixelSize: 16 }
+                                Text { font.family: Theme.uiFont; visible: networkTab.networks.length === 0; text: networkTab.busy ? "Scanning..." : "No networks found."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: networkTab.networks
                                     delegate: Column {
@@ -1022,7 +1145,7 @@ PanelWindow {
                             SectionHeader { text: "BLUETOOTH" }
                             Row {
                                 spacing: 15
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 20 }
+                                Text { font.family: Theme.uiFont; anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: btTab.powered
                                     onToggled: btTab.togglePower()
@@ -1031,7 +1154,7 @@ PanelWindow {
                             SectionHeader { text: "PAIRED DEVICES" }
                             Column {
                                 width: parent.width; spacing: 6
-                                Text { visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 16 }
+                                Text { font.family: Theme.uiFont; visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: btTab.paired
                                     delegate: Rectangle {
@@ -1039,7 +1162,7 @@ PanelWindow {
                                         width: parent.width; height: 48; radius: 9; color: Theme.surfaceRaised
                                         Row {
                                             anchors.fill: parent; anchors.margins: 9; spacing: 12
-                                            Text { width: 300; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
+                                            Text { font.family: Theme.uiFont; width: 300; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: devData.connected ? "Connected" : "Paired"
@@ -1074,7 +1197,7 @@ PanelWindow {
                             }
                             Column {
                                 width: parent.width; spacing: 6
-                                Text { visible: !btTab.scanning && btTab.nearby.length === 0; text: "No nearby devices found yet - tap Scan."; color: Theme.textSecondary; font.pixelSize: 16 }
+                                Text { font.family: Theme.uiFont; visible: !btTab.scanning && btTab.nearby.length === 0; text: "No nearby devices found yet - tap Scan."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: btTab.nearby
                                     delegate: Rectangle {
@@ -1083,7 +1206,7 @@ PanelWindow {
                                         border.color: Theme.panelInk; border.width: 1; opacity: 0.7
                                         Row {
                                             anchors.fill: parent; anchors.margins: 9; spacing: 12
-                                            Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
+                                            Text { font.family: Theme.uiFont; width: 390; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
                                             Button {
                                                 width: 90; height: 33
                                                 label: "Pair"
@@ -1116,7 +1239,7 @@ PanelWindow {
                             }
                             Component.onCompleted: appsProc.running = true
                             SectionHeader { text: "APPLICATIONS" }
-                            Text { text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 16 }
+                            Text { font.family: Theme.uiFont; text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 16 }
                             Column {
                                 width: parent.width; spacing: 3
                                 Repeater {
@@ -1166,7 +1289,7 @@ PanelWindow {
                             }
                             Component.onCompleted: { tagsProc.running = true; psProc.running = true }
                             SectionHeader { text: "AI" }
-                            Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 20 }
                             Text {
                                 text: aiTab.runningModels.length > 0
                                     ? ("Running in memory: " + aiTab.runningModels[0].name + " (" + aiTab.runningModels[0].size_vram + " bytes VRAM)")
@@ -1183,7 +1306,7 @@ PanelWindow {
                                         Column {
                                             anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                                             spacing: 3
-                                            Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 18 }
+                                            Text { font.family: Theme.uiFont; text: modelData.name; color: Theme.panelInk; font.pixelSize: 18 }
                                             Text {
                                                 text: modelData.details.parameter_size + " params, " + modelData.details.quantization_level + ", " + modelData.details.context_length + " ctx"
                                                 color: Theme.textSecondary; font.pixelSize: 15
@@ -1247,7 +1370,7 @@ PanelWindow {
                             SectionHeader { text: "ACTIVITY TRACES" }
                             Row {
                                 width: parent.width; spacing: 15
-                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 18 }
+                                Text { font.family: Theme.uiFont; width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
                                     width: 90; height: 33
                                     variant: "danger"
@@ -1257,7 +1380,7 @@ PanelWindow {
                             }
                             Row {
                                 width: parent.width; spacing: 15
-                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 18 }
+                                Text { font.family: Theme.uiFont; width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
                                     width: 90; height: 33
                                     variant: "danger"
@@ -1267,7 +1390,7 @@ PanelWindow {
                             }
                             Row {
                                 width: parent.width; spacing: 15
-                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 18 }
+                                Text { font.family: Theme.uiFont; width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
                                     width: 90; height: 33
                                     variant: "danger"
@@ -1363,7 +1486,7 @@ PanelWindow {
                             Text {
                                 width: parent.width
                                 text: agentsTab.ledgerText
-                                color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"
+                                color: Theme.panelInk; font.pixelSize: 16; font.family: Theme.monoFont
                                 wrapMode: Text.Wrap
                             }
                         }
@@ -1380,8 +1503,8 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) storageTab.usedLine = data } }
                             }
                             SectionHeader { text: "STORAGE" }
-                            Text { text: storageTab.usedLine; color: Theme.panelInk; font.pixelSize: 20 }
-                            Text { text: "Btrfs root, Snapper-protected (Track A)."; color: Theme.textSecondary; font.pixelSize: 16 }
+                            Text { font.family: Theme.uiFont; text: storageTab.usedLine; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "Btrfs root, Snapper-protected (Track A)."; color: Theme.textSecondary; font.pixelSize: 16 }
                             Button {
                                 width: 270; height: 39
                                 fontSize: 11
@@ -1414,8 +1537,8 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) powerTab.watts = parseInt(data) / 1000000.0 } }
                             }
                             SectionHeader { text: "BATTERY & POWER" }
-                            Text { text: powerTab.pct >= 0 ? (powerTab.pct + "% - " + powerTab.status) : "reading..."; color: Theme.panelInk; font.pixelSize: 24 }
-                            Text { text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: powerTab.pct >= 0 ? (powerTab.pct + "% - " + powerTab.status) : "reading..."; color: Theme.panelInk; font.pixelSize: 24 }
+                            Text { font.family: Theme.uiFont; text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 18 }
                         }
 
                         // ===== Security (REAL) =====
@@ -1454,10 +1577,10 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) securityTab.diskEncryption = data } }
                             }
                             SectionHeader { text: "SECURITY" }
-                            Text { text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 20 }
-                            Text { text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 20 }
-                            Text { text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 20 }
-                            Text { text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { font.family: Theme.uiFont; text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 20 }
                         }
 
                         // ===== Updates (REAL) =====
@@ -1488,7 +1611,7 @@ PanelWindow {
                                 width: parent.width; spacing: 3
                                 Repeater {
                                     model: updatesTab.pending
-                                    delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 16; font.family: "monospace" }
+                                    delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 16; font.family: Theme.monoFont }
                                 }
                             }
                             Button {
@@ -1555,7 +1678,7 @@ PanelWindow {
                             SectionHeader { text: "MOTION" }
                             Row {
                                 spacing: 15
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 20 }
+                                Text { font.family: Theme.uiFont; anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: Theme.reducedMotion
                                     onToggled: Theme.reducedMotion = !Theme.reducedMotion
@@ -1663,12 +1786,12 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) systemTab.gpu = data } }
                             }
                             SectionHeader { text: "ABOUT" }
-                            Text { text: "JAZZ"; color: Theme.panelInk; font.pixelSize: 27; font.bold: true }
-                            Text { text: "Arch Linux, hostname " + systemTab.hostname; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "Kernel " + systemTab.kernel; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "CPU: " + systemTab.cpu; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "GPU: " + systemTab.gpu; color: Theme.panelInk; font.pixelSize: 18 }
-                            Text { text: "Memory: " + systemTab.mem; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "JAZZ"; color: Theme.panelInk; font.pixelSize: 27; font.bold: true }
+                            Text { font.family: Theme.uiFont; text: "Arch Linux, hostname " + systemTab.hostname; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "Kernel " + systemTab.kernel; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "CPU: " + systemTab.cpu; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "GPU: " + systemTab.gpu; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { font.family: Theme.uiFont; text: "Memory: " + systemTab.mem; color: Theme.panelInk; font.pixelSize: 18 }
                             Button {
                                 width: 255; height: 39
                                 label: settingsPanel.devModeEnabled ? "Disable Developer Mode" : "Enable Developer Mode"
@@ -1742,7 +1865,7 @@ PanelWindow {
                             Row {
                                 spacing: 15
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG" }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: WorkspaceState.activeColor(); font.pixelSize: 15 }
+                                Text { font.family: Theme.uiFont; anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: WorkspaceState.activeColor(); font.pixelSize: 15 }
                                 Button {
                                     width: 75; height: 30
                                     variant: "subtle"
@@ -1762,7 +1885,7 @@ PanelWindow {
                                         id: eventText
                                         width: eventFlick.width
                                         text: developerTab.eventLines.length > 0 ? developerTab.eventLines.join("\n") : "Waiting for events - switch workspaces, open a window, or plug/unplug something to see live IPC events here."
-                                        color: Theme.panelInk; font.pixelSize: 15; font.family: "monospace"
+                                        color: Theme.panelInk; font.pixelSize: 15; font.family: Theme.monoFont
                                         wrapMode: Text.Wrap
                                         onTextChanged: eventFlick.contentY = Math.max(0, height - eventFlick.height)
                                     }
@@ -1779,7 +1902,7 @@ PanelWindow {
                                     onClicked: developerTab.refreshBus()
                                 }
                             }
-                            Text { text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 15 }
+                            Text { font.family: Theme.uiFont; text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 15 }
                             Rectangle {
                                 width: parent.width; height: 270; radius: 9; color: Theme.surfaceRaised
                                 clip: true
@@ -1800,7 +1923,7 @@ PanelWindow {
                                                     anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
                                                     text: svcData.raw
                                                     color: developerTab.selectedBusName === svcData.name ? "#ffffff" : Theme.panelInk
-                                                    font.pixelSize: 14; font.family: "monospace"
+                                                    font.pixelSize: 14; font.family: Theme.monoFont
                                                 }
                                                 MouseArea { anchors.fill: parent; onClicked: developerTab.inspectBus(svcData.name) }
                                             }
@@ -1811,11 +1934,11 @@ PanelWindow {
                             Column {
                                 visible: developerTab.selectedBusName.length > 0
                                 width: parent.width; spacing: 6
-                                Text { text: developerTab.selectedBusName; color: Theme.panelInk; font.pixelSize: 16; font.bold: true }
+                                Text { font.family: Theme.uiFont; text: developerTab.selectedBusName; color: Theme.panelInk; font.pixelSize: 16; font.bold: true }
                                 Text {
                                     width: parent.width
                                     text: developerTab.treeText
-                                    color: Theme.panelInk; font.pixelSize: 15; font.family: "monospace"
+                                    color: Theme.panelInk; font.pixelSize: 15; font.family: Theme.monoFont
                                     wrapMode: Text.Wrap
                                 }
                             }

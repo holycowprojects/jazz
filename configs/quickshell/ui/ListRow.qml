@@ -21,6 +21,7 @@ Rectangle {
         text: root.label
         color: root.selected ? "#ffffff" : Theme.panelInk
         font.pixelSize: 18
+        font.family: Theme.uiFont
     }
     Text {
         visible: root.showMarker
