@@ -117,9 +117,9 @@ PanelWindow {
 
     Rectangle {
         id: settingsBox
-        width: 860; height: 600
+        width: 1290; height: 900
         anchors.centerIn: parent
-        radius: 14
+        radius: 21
         color: Theme.panel
         border.color: Theme.panelInk
         border.width: 1
@@ -152,20 +152,20 @@ PanelWindow {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
+            anchors.margins: 24
+            spacing: 18
 
             // ---------- Search ----------
             Rectangle {
-                width: parent.width; height: 32; radius: 8
+                width: parent.width; height: 48; radius: 12
                 color: Theme.surfaceRaised
                 border.color: Theme.panelInk; border.width: 1
                 TextInput {
                     id: searchInput
                     anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.margins: 12
                     color: Theme.panelInk
-                    font.pixelSize: 13
+                    font.pixelSize: 20
                     clip: true
                     focus: settingsPanel.visible
                     onTextChanged: settingsPanel.searchQuery = text
@@ -173,8 +173,8 @@ PanelWindow {
                 }
                 Text {
                     visible: searchInput.text.length === 0
-                    anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                    text: "Search settings..."; color: Theme.textSecondary; font.pixelSize: 13
+                    anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                    text: "Search settings..."; color: Theme.textSecondary; font.pixelSize: 20
                 }
             }
 
@@ -182,16 +182,16 @@ PanelWindow {
             Column {
                 visible: settingsPanel.searchQuery.length > 0
                 width: parent.width
-                spacing: 2
+                spacing: 3
                 Repeater {
                     model: settingsPanel.searchResults()
                     delegate: Rectangle {
-                        width: parent.width; height: 26; radius: 6
+                        width: parent.width; height: 39; radius: 9
                         color: "#00000000"
                         Text {
-                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                             text: modelData.title + "  ›  " + modelData.page
-                            color: Theme.panelInk; font.pixelSize: 12
+                            color: Theme.panelInk; font.pixelSize: 18
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -204,18 +204,18 @@ PanelWindow {
             Row {
                 visible: settingsPanel.searchQuery.length === 0
                 width: parent.width
-                height: parent.height - 44
-                spacing: 20
+                height: parent.height - 66
+                spacing: 30
 
                 // ---------- Sidebar ----------
                 Flickable {
-                    width: 160; height: parent.height
+                    width: 240; height: parent.height
                     contentHeight: sidebarCol.height
                     clip: true
                     Column {
                         id: sidebarCol
                         width: parent.width
-                        spacing: 2
+                        spacing: 3
                         Repeater {
                             model: settingsPanel.visibleSections()
                             delegate: ListRow {
@@ -228,36 +228,36 @@ PanelWindow {
                     }
                 }
 
-                Rectangle { width: 1; height: parent.height; color: Theme.panelInk; opacity: 0.15 }
+                Rectangle { width: 2; height: parent.height; color: Theme.panelInk; opacity: 0.15 }
 
                 // ---------- Content ----------
                 Flickable {
                     id: contentArea
-                    width: 620; height: parent.height
+                    width: 930; height: parent.height
                     contentHeight: contentCol.height
                     clip: true
 
                     Column {
                         id: contentCol
                         width: parent.width
-                        spacing: 16
+                        spacing: 24
 
                         // ===== Appearance (Task 27b: real theme picker,
                         // replacing the old binary dark/light toggle) =====
                         Column {
                             visible: settingsPanel.currentPage === "appearance"
                             width: parent.width
-                            spacing: 16
+                            spacing: 24
                             SectionHeader { text: "APPEARANCE" }
-                            Text { text: "Theme"; color: Theme.textSecondary; font.pixelSize: 12 }
+                            Text { text: "Theme"; color: Theme.textSecondary; font.pixelSize: 18 }
                             Flow {
                                 width: parent.width
-                                spacing: 8
+                                spacing: 12
                                 Repeater {
                                     model: settingsBox.themeList
                                     delegate: Rectangle {
                                         property bool active: Theme.activeTheme === modelData.id
-                                        width: 92; height: 34; radius: 8
+                                        width: 138; height: 51; radius: 12
                                         color: active ? WorkspaceState.activeColor() : Theme.surfaceRaised
                                         border.color: Theme.textSecondary
                                         border.width: active ? 0 : 1
@@ -265,7 +265,7 @@ PanelWindow {
                                             anchors.centerIn: parent
                                             text: modelData.label
                                             color: active ? "#ffffff" : Theme.panelInk
-                                            font.pixelSize: 12
+                                            font.pixelSize: 18
                                         }
                                         MouseArea {
                                             anchors.fill: parent
@@ -277,13 +277,13 @@ PanelWindow {
                             SectionHeader { text: "Wallpaper" }
                             Flow {
                                 width: parent.width
-                                spacing: 8
+                                spacing: 12
                                 Repeater {
                                     model: settingsBox.wallpapers
                                     delegate: Rectangle {
-                                        width: 90; height: 54; radius: 6
+                                        width: 135; height: 81; radius: 9
                                         border.color: Theme.panelInk; border.width: 1
-                                        Image { anchors.fill: parent; anchors.margins: 2; source: "file://" + modelData; fillMode: Image.PreserveAspectCrop }
+                                        Image { anchors.fill: parent; anchors.margins: 3; source: "file://" + modelData; fillMode: Image.PreserveAspectCrop }
                                         MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["jazz-wallpaper-set", modelData]) }
                                     }
                                 }
@@ -302,7 +302,7 @@ PanelWindow {
                         Column {
                             id: desktopTab
                             visible: settingsPanel.currentPage === "desktop"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var overrides: ({})
                             property string statusMsg: ""
 
@@ -342,12 +342,12 @@ PanelWindow {
 
                             SectionHeader { text: "DESKTOP" }
                             Row {
-                                width: parent.width; spacing: 10
+                                width: parent.width; spacing: 15
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "Workspaces" }
-                                Text { anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 10 }
+                                Text { anchors.verticalCenter: parent.verticalCenter; visible: desktopTab.statusMsg.length > 0; text: desktopTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 15 }
                             }
                             Column {
-                                width: parent.width; spacing: 8
+                                width: parent.width; spacing: 12
                                 Repeater {
                                     model: desktopTab.workspaceDefs
                                     delegate: Rectangle {
@@ -356,51 +356,51 @@ PanelWindow {
                                         property string nameText: desktopTab.labelFor(wsData.name)
                                         property string colorText: desktopTab.colorFor(wsData.name, wsData.color)
                                         property bool hasOverride: desktopTab.overrides[wsData.name] !== undefined
-                                        width: parent.width; height: 62; radius: 8; color: Theme.surfaceRaised
+                                        width: parent.width; height: 93; radius: 12; color: Theme.surfaceRaised
                                         Column {
-                                            anchors.fill: parent; anchors.margins: 8; spacing: 4
+                                            anchors.fill: parent; anchors.margins: 12; spacing: 6
                                             Row {
-                                                width: parent.width; spacing: 8
-                                                Text { text: "Real name: " + wsRow.wsData.name; color: Theme.textSecondary; font.pixelSize: 10; width: 120 }
-                                                Text { text: wsRow.wsData.desc; color: Theme.textSecondary; font.pixelSize: 10 }
+                                                width: parent.width; spacing: 12
+                                                Text { text: "Real name: " + wsRow.wsData.name; color: Theme.textSecondary; font.pixelSize: 15; width: 180 }
+                                                Text { text: wsRow.wsData.desc; color: Theme.textSecondary; font.pixelSize: 15 }
                                             }
                                             Row {
-                                                width: parent.width; spacing: 8
+                                                width: parent.width; spacing: 12
                                                 Rectangle {
-                                                    width: 140; height: 22; radius: 4; color: Theme.panel
+                                                    width: 210; height: 33; radius: 6; color: Theme.panel
                                                     border.color: Theme.panelInk; border.width: 1
                                                     TextInput {
-                                                        anchors.fill: parent; anchors.margins: 4
-                                                        color: Theme.panelInk; font.pixelSize: 11; clip: true
+                                                        anchors.fill: parent; anchors.margins: 6
+                                                        color: Theme.panelInk; font.pixelSize: 16; clip: true
                                                         text: wsRow.nameText
                                                         onTextChanged: wsRow.nameText = text
                                                     }
                                                 }
                                                 Rectangle {
-                                                    width: 90; height: 22; radius: 4; color: Theme.panel
+                                                    width: 135; height: 33; radius: 6; color: Theme.panel
                                                     border.color: desktopTab.isValidHex(wsRow.colorText) ? Theme.panelInk : Theme.range
                                                     border.width: 1
                                                     TextInput {
-                                                        anchors.fill: parent; anchors.margins: 4
-                                                        color: Theme.panelInk; font.pixelSize: 11; clip: true
+                                                        anchors.fill: parent; anchors.margins: 6
+                                                        color: Theme.panelInk; font.pixelSize: 16; clip: true
                                                         text: wsRow.colorText
                                                         onTextChanged: wsRow.colorText = text
                                                     }
                                                 }
                                                 Rectangle {
-                                                    width: 18; height: 18; radius: 9; anchors.verticalCenter: parent.verticalCenter
+                                                    width: 27; height: 27; radius: 14; anchors.verticalCenter: parent.verticalCenter
                                                     color: desktopTab.isValidHex(wsRow.colorText) ? wsRow.colorText : wsRow.wsData.color
                                                     border.color: Theme.panelInk; border.width: 1
                                                 }
                                                 Button {
-                                                    width: 50; height: 22
+                                                    width: 75; height: 33
                                                     enabled: desktopTab.isValidHex(wsRow.colorText) && wsRow.nameText.trim().length > 0
                                                     label: "Save"
                                                     onClicked: desktopTab.saveOverride(wsRow.wsData.name, wsRow.nameText.trim(), wsRow.colorText)
                                                 }
                                                 Button {
                                                     visible: wsRow.hasOverride
-                                                    width: 55; height: 22
+                                                    width: 82; height: 33
                                                     variant: "neutral"
                                                     label: "Reset"
                                                     onClicked: desktopTab.resetOverride(wsRow.wsData.name)
@@ -412,7 +412,7 @@ PanelWindow {
                             }
                             Text {
                                 text: "Renaming here only changes the display label shown in the dock, top bar, and this list - Hyprland's own workspace identity (and your Super+1..6 keybinds) stay exactly as they are, so nothing about how you switch workspaces can break. Color changes also retint the top bar when that workspace is active. Window-border colors from the existing per-workspace rule stay on the original color for now. Dock/hot-corner/auto-hide behavior is still fixed by design for v1."
-                                color: Theme.textSecondary; font.pixelSize: 10; wrapMode: Text.Wrap; width: parent.width
+                                color: Theme.textSecondary; font.pixelSize: 15; wrapMode: Text.Wrap; width: parent.width
                             }
                         }
 
@@ -420,7 +420,7 @@ PanelWindow {
                         Column {
                             id: displayTab
                             visible: settingsPanel.currentPage === "display"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var monitorData: null
                             property string originalLuaLine: ""
                             property bool timerActive: false
@@ -478,18 +478,18 @@ PanelWindow {
                                 text: displayTab.monitorData
                                     ? (displayTab.monitorData.name + ": " + displayTab.monitorData.width + "x" + displayTab.monitorData.height + "@" + displayTab.monitorData.refreshRate.toFixed(2) + "Hz, scale " + displayTab.monitorData.scale)
                                     : "loading..."
-                                color: Theme.panelInk; font.pixelSize: 13
+                                color: Theme.panelInk; font.pixelSize: 20
                             }
-                            Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 11 }
+                            Text { text: "Same brightness control as the quick-settings flyout."; color: Theme.textSecondary; font.pixelSize: 16 }
                             SectionHeader { text: "AVAILABLE MODES" }
                             Flow {
-                                width: parent.width; spacing: 6
+                                width: parent.width; spacing: 9
                                 Repeater {
                                     model: displayTab.monitorData ? displayTab.monitorData.availableModes : []
                                     delegate: Rectangle {
-                                        width: 140; height: 26; radius: 6; color: Theme.surfaceRaised
+                                        width: 210; height: 39; radius: 9; color: Theme.surfaceRaised
                                         opacity: displayTab.timerActive ? 0.4 : 1
-                                        Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 10; color: Theme.panelInk }
+                                        Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 15; color: Theme.panelInk }
                                         MouseArea {
                                             anchors.fill: parent
                                             enabled: !displayTab.timerActive
@@ -500,26 +500,26 @@ PanelWindow {
                             }
                             Rectangle {
                                 visible: displayTab.timerActive
-                                width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
+                                width: parent.width; height: 96; radius: 12; color: Theme.surfaceRaised
                                 border.color: WorkspaceState.activeColor(); border.width: 1
                                 Column {
-                                    anchors.centerIn: parent; spacing: 8
+                                    anchors.centerIn: parent; spacing: 12
                                     Text {
                                         text: "Keep these display settings? Reverting in " + displayTab.secondsLeft + "s"
-                                        color: Theme.panelInk; font.pixelSize: 13
+                                        color: Theme.panelInk; font.pixelSize: 20
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                     Row {
-                                        spacing: 10
+                                        spacing: 15
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         Button {
-                                            width: 70; height: 24
+                                            width: 105; height: 36
                                             fontSize: 11
                                             label: "Keep"
                                             onClicked: { displayTab.timerActive = false; displayTab.refreshMonitor() }
                                         }
                                         Button {
-                                            width: 70; height: 24
+                                            width: 105; height: 36
                                             fontSize: 11
                                             variant: "neutral"
                                             label: "Revert"
@@ -538,7 +538,7 @@ PanelWindow {
                         Column {
                             id: inputTab
                             visible: settingsPanel.currentPage === "input"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property string naturalScroll: "..."
                             property string tapToClick: "..."
                             property string sensitivity: "..."
@@ -565,15 +565,15 @@ PanelWindow {
                             }
                             Component.onCompleted: keybindsProc.running = true
                             SectionHeader { text: "KEYBOARD & MOUSE" }
-                            Text { text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 10 }
+                            Text { text: "Touchpad natural scroll: " + inputTab.naturalScroll; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "Touchpad tap-to-click: " + inputTab.tapToClick; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "Pointer sensitivity: " + inputTab.sensitivity; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "(read-only for now - real Hyprland input values; editing lands in a later slice)"; color: Theme.textSecondary; font.pixelSize: 15 }
                             SectionHeader { text: "KEYBINDS" }
                             Text {
                                 width: parent.width
                                 text: inputTab.keybindsText
-                                color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"
+                                color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"
                                 wrapMode: Text.Wrap
                             }
                         }
@@ -584,7 +584,7 @@ PanelWindow {
                         Column {
                             id: soundTab
                             visible: settingsPanel.currentPage === "sound"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property bool audioAvailable: false
                             property real volumePct: 0
                             property bool muted: false
@@ -637,39 +637,39 @@ PanelWindow {
                             Text {
                                 visible: !soundTab.audioAvailable
                                 text: "Not available - no audio device detected."
-                                color: Theme.textSecondary; font.pixelSize: 12
+                                color: Theme.textSecondary; font.pixelSize: 18
                             }
                             Column {
                                 visible: soundTab.audioAvailable
-                                width: parent.width; spacing: 10
-                                Text { text: "Output: " + soundTab.outputName; color: Theme.panelInk; font.pixelSize: 12 }
+                                width: parent.width; spacing: 15
+                                Text { text: "Output: " + soundTab.outputName; color: Theme.panelInk; font.pixelSize: 18 }
                                 Item {
-                                    width: parent.width; height: 26
+                                    width: parent.width; height: 39
                                     Text {
                                         id: volLabel
                                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                        text: "Volume"; color: Theme.panelInk; font.pixelSize: 12; width: 55
+                                        text: "Volume"; color: Theme.panelInk; font.pixelSize: 18; width: 82
                                     }
                                     Button {
                                         id: muteBtn
                                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                        width: 50; height: 22
+                                        width: 75; height: 33
                                         variant: soundTab.muted ? "danger" : "subtle"
                                         label: soundTab.muted ? "Muted" : "Mute"
                                         onClicked: soundTab.toggleMute()
                                     }
                                     Text {
                                         id: pctLabel
-                                        anchors.right: muteBtn.left; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter
-                                        text: soundTab.volumePct + "%"; color: Theme.textSecondary; font.pixelSize: 11
-                                        width: 34; horizontalAlignment: Text.AlignRight
+                                        anchors.right: muteBtn.left; anchors.rightMargin: 15; anchors.verticalCenter: parent.verticalCenter
+                                        text: soundTab.volumePct + "%"; color: Theme.textSecondary; font.pixelSize: 16
+                                        width: 51; horizontalAlignment: Text.AlignRight
                                     }
                                     Rectangle {
-                                        anchors.left: volLabel.right; anchors.leftMargin: 10
-                                        anchors.right: pctLabel.left; anchors.rightMargin: 10
+                                        anchors.left: volLabel.right; anchors.leftMargin: 15
+                                        anchors.right: pctLabel.left; anchors.rightMargin: 15
                                         anchors.verticalCenter: parent.verticalCenter
-                                        height: 8; radius: 4; color: Theme.surfaceRaised
-                                        Rectangle { width: parent.width * (soundTab.muted ? 0 : soundTab.volumePct) / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
+                                        height: 12; radius: 6; color: Theme.surfaceRaised
+                                        Rectangle { width: parent.width * (soundTab.muted ? 0 : soundTab.volumePct) / 100; height: parent.height; radius: 6; color: WorkspaceState.activeColor() }
                                         MouseArea {
                                             anchors.fill: parent
                                             onPressed: (mouse) => soundTab.setVolume(Math.max(0, Math.min(100, Math.round(mouse.x / width * 100))))
@@ -685,7 +685,7 @@ PanelWindow {
                         Column {
                             id: networkTab
                             visible: settingsPanel.currentPage === "network"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property string wifiDevice: ""
                             property var networks: []
                             property string connectingSsid: ""
@@ -787,8 +787,8 @@ PanelWindow {
 
                             SectionHeader { text: "NETWORK" }
                             Row {
-                                spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                spacing: 15
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: networkTab.radioOn ? "Wi-Fi: On" : "Wi-Fi: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: networkTab.radioOn
                                     onToggled: networkTab.toggleRadio()
@@ -796,9 +796,9 @@ PanelWindow {
                             }
                             Row {
                                 visible: networkTab.radioOn
-                                spacing: 10
+                                spacing: 15
                                 Button {
-                                    width: 70; height: 22
+                                    width: 105; height: 33
                                     variant: "subtle"
                                     enabled: !networkTab.busy
                                     label: networkTab.busy ? "..." : "Refresh"
@@ -807,49 +807,49 @@ PanelWindow {
                                 Text {
                                     visible: networkTab.statusMsg.length > 0
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: networkTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 11
+                                    text: networkTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 16
                                 }
                             }
                             Column {
                                 visible: networkTab.radioOn
-                                width: parent.width; spacing: 4
-                                Text { visible: networkTab.networks.length === 0; text: networkTab.busy ? "Scanning..." : "No networks found."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                width: parent.width; spacing: 6
+                                Text { visible: networkTab.networks.length === 0; text: networkTab.busy ? "Scanning..." : "No networks found."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: networkTab.networks
                                     delegate: Column {
                                         width: parent.width
                                         property var netData: modelData
-                                        spacing: 4
+                                        spacing: 6
                                         Rectangle {
-                                            width: parent.width; height: 34; radius: 6
+                                            width: parent.width; height: 51; radius: 9
                                             color: netData.connected ? Theme.surfaceRaised : "#00000000"
                                             Row {
-                                                anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                                anchors.fill: parent; anchors.margins: 9; spacing: 12
                                                 Item {
-                                                    width: 18; height: 22
+                                                    width: 27; height: 33
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     Repeater {
                                                         model: 4
                                                         delegate: Rectangle {
-                                                            width: 3; height: 5 + index * 3; x: index * 4; y: 14 - height
+                                                            width: 4; height: 5 + index * 3; x: index * 4; y: 14 - height
                                                             color: netData.signal >= (index + 1) * 25 ? WorkspaceState.activeColor() : Theme.panelInk
                                                             opacity: netData.signal >= (index + 1) * 25 ? 1 : 0.25
                                                         }
                                                     }
                                                 }
                                                 Text {
-                                                    width: 230; anchors.verticalCenter: parent.verticalCenter
+                                                    width: 345; anchors.verticalCenter: parent.verticalCenter
                                                     text: netData.ssid + (netData.secured ? "  🔒" : "")
-                                                    color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight
+                                                    color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight
                                                 }
                                                 Text {
                                                     visible: netData.connected
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    text: "Connected"; color: WorkspaceState.activeColor(); font.pixelSize: 11
+                                                    text: "Connected"; color: WorkspaceState.activeColor(); font.pixelSize: 16
                                                 }
                                                 Button {
                                                     visible: !netData.connected
-                                                    width: 70; height: 22
+                                                    width: 105; height: 33
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     label: "Connect"
                                                     onClicked: {
@@ -863,7 +863,7 @@ PanelWindow {
                                                 }
                                                 Button {
                                                     visible: netData.connected
-                                                    width: 80; height: 22
+                                                    width: 120; height: 33
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     variant: "danger"
                                                     label: "Disconnect"
@@ -871,7 +871,7 @@ PanelWindow {
                                                 }
                                                 Button {
                                                     visible: netData.connected
-                                                    width: 60; height: 22
+                                                    width: 90; height: 33
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     variant: "outlineDanger"
                                                     label: "Forget"
@@ -881,15 +881,15 @@ PanelWindow {
                                         }
                                         Rectangle {
                                             visible: networkTab.connectingSsid === netData.ssid
-                                            width: parent.width; height: 34; radius: 6; color: Theme.surfaceRaised
+                                            width: parent.width; height: 51; radius: 9; color: Theme.surfaceRaised
                                             Row {
-                                                anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                                anchors.fill: parent; anchors.margins: 9; spacing: 12
                                                 Rectangle {
-                                                    width: 180; height: 22; radius: 4; color: Theme.panel
+                                                    width: 270; height: 33; radius: 6; color: Theme.panel
                                                     border.color: Theme.panelInk; border.width: 1
                                                     TextInput {
-                                                        anchors.fill: parent; anchors.margins: 4
-                                                        color: Theme.panelInk; font.pixelSize: 12
+                                                        anchors.fill: parent; anchors.margins: 6
+                                                        color: Theme.panelInk; font.pixelSize: 18
                                                         echoMode: TextInput.Password
                                                         clip: true
                                                         focus: networkTab.connectingSsid === netData.ssid
@@ -898,12 +898,12 @@ PanelWindow {
                                                     }
                                                 }
                                                 Button {
-                                                    width: 60; height: 22
+                                                    width: 90; height: 33
                                                     label: "Connect"
                                                     onClicked: networkTab.connectTo(netData.ssid, networkTab.pwText)
                                                 }
                                                 Button {
-                                                    width: 50; height: 22
+                                                    width: 75; height: 33
                                                     variant: "neutral"
                                                     label: "Cancel"
                                                     onClicked: { networkTab.connectingSsid = ""; networkTab.pwText = "" }
@@ -921,7 +921,7 @@ PanelWindow {
                         Column {
                             id: btTab
                             visible: settingsPanel.currentPage === "bluetooth"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property bool powered: false
                             property var paired: []
                             property var nearby: []
@@ -1011,8 +1011,8 @@ PanelWindow {
 
                             SectionHeader { text: "BLUETOOTH" }
                             Row {
-                                spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                spacing: 15
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: btTab.powered ? "Bluetooth: On" : "Bluetooth: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: btTab.powered
                                     onToggled: btTab.togglePower()
@@ -1020,29 +1020,29 @@ PanelWindow {
                             }
                             SectionHeader { text: "PAIRED DEVICES" }
                             Column {
-                                width: parent.width; spacing: 4
-                                Text { visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                width: parent.width; spacing: 6
+                                Text { visible: btTab.paired.length === 0; text: "No paired devices yet."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: btTab.paired
                                     delegate: Rectangle {
                                         property var devData: modelData
-                                        width: parent.width; height: 32; radius: 6; color: Theme.surfaceRaised
+                                        width: parent.width; height: 48; radius: 9; color: Theme.surfaceRaised
                                         Row {
-                                            anchors.fill: parent; anchors.margins: 6; spacing: 8
-                                            Text { width: 200; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight }
+                                            anchors.fill: parent; anchors.margins: 9; spacing: 12
+                                            Text { width: 300; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: devData.connected ? "Connected" : "Paired"
-                                                color: devData.connected ? WorkspaceState.activeColor() : Theme.textSecondary; font.pixelSize: 11
+                                                color: devData.connected ? WorkspaceState.activeColor() : Theme.textSecondary; font.pixelSize: 16
                                             }
                                             Button {
-                                                width: 80; height: 22
+                                                width: 120; height: 33
                                                 variant: devData.connected ? "danger" : "primary"
                                                 label: devData.connected ? "Disconnect" : "Connect"
                                                 onClicked: devData.connected ? btTab.btDisconnect(devData.mac) : btTab.btConnect(devData.mac)
                                             }
                                             Button {
-                                                width: 60; height: 22
+                                                width: 90; height: 33
                                                 variant: "outlineDanger"
                                                 label: "Remove"
                                                 onClicked: btTab.btRemove(devData.mac)
@@ -1052,10 +1052,10 @@ PanelWindow {
                                 }
                             }
                             Row {
-                                spacing: 8
+                                spacing: 12
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "NEARBY" }
                                 Button {
-                                    width: 130; height: 22
+                                    width: 195; height: 33
                                     variant: "subtle"
                                     enabled: !btTab.scanning
                                     label: btTab.scanning ? "Scanning..." : "Scan (6s)"
@@ -1063,19 +1063,19 @@ PanelWindow {
                                 }
                             }
                             Column {
-                                width: parent.width; spacing: 4
-                                Text { visible: !btTab.scanning && btTab.nearby.length === 0; text: "No nearby devices found yet - tap Scan."; color: Theme.textSecondary; font.pixelSize: 11 }
+                                width: parent.width; spacing: 6
+                                Text { visible: !btTab.scanning && btTab.nearby.length === 0; text: "No nearby devices found yet - tap Scan."; color: Theme.textSecondary; font.pixelSize: 16 }
                                 Repeater {
                                     model: btTab.nearby
                                     delegate: Rectangle {
                                         property var devData: modelData
-                                        width: parent.width; height: 32; radius: 6; color: "#00000000"
+                                        width: parent.width; height: 48; radius: 9; color: "#00000000"
                                         border.color: Theme.panelInk; border.width: 1; opacity: 0.7
                                         Row {
-                                            anchors.fill: parent; anchors.margins: 6; spacing: 8
-                                            Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 12; elide: Text.ElideRight }
+                                            anchors.fill: parent; anchors.margins: 9; spacing: 12
+                                            Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: devData.name; color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight }
                                             Button {
-                                                width: 60; height: 22
+                                                width: 90; height: 33
                                                 label: "Pair"
                                                 onClicked: btTab.btPairAndConnect(devData.mac)
                                             }
@@ -1085,7 +1085,7 @@ PanelWindow {
                             }
                             Text {
                                 text: "Some devices need a physical confirmation button pressed on the device itself to finish pairing."
-                                color: Theme.textSecondary; font.pixelSize: 10; wrapMode: Text.Wrap; width: parent.width
+                                color: Theme.textSecondary; font.pixelSize: 15; wrapMode: Text.Wrap; width: parent.width
                             }
                         }
 
@@ -1093,7 +1093,7 @@ PanelWindow {
                         Column {
                             id: appsTab
                             visible: settingsPanel.currentPage === "apps"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var apps: []
                             Process {
                                 id: appsProc
@@ -1106,17 +1106,17 @@ PanelWindow {
                             }
                             Component.onCompleted: appsProc.running = true
                             SectionHeader { text: "APPLICATIONS" }
-                            Text { text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 11 }
+                            Text { text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 16 }
                             Column {
-                                width: parent.width; spacing: 2
+                                width: parent.width; spacing: 3
                                 Repeater {
                                     model: appsTab.apps
                                     delegate: Rectangle {
-                                        width: parent.width; height: 26; radius: 5
+                                        width: parent.width; height: 39; radius: 8
                                         color: appRowMouse.containsMouse ? Theme.surfaceRaised : "#00000000"
                                         Text {
-                                            anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
-                                            text: modelData.name; color: Theme.panelInk; font.pixelSize: 12
+                                            anchors.left: parent.left; anchors.leftMargin: 9; anchors.verticalCenter: parent.verticalCenter
+                                            text: modelData.name; color: Theme.panelInk; font.pixelSize: 18
                                         }
                                         MouseArea {
                                             id: appRowMouse
@@ -1133,7 +1133,7 @@ PanelWindow {
                         Column {
                             id: aiTab
                             visible: settingsPanel.currentPage === "ai"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var installedModels: []
                             property var runningModels: []
                             Process {
@@ -1156,27 +1156,27 @@ PanelWindow {
                             }
                             Component.onCompleted: { tagsProc.running = true; psProc.running = true }
                             SectionHeader { text: "AI" }
-                            Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text { text: "Local runtime: Ollama"; color: Theme.panelInk; font.pixelSize: 20 }
                             Text {
                                 text: aiTab.runningModels.length > 0
                                     ? ("Running in memory: " + aiTab.runningModels[0].name + " (" + aiTab.runningModels[0].size_vram + " bytes VRAM)")
                                     : "Nothing loaded in memory right now - Ollama unloads idle models automatically after a few minutes. Installed models (below) reload in seconds the next time you use them."
-                                color: Theme.textSecondary; font.pixelSize: 12; wrapMode: Text.Wrap; width: parent.width
+                                color: Theme.textSecondary; font.pixelSize: 18; wrapMode: Text.Wrap; width: parent.width
                             }
                             SectionHeader { text: "INSTALLED MODELS" }
                             Column {
-                                width: parent.width; spacing: 4
+                                width: parent.width; spacing: 6
                                 Repeater {
                                     model: aiTab.installedModels
                                     delegate: Rectangle {
-                                        width: parent.width; height: 44; radius: 6; color: Theme.surfaceRaised
+                                        width: parent.width; height: 66; radius: 9; color: Theme.surfaceRaised
                                         Column {
-                                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 2
-                                            Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 12 }
+                                            anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 3
+                                            Text { text: modelData.name; color: Theme.panelInk; font.pixelSize: 18 }
                                             Text {
                                                 text: modelData.details.parameter_size + " params, " + modelData.details.quantization_level + ", " + modelData.details.context_length + " ctx"
-                                                color: Theme.textSecondary; font.pixelSize: 10
+                                                color: Theme.textSecondary; font.pixelSize: 15
                                             }
                                         }
                                     }
@@ -1188,7 +1188,7 @@ PanelWindow {
                         Column {
                             id: privacyTab
                             visible: settingsPanel.currentPage === "privacy"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property int clipboardCount: 0
                             property int recentFilesCount: 0
                             property int shellHistoryCount: 0
@@ -1228,38 +1228,38 @@ PanelWindow {
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "JAZZ sends no telemetry. All AI processing runs locally via Ollama - nothing about what you type, ask, or run leaves this machine unless you explicitly configure a cloud service."
-                                color: Theme.panelInk; font.pixelSize: 12
+                                color: Theme.panelInk; font.pixelSize: 18
                             }
                             Text {
                                 visible: privacyTab.statusMsg.length > 0
-                                text: privacyTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 11
+                                text: privacyTab.statusMsg; color: Theme.textSecondary; font.pixelSize: 16
                             }
                             SectionHeader { text: "ACTIVITY TRACES" }
                             Row {
-                                width: parent.width; spacing: 10
-                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                width: parent.width; spacing: 15
+                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Clipboard history (" + privacyTab.clipboardCount + " items)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
-                                    width: 60; height: 22
+                                    width: 90; height: 33
                                     variant: "danger"
                                     label: "Clear"
                                     onClicked: privacyTab.clearClipboard()
                                 }
                             }
                             Row {
-                                width: parent.width; spacing: 10
-                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                width: parent.width; spacing: 15
+                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Recent files list (" + privacyTab.recentFilesCount + " entries)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
-                                    width: 60; height: 22
+                                    width: 90; height: 33
                                     variant: "danger"
                                     label: "Clear"
                                     onClicked: privacyTab.clearRecentFiles()
                                 }
                             }
                             Row {
-                                width: parent.width; spacing: 10
-                                Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 12 }
+                                width: parent.width; spacing: 15
+                                Text { width: 390; anchors.verticalCenter: parent.verticalCenter; text: "Terminal command history (" + privacyTab.shellHistoryCount + " lines)"; color: Theme.panelInk; font.pixelSize: 18 }
                                 Button {
-                                    width: 60; height: 22
+                                    width: 90; height: 33
                                     variant: "danger"
                                     label: "Clear"
                                     onClicked: privacyTab.clearShellHistory()
@@ -1268,13 +1268,13 @@ PanelWindow {
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "Clearing command history resets the saved file - any terminal windows already open keep their own history in memory until closed."
-                                color: Theme.textSecondary; font.pixelSize: 10
+                                color: Theme.textSecondary; font.pixelSize: 15
                             }
                             SectionHeader { text: "MORE" }
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "AI action history and permissions live under Agents. Firewall, SSH, and disk-encryption status live under Security."
-                                color: Theme.textSecondary; font.pixelSize: 11
+                                color: Theme.textSecondary; font.pixelSize: 16
                             }
                         }
 
@@ -1282,7 +1282,7 @@ PanelWindow {
                         Column {
                             id: agentsTab
                             visible: settingsPanel.currentPage === "agents"
-                            width: parent.width; spacing: 12
+                            width: parent.width; spacing: 18
                             property var policyRows: []
                             property string ledgerText: "loading..."
 
@@ -1307,31 +1307,31 @@ PanelWindow {
 
                             SectionHeader { text: "AGENT PERMISSIONS" }
                             Column {
-                                width: parent.width; spacing: 4
+                                width: parent.width; spacing: 6
                                 Repeater {
                                     model: agentsTab.policyRows
                                     delegate: Rectangle {
                                         id: policyRow
                                         property var rowData: modelData
-                                        width: parent.width; height: 30; radius: 6; color: Theme.surfaceRaised
+                                        width: parent.width; height: 45; radius: 9; color: Theme.surfaceRaised
                                         Row {
-                                            anchors.fill: parent; anchors.margins: 6; spacing: 8
+                                            anchors.fill: parent; anchors.margins: 9; spacing: 12
                                             Text {
-                                                width: 160; anchors.verticalCenter: parent.verticalCenter
-                                                text: policyRow.rowData.action_type; color: Theme.panelInk; font.pixelSize: 12
+                                                width: 240; anchors.verticalCenter: parent.verticalCenter
+                                                text: policyRow.rowData.action_type; color: Theme.panelInk; font.pixelSize: 18
                                             }
                                             Text {
-                                                width: 50; anchors.verticalCenter: parent.verticalCenter
-                                                text: "[" + policyRow.rowData.tier + "]"; color: Theme.textSecondary; font.pixelSize: 11
+                                                width: 75; anchors.verticalCenter: parent.verticalCenter
+                                                text: "[" + policyRow.rowData.tier + "]"; color: Theme.textSecondary; font.pixelSize: 16
                                             }
                                             Row {
-                                                spacing: 4
+                                                spacing: 6
                                                 visible: policyRow.rowData.overridable
                                                 Repeater {
                                                     model: ["allow", "ask", "deny"]
                                                     delegate: Button {
                                                         property string optionValue: modelData
-                                                        width: 46; height: 20
+                                                        width: 69; height: 30
                                                         variant: optionValue === policyRow.rowData.policy ? "primary" : "flat"
                                                         label: optionValue
                                                         onClicked: {
@@ -1343,7 +1343,7 @@ PanelWindow {
                                             }
                                             Text {
                                                 visible: !policyRow.rowData.overridable
-                                                text: "always ask"; color: Theme.textSecondary; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter
+                                                text: "always ask"; color: Theme.textSecondary; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter
                                             }
                                         }
                                     }
@@ -1353,7 +1353,7 @@ PanelWindow {
                             Text {
                                 width: parent.width
                                 text: agentsTab.ledgerText
-                                color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"
+                                color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"
                                 wrapMode: Text.Wrap
                             }
                         }
@@ -1362,7 +1362,7 @@ PanelWindow {
                         Column {
                             id: storageTab
                             visible: settingsPanel.currentPage === "storage"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property string usedLine: "loading..."
                             Process {
                                 running: storageTab.visible
@@ -1370,10 +1370,10 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) storageTab.usedLine = data } }
                             }
                             SectionHeader { text: "STORAGE" }
-                            Text { text: storageTab.usedLine; color: Theme.panelInk; font.pixelSize: 13 }
-                            Text { text: "Btrfs root, Snapper-protected (Track A)."; color: Theme.textSecondary; font.pixelSize: 11 }
+                            Text { text: storageTab.usedLine; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { text: "Btrfs root, Snapper-protected (Track A)."; color: Theme.textSecondary; font.pixelSize: 16 }
                             Button {
-                                width: 180; height: 26
+                                width: 270; height: 39
                                 fontSize: 11
                                 label: "Manage snapshots"
                                 onClicked: Quickshell.execDetached(["kitty", "-e", "sudo", "snapper", "-c", "root", "list"])
@@ -1384,7 +1384,7 @@ PanelWindow {
                         Column {
                             id: powerTab
                             visible: settingsPanel.currentPage === "power"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property int pct: -1
                             property string status: "unknown"
                             property real watts: -1
@@ -1404,15 +1404,15 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) powerTab.watts = parseInt(data) / 1000000.0 } }
                             }
                             SectionHeader { text: "BATTERY & POWER" }
-                            Text { text: powerTab.pct >= 0 ? (powerTab.pct + "% - " + powerTab.status) : "reading..."; color: Theme.panelInk; font.pixelSize: 16 }
-                            Text { text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 12 }
+                            Text { text: powerTab.pct >= 0 ? (powerTab.pct + "% - " + powerTab.status) : "reading..."; color: Theme.panelInk; font.pixelSize: 24 }
+                            Text { text: powerTab.watts >= 0 ? ("Power draw: " + powerTab.watts.toFixed(1) + " W") : ""; color: Theme.textSecondary; font.pixelSize: 18 }
                         }
 
                         // ===== Security (REAL) =====
                         Column {
                             id: securityTab
                             visible: settingsPanel.currentPage === "security"
-                            width: parent.width; spacing: 8
+                            width: parent.width; spacing: 12
                             property string firewallStatus: "checking..."
                             property int firewallRules: 0
                             property string sshStatus: "checking..."
@@ -1444,17 +1444,17 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) securityTab.diskEncryption = data } }
                             }
                             SectionHeader { text: "SECURITY" }
-                            Text { text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 13 }
-                            Text { text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 13 }
-                            Text { text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 13 }
-                            Text { text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 13 }
+                            Text { text: "Firewall: " + securityTab.firewallStatus + " (" + securityTab.firewallRules + " allow rules)"; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 20 }
+                            Text { text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 20 }
                         }
 
                         // ===== Updates (REAL) =====
                         Column {
                             id: updatesTab
                             visible: settingsPanel.currentPage === "updates"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var pending: []
                             property bool checked: false
                             Process {
@@ -1472,17 +1472,17 @@ PanelWindow {
                             SectionHeader { text: "UPDATES" }
                             Text {
                                 text: !updatesTab.checked ? "Checking..." : (updatesTab.pending.length === 0 ? "System is up to date" : updatesTab.pending.length + " updates available")
-                                color: Theme.panelInk; font.pixelSize: 15
+                                color: Theme.panelInk; font.pixelSize: 22
                             }
                             Column {
-                                width: parent.width; spacing: 2
+                                width: parent.width; spacing: 3
                                 Repeater {
                                     model: updatesTab.pending
-                                    delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 11; font.family: "monospace" }
+                                    delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 16; font.family: "monospace" }
                                 }
                             }
                             Button {
-                                width: 110; height: 26
+                                width: 165; height: 39
                                 fontSize: 11
                                 label: "Check Now"
                                 onClicked: updatesTab.refresh()
@@ -1493,7 +1493,7 @@ PanelWindow {
                         Column {
                             id: accessTab
                             visible: settingsPanel.currentPage === "accessibility"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var monitorData: null
                             property string originalScaleLuaLine: ""
                             property bool scaleTimerActive: false
@@ -1544,8 +1544,8 @@ PanelWindow {
                             SectionHeader { text: "ACCESSIBILITY" }
                             SectionHeader { text: "MOTION" }
                             Row {
-                                spacing: 10
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 13 }
+                                spacing: 15
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: Theme.reducedMotion ? "Reduce motion: On" : "Reduce motion: Off"; color: Theme.panelInk; font.pixelSize: 20 }
                                 Toggle {
                                     checked: Theme.reducedMotion
                                     onToggled: Theme.reducedMotion = !Theme.reducedMotion
@@ -1554,25 +1554,25 @@ PanelWindow {
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "Turns off JAZZ's own color/transition animations (currently: the top bar's workspace-color change). Native app animations aren't affected."
-                                color: Theme.textSecondary; font.pixelSize: 10
+                                color: Theme.textSecondary; font.pixelSize: 15
                             }
                             SectionHeader { text: "TEXT & UI SIZE" }
                             Text {
                                 text: accessTab.monitorData ? ("Current: " + Math.round(accessTab.monitorData.scale * 100) + "%") : "loading..."
-                                color: Theme.panelInk; font.pixelSize: 13
+                                color: Theme.panelInk; font.pixelSize: 20
                             }
                             Text {
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "Scales the entire desktop - dock, top bar, Settings, and every app - not just JAZZ's own panels. Same safety timer as Displays: a bad size always reverts on its own."
-                                color: Theme.textSecondary; font.pixelSize: 10
+                                color: Theme.textSecondary; font.pixelSize: 15
                             }
                             Row {
-                                spacing: 6
+                                spacing: 9
                                 Repeater {
                                     model: [1.0, 1.15, 1.25, 1.5, 1.75]
                                     delegate: Button {
                                         property real scaleVal: modelData
-                                        width: 56; height: 26
+                                        width: 84; height: 39
                                         fontSize: 11
                                         variant: (accessTab.monitorData && Math.abs(accessTab.monitorData.scale - scaleVal) < 0.01) ? "primary" : "subtle"
                                         enabled: !accessTab.scaleTimerActive
@@ -1583,26 +1583,26 @@ PanelWindow {
                             }
                             Rectangle {
                                 visible: accessTab.scaleTimerActive
-                                width: parent.width; height: 64; radius: 8; color: Theme.surfaceRaised
+                                width: parent.width; height: 96; radius: 12; color: Theme.surfaceRaised
                                 border.color: WorkspaceState.activeColor(); border.width: 1
                                 Column {
-                                    anchors.centerIn: parent; spacing: 8
+                                    anchors.centerIn: parent; spacing: 12
                                     Text {
                                         text: "Keep this size? Reverting in " + accessTab.scaleSecondsLeft + "s"
-                                        color: Theme.panelInk; font.pixelSize: 13
+                                        color: Theme.panelInk; font.pixelSize: 20
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                     Row {
-                                        spacing: 10
+                                        spacing: 15
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         Button {
-                                            width: 70; height: 24
+                                            width: 105; height: 36
                                             fontSize: 11
                                             label: "Keep"
                                             onClicked: { accessTab.scaleTimerActive = false; accessTab.refreshMonitor() }
                                         }
                                         Button {
-                                            width: 70; height: 24
+                                            width: 105; height: 36
                                             fontSize: 11
                                             variant: "neutral"
                                             label: "Revert"
@@ -1621,7 +1621,7 @@ PanelWindow {
                         Column {
                             id: systemTab
                             visible: settingsPanel.currentPage === "system"
-                            width: parent.width; spacing: 8
+                            width: parent.width; spacing: 12
                             property string hostname: "..."
                             property string kernel: "..."
                             property string cpu: "..."
@@ -1653,14 +1653,14 @@ PanelWindow {
                                 stdout: SplitParser { onRead: function (data) { if (data) systemTab.gpu = data } }
                             }
                             SectionHeader { text: "ABOUT" }
-                            Text { text: "JAZZ"; color: Theme.panelInk; font.pixelSize: 18; font.bold: true }
-                            Text { text: "Arch Linux, hostname " + systemTab.hostname; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "Kernel " + systemTab.kernel; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "CPU: " + systemTab.cpu; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "GPU: " + systemTab.gpu; color: Theme.panelInk; font.pixelSize: 12 }
-                            Text { text: "Memory: " + systemTab.mem; color: Theme.panelInk; font.pixelSize: 12 }
+                            Text { text: "JAZZ"; color: Theme.panelInk; font.pixelSize: 27; font.bold: true }
+                            Text { text: "Arch Linux, hostname " + systemTab.hostname; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "Kernel " + systemTab.kernel; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "CPU: " + systemTab.cpu; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "GPU: " + systemTab.gpu; color: Theme.panelInk; font.pixelSize: 18 }
+                            Text { text: "Memory: " + systemTab.mem; color: Theme.panelInk; font.pixelSize: 18 }
                             Button {
-                                width: 170; height: 26
+                                width: 255; height: 39
                                 label: settingsPanel.devModeEnabled ? "Disable Developer Mode" : "Enable Developer Mode"
                                 onClicked: {
                                     var cmd = settingsPanel.devModeEnabled
@@ -1679,7 +1679,7 @@ PanelWindow {
                         Column {
                             id: developerTab
                             visible: settingsPanel.currentPage === "developer"
-                            width: parent.width; spacing: 10
+                            width: parent.width; spacing: 15
                             property var eventLines: []
                             property var busNames: []
                             property string selectedBusName: ""
@@ -1730,29 +1730,29 @@ PanelWindow {
                             SectionHeader { text: "DEVELOPER" }
 
                             Row {
-                                spacing: 10
+                                spacing: 15
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "HYPRLAND EVENT LOG" }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: WorkspaceState.activeColor(); font.pixelSize: 10 }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: developerTab.visible ? "(live)" : ""; color: WorkspaceState.activeColor(); font.pixelSize: 15 }
                                 Button {
-                                    width: 50; height: 20
+                                    width: 75; height: 30
                                     variant: "subtle"
                                     label: "Clear"
                                     onClicked: developerTab.eventLines = []
                                 }
                             }
                             Rectangle {
-                                width: parent.width; height: 220; radius: 6; color: Theme.surfaceRaised
+                                width: parent.width; height: 330; radius: 9; color: Theme.surfaceRaised
                                 clip: true
                                 Flickable {
                                     id: eventFlick
-                                    anchors.fill: parent; anchors.margins: 6
+                                    anchors.fill: parent; anchors.margins: 9
                                     contentHeight: eventText.height
                                     contentWidth: width
                                     Text {
                                         id: eventText
                                         width: eventFlick.width
                                         text: developerTab.eventLines.length > 0 ? developerTab.eventLines.join("\n") : "Waiting for events - switch workspaces, open a window, or plug/unplug something to see live IPC events here."
-                                        color: Theme.panelInk; font.pixelSize: 10; font.family: "monospace"
+                                        color: Theme.panelInk; font.pixelSize: 15; font.family: "monospace"
                                         wrapMode: Text.Wrap
                                         onTextChanged: eventFlick.contentY = Math.max(0, height - eventFlick.height)
                                     }
@@ -1760,37 +1760,37 @@ PanelWindow {
                             }
 
                             Row {
-                                spacing: 10
+                                spacing: 15
                                 SectionHeader { anchors.verticalCenter: parent.verticalCenter; text: "D-BUS INSPECTOR (session bus)" }
                                 Button {
-                                    width: 60; height: 20
+                                    width: 90; height: 30
                                     variant: "subtle"
                                     label: "Refresh"
                                     onClicked: developerTab.refreshBus()
                                 }
                             }
-                            Text { text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 10 }
+                            Text { text: developerTab.busNames.length + " services on the session bus - click one to inspect its object tree"; color: Theme.textSecondary; font.pixelSize: 15 }
                             Rectangle {
-                                width: parent.width; height: 180; radius: 6; color: Theme.surfaceRaised
+                                width: parent.width; height: 270; radius: 9; color: Theme.surfaceRaised
                                 clip: true
                                 Flickable {
-                                    anchors.fill: parent; anchors.margins: 6
+                                    anchors.fill: parent; anchors.margins: 9
                                     contentHeight: busCol.height
                                     contentWidth: width
                                     Column {
                                         id: busCol
-                                        width: parent.width; spacing: 1
+                                        width: parent.width; spacing: 2
                                         Repeater {
                                             model: developerTab.busNames
                                             delegate: Rectangle {
                                                 property var svcData: modelData
-                                                width: parent.width; height: 18
+                                                width: parent.width; height: 27
                                                 color: developerTab.selectedBusName === svcData.name ? WorkspaceState.activeColor() : "#00000000"
                                                 Text {
-                                                    anchors.left: parent.left; anchors.leftMargin: 4; anchors.verticalCenter: parent.verticalCenter
+                                                    anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
                                                     text: svcData.raw
                                                     color: developerTab.selectedBusName === svcData.name ? "#ffffff" : Theme.panelInk
-                                                    font.pixelSize: 9; font.family: "monospace"
+                                                    font.pixelSize: 14; font.family: "monospace"
                                                 }
                                                 MouseArea { anchors.fill: parent; onClicked: developerTab.inspectBus(svcData.name) }
                                             }
@@ -1800,12 +1800,12 @@ PanelWindow {
                             }
                             Column {
                                 visible: developerTab.selectedBusName.length > 0
-                                width: parent.width; spacing: 4
-                                Text { text: developerTab.selectedBusName; color: Theme.panelInk; font.pixelSize: 11; font.bold: true }
+                                width: parent.width; spacing: 6
+                                Text { text: developerTab.selectedBusName; color: Theme.panelInk; font.pixelSize: 16; font.bold: true }
                                 Text {
                                     width: parent.width
                                     text: developerTab.treeText
-                                    color: Theme.panelInk; font.pixelSize: 10; font.family: "monospace"
+                                    color: Theme.panelInk; font.pixelSize: 15; font.family: "monospace"
                                     wrapMode: Text.Wrap
                                 }
                             }

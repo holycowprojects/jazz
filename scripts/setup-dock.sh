@@ -247,7 +247,7 @@ ShellRoot {
     PanelWindow {
         id: topBar
         anchors { top: true; left: true; right: true }
-        implicitHeight: 34
+        implicitHeight: 51
         color: WorkspaceState.activeColor()
         Behavior on color { enabled: !Theme.reducedMotion; ColorAnimation { duration: 250 } }
 
@@ -264,14 +264,14 @@ ShellRoot {
 
         Row {
             anchors.left: parent.left
-            anchors.leftMargin: 12
+            anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 16
+            spacing: 24
 
             Text {
                 text: "JAZZ"
                 color: "#ffffff"
-                font.pixelSize: 15
+                font.pixelSize: 22
                 font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -281,18 +281,18 @@ ShellRoot {
                 text: sessionUser.name
                 color: "#ffffff"
                 opacity: 0.8
-                font.pixelSize: 11
+                font.pixelSize: 16
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             Row {
-                spacing: 5
+                spacing: 8
                 anchors.verticalCenter: parent.verticalCenter
                 Repeater {
                     model: WorkspaceState.list
                     delegate: Rectangle {
                         property bool active: WorkspaceState.active === modelData.name
-                        width: pillText.width + 18; height: 20; radius: 10
+                        width: pillText.width + 18; height: 30; radius: 15
                         color: active ? "#ffffff" : "#00000000"
                         border.color: active ? "#00000000" : "#ffffff"
                         border.width: active ? 0 : 1
@@ -300,12 +300,12 @@ ShellRoot {
 
                         Row {
                             anchors.centerIn: parent
-                            spacing: 5
-                            Rectangle { width: 6; height: 6; radius: 3; color: WorkspaceState.colorFor(modelData.name); anchors.verticalCenter: parent.verticalCenter }
+                            spacing: 8
+                            Rectangle { width: 9; height: 9; radius: 4; color: WorkspaceState.colorFor(modelData.name); anchors.verticalCenter: parent.verticalCenter }
                             Text {
                                 id: pillText
                                 text: WorkspaceState.labelFor(modelData.name)
-                                font.pixelSize: 10
+                                font.pixelSize: 15
                                 font.italic: modelData.dormant
                                 color: active ? WorkspaceState.colorFor(modelData.name) : "#ffffff"
                             }
@@ -328,7 +328,7 @@ ShellRoot {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatTime(clock.date, "hh:mm:ss")
                 color: "#ffffff"
-                font.pixelSize: 14
+                font.pixelSize: 21
                 font.family: "monospace"
             }
             Text {
@@ -336,7 +336,7 @@ ShellRoot {
                 text: Qt.formatDate(clock.date, "ddd, MMM d")
                 color: "#ffffff"
                 opacity: 0.75
-                font.pixelSize: 9
+                font.pixelSize: 14
             }
         }
 
@@ -376,78 +376,78 @@ ShellRoot {
 
         Row {
             anchors.right: parent.right
-            anchors.rightMargin: 12
+            anchors.rightMargin: 18
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 14
+            spacing: 21
 
             Row {
                 visible: trayState.nowPlaying.length > 0
-                spacing: 5
+                spacing: 8
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "♪"; color: "#ffffff"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "♪"; color: "#ffffff"; font.pixelSize: 20; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: trayState.nowPlaying; color: "#ffffff"; font.pixelSize: 11
+                    text: trayState.nowPlaying; color: "#ffffff"; font.pixelSize: 16
                     anchors.verticalCenter: parent.verticalCenter
-                    elide: Text.ElideRight; width: 140
+                    elide: Text.ElideRight; width: 210
                 }
             }
 
             Row {
-                spacing: 3
+                spacing: 4
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "🔔"; color: "#ffffff"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
-                Text { visible: trayState.notifCount > 0; text: trayState.notifCount; color: "#ffffff"; opacity: 0.8; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "🔔"; color: "#ffffff"; font.pixelSize: 20; anchors.verticalCenter: parent.verticalCenter }
+                Text { visible: trayState.notifCount > 0; text: trayState.notifCount; color: "#ffffff"; opacity: 0.8; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["dunstctl", "history-pop"]) }
             }
 
             Text {
                 text: "⎘"
                 color: "#ffffff"
-                font.pixelSize: 15
+                font.pixelSize: 22
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "cliphist list | wofi --dmenu | cliphist decode | wl-copy"]) }
             }
 
             Row {
                 visible: trayState.wifiSsid.length > 0
-                spacing: 4
+                spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "📶"; color: "#ffffff"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "📶"; color: "#ffffff"; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Row {
                 visible: trayState.batteryPct >= 0
-                spacing: 4
+                spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "🔋"; color: "#ffffff"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: trayState.batteryPct + "%"; color: "#ffffff"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "🔋"; color: "#ffffff"; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: trayState.batteryPct + "%"; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
             }
 
             Text {
                 text: "🎷"
-                font.pixelSize: 14
+                font.pixelSize: 21
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "launcher", "toggle"]) }
             }
             Text {
                 text: "▦"
                 color: "#ffffff"
-                font.pixelSize: 14
+                font.pixelSize: 21
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "widgets", "toggle"]) }
             }
             Text {
                 text: "⚙"
                 color: "#ffffff"
-                font.pixelSize: 15
+                font.pixelSize: 22
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "quicksettings", "toggle"]) }
             }
             Text {
                 text: "⏻"
                 color: "#ffffff"
-                font.pixelSize: 15
+                font.pixelSize: 22
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "powermenu", "toggle"]) }
             }
@@ -468,10 +468,10 @@ ShellRoot {
 
         Rectangle {
             id: launcherBox
-            width: 520; height: 400
+            width: 780; height: 600
             anchors.horizontalCenter: parent.horizontalCenter
             y: 70
-            radius: 14
+            radius: 21
             color: Theme.panel
             border.color: WorkspaceState.activeColor()
             border.width: 2
@@ -479,18 +479,18 @@ ShellRoot {
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 16
-                spacing: 12
+                anchors.margins: 24
+                spacing: 18
 
                 Rectangle {
-                    width: parent.width; height: 34; radius: 8
+                    width: parent.width; height: 51; radius: 12
                     color: Theme.panelInk; opacity: 0.08
                     TextInput {
                         id: searchInput
                         anchors.fill: parent
-                        anchors.margins: 9
+                        anchors.margins: 14
                         color: Theme.panelInk
-                        font.pixelSize: 13
+                        font.pixelSize: 20
                         clip: true
                         focus: launcher.visible
                         Text {
@@ -498,7 +498,7 @@ ShellRoot {
                             color: Theme.panelInk
                             opacity: 0.4
                             visible: searchInput.text.length === 0
-                            font.pixelSize: 13
+                            font.pixelSize: 20
                         }
                         Keys.onEscapePressed: launcher.visible = false
                     }
@@ -506,27 +506,27 @@ ShellRoot {
 
                 Flow {
                     width: parent.width
-                    height: 300
-                    spacing: 6
+                    height: 450
+                    spacing: 9
                     clip: true
                     Repeater {
                         model: appCatalog.apps
                         delegate: Rectangle {
                             visible: searchInput.text.length === 0 || modelData.name.toLowerCase().indexOf(searchInput.text.toLowerCase()) !== -1
-                            width: 76; height: visible ? 74 : 0; radius: 8
+                            width: 114; height: visible ? 74 : 0; radius: 12
                             color: launchMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
                             opacity: launchMouse.containsMouse ? 0.18 : 1
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 4
+                                spacing: 6
                                 Rectangle {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    width: 34; height: 34; radius: 9
+                                    width: 51; height: 51; radius: 14
                                     color: WorkspaceState.activeColor()
                                     opacity: 0.85
                                     Image {
                                         anchors.centerIn: parent
-                                        width: 24; height: 24
+                                        width: 36; height: 36
                                         source: resolveIcon(modelData.icon)
                                         fillMode: Image.PreserveAspectFit
                                         visible: resolveIcon(modelData.icon).length > 0
@@ -535,13 +535,13 @@ ShellRoot {
                                         anchors.centerIn: parent
                                         visible: resolveIcon(modelData.icon).length === 0
                                         text: modelData.name.charAt(0)
-                                        color: "#ffffff"; font.pixelSize: 14; font.bold: true
+                                        color: "#ffffff"; font.pixelSize: 21; font.bold: true
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.name; color: Theme.panelInk; font.pixelSize: 9
-                                    width: 74; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+                                    text: modelData.name; color: Theme.panelInk; font.pixelSize: 14
+                                    width: 111; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
                                     elide: Text.ElideRight; maximumLineCount: 2
                                 }
                             }
@@ -557,7 +557,7 @@ ShellRoot {
 
                 Text {
                     text: "Esc closes · " + appCatalog.apps.length + " apps"
-                    color: Theme.panelInk; opacity: 0.4; font.pixelSize: 9
+                    color: Theme.panelInk; opacity: 0.4; font.pixelSize: 14
                 }
             }
         }
@@ -574,8 +574,8 @@ ShellRoot {
         visible: false
         anchors { top: true; right: true }
         margins { top: 38; right: 8 }
-        implicitWidth: 230
-        implicitHeight: 260
+        implicitWidth: 345
+        implicitHeight: 390
         exclusiveZone: -1
         color: Theme.panel
 
@@ -617,24 +617,24 @@ ShellRoot {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 14
-            spacing: 14
+            anchors.margins: 21
+            spacing: 21
 
             Row {
                 width: parent.width
-                Text { text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 12; width: parent.width - 50 }
-                Text { text: "on"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 11 }
+                Text { text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 18; width: parent.width - 50 }
+                Text { text: "on"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 16 }
             }
             Row {
                 width: parent.width
-                spacing: 8
-                Text { text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 12; width: 110 }
+                spacing: 12
+                Text { text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
                 Rectangle {
-                    width: 34; height: 18; radius: 9
+                    width: 51; height: 27; radius: 14
                     color: quickSettings.btStatus === "yes" ? WorkspaceState.activeColor() : Theme.panelInk
                     opacity: quickSettings.btStatus === "yes" ? 1 : 0.25
                     Rectangle {
-                        width: 14; height: 14; radius: 7; color: "#ffffff"
+                        width: 21; height: 21; radius: 10; color: "#ffffff"
                         anchors.verticalCenter: parent.verticalCenter
                         x: quickSettings.btStatus === "yes" ? parent.width - width - 2 : 2
                     }
@@ -649,17 +649,17 @@ ShellRoot {
             }
             Column {
                 width: parent.width
-                spacing: 4
-                Text { text: "Volume"; color: Theme.panelInk; font.pixelSize: 12 }
+                spacing: 6
+                Text { text: "Volume"; color: Theme.panelInk; font.pixelSize: 18 }
                 Text {
                     visible: !quickSettings.audioAvailable
                     text: "Not available - no audio device"
-                    color: Theme.panelInk; opacity: 0.5; font.pixelSize: 10; font.italic: true
+                    color: Theme.panelInk; opacity: 0.5; font.pixelSize: 15; font.italic: true
                 }
                 Rectangle {
                     visible: quickSettings.audioAvailable
-                    width: parent.width; height: 6; radius: 3; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 3; color: WorkspaceState.activeColor() }
+                    width: parent.width; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
+                    Rectangle { width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
                     MouseArea {
                         anchors.fill: parent
                         onPressed: (mouse) => { var pct = Math.max(0, Math.min(100, mouse.x / width * 100)); quickSettings.volumeVal = pct; Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)]) }
@@ -669,11 +669,11 @@ ShellRoot {
             }
             Column {
                 width: parent.width
-                spacing: 4
-                Text { text: "Brightness"; color: Theme.panelInk; font.pixelSize: 12 }
+                spacing: 6
+                Text { text: "Brightness"; color: Theme.panelInk; font.pixelSize: 18 }
                 Rectangle {
-                    width: parent.width; height: 6; radius: 3; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 3; color: WorkspaceState.activeColor() }
+                    width: parent.width; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
+                    Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
                     MouseArea {
                         anchors.fill: parent
                         onPressed: (mouse) => { var pct = Math.max(1, Math.min(100, mouse.x / width * 100)); quickSettings.brightnessVal = pct; Quickshell.execDetached(["brightnessctl", "set", Math.round(pct) + "%"]) }
@@ -682,8 +682,8 @@ ShellRoot {
                 }
             }
             Rectangle {
-                width: parent.width; height: 26; radius: 6; color: WorkspaceState.activeColor()
-                Text { anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 11; color: "#ffffff" }
+                width: parent.width; height: 39; radius: 9; color: WorkspaceState.activeColor()
+                Text { anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 16; color: "#ffffff" }
                 MouseArea { anchors.fill: parent; onClicked: { quickSettings.visible = false; Quickshell.execDetached(["qs", "ipc", "call", "settings", "toggle"]) } }
             }
         }
@@ -703,15 +703,15 @@ ShellRoot {
         visible: false
         anchors { top: true; right: true }
         margins { top: 38; right: 8 }
-        implicitWidth: 150
-        implicitHeight: 140
+        implicitWidth: 225
+        implicitHeight: 210
         exclusiveZone: -1
         color: Theme.panel
 
         Column {
             anchors.fill: parent
-            anchors.margins: 8
-            spacing: 2
+            anchors.margins: 12
+            spacing: 3
             Repeater {
                 model: [
                     { label: "Lock", cmd: ["hyprlock"] },
@@ -720,14 +720,14 @@ ShellRoot {
                     { label: "Shut down", cmd: ["systemctl", "poweroff"] }
                 ]
                 delegate: Rectangle {
-                    width: parent.width; height: 28; radius: 6
+                    width: parent.width; height: 42; radius: 9
                     color: powerMouse.containsMouse ? Theme.panelInk : "#00000000"
                     opacity: powerMouse.containsMouse ? 0.08 : 1
                     Text {
-                        anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                         text: modelData.label
                         color: modelData.label === "Shut down" ? "#c0392b" : Theme.panelInk
-                        font.pixelSize: 12
+                        font.pixelSize: 18
                     }
                     MouseArea {
                         id: powerMouse
@@ -748,25 +748,25 @@ ShellRoot {
     // ---------- Dock (always visible, macOS-style: pinned + running combined) ----------
     PanelWindow {
         anchors { bottom: true; left: true; right: true }
-        implicitHeight: 52
+        implicitHeight: 78
         color: Theme.panel
 
         Row {
             anchors.centerIn: parent
-            spacing: 10
+            spacing: 15
             Repeater {
                 model: dockEntries
                 delegate: Column {
-                    spacing: 2
+                    spacing: 3
                     Rectangle {
-                        width: 36; height: 36; radius: 9
+                        width: 54; height: 54; radius: 14
                         color: dockMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
                         anchors.horizontalCenter: parent.horizontalCenter
                         scale: dockMouse.containsMouse ? 1.15 : 1.0
                         Behavior on scale { NumberAnimation { duration: 120 } }
                         Image {
                             anchors.centerIn: parent
-                            width: 26; height: 26
+                            width: 39; height: 39
                             source: modelData.icon
                             fillMode: Image.PreserveAspectFit
                             visible: modelData.icon.length > 0
@@ -775,13 +775,13 @@ ShellRoot {
                             anchors.centerIn: parent
                             visible: modelData.icon.length === 0 && modelData.glyph.length > 0
                             text: modelData.glyph
-                            color: Theme.panelInk; font.pixelSize: 17
+                            color: Theme.panelInk; font.pixelSize: 26
                         }
                         Text {
                             anchors.centerIn: parent
                             visible: modelData.icon.length === 0 && modelData.glyph.length === 0
                             text: modelData.name.charAt(0)
-                            color: Theme.panelInk; font.pixelSize: 14; font.bold: true
+                            color: Theme.panelInk; font.pixelSize: 21; font.bold: true
                         }
                         MouseArea {
                             id: dockMouse
@@ -792,7 +792,7 @@ ShellRoot {
                     }
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: 4; height: 4; radius: 2
+                        width: 6; height: 6; radius: 3
                         color: WorkspaceState.activeColor()
                         visible: modelData.running
                     }
@@ -812,8 +812,8 @@ ShellRoot {
         visible: false
         anchors { bottom: true; right: true }
         margins { bottom: 60; right: 16 }
-        implicitWidth: 220
-        implicitHeight: 350
+        implicitWidth: 330
+        implicitHeight: 525
         exclusiveZone: -1
         color: Theme.panel
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
@@ -872,51 +872,51 @@ ShellRoot {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 10
-            spacing: 10
+            anchors.margins: 15
+            spacing: 15
             opacity: widgetPanel.visible ? 1 : 0
             Behavior on opacity { enabled: !Theme.reducedMotion; NumberAnimation { duration: 180 } }
 
             Row {
                 width: parent.width
-                Text { text: "WIDGETS"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 10; font.bold: true; width: parent.width - 40 }
+                Text { text: "WIDGETS"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true; width: parent.width - 40 }
                 Text {
-                    text: "✎ Edit"; color: Theme.panelInk; font.pixelSize: 10
+                    text: "✎ Edit"; color: Theme.panelInk; font.pixelSize: 15
                     MouseArea { anchors.fill: parent; onClicked: widgetEditPopup.visible = !widgetEditPopup.visible }
                 }
             }
 
             Column {
                 visible: isWidgetEnabled("worldclock")
-                spacing: 2
+                spacing: 3
                 width: parent.width
-                Text { text: "WORLD CLOCK"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 10; font.bold: true }
-                Row { spacing: 8
-                    Text { text: "Goa"; width: 34; color: Theme.panelInk; font.pixelSize: 11 }
-                    Text { color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"; text: Qt.formatTime(worldBase.date, "hh:mm") }
+                Text { text: "WORLD CLOCK"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
+                Row { spacing: 12
+                    Text { text: "Goa"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(worldBase.date, "hh:mm") }
                 }
-                Row { spacing: 8
-                    Text { text: "UTC"; width: 34; color: Theme.panelInk; font.pixelSize: 11 }
-                    Text { color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000), "hh:mm") }
+                Row { spacing: 12
+                    Text { text: "UTC"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000), "hh:mm") }
                 }
-                Row { spacing: 8
-                    Text { text: "SF"; width: 34; color: Theme.panelInk; font.pixelSize: 11 }
-                    Text { color: Theme.panelInk; font.pixelSize: 11; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000 - 7 * 3600000), "hh:mm") }
+                Row { spacing: 12
+                    Text { text: "SF"; width: 51; color: Theme.panelInk; font.pixelSize: 16 }
+                    Text { color: Theme.panelInk; font.pixelSize: 16; font.family: "monospace"; text: Qt.formatTime(new Date(worldBase.date.getTime() + worldBase.date.getTimezoneOffset() * 60000 - 7 * 3600000), "hh:mm") }
                 }
             }
 
             Column {
                 visible: isWidgetEnabled("notes")
                 width: parent.width
-                spacing: 2
-                Text { text: "NOTES"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 10; font.bold: true }
+                spacing: 3
+                Text { text: "NOTES"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
                 Rectangle {
-                    width: parent.width; height: 50
-                    color: "#00000000"; border.color: Theme.panelInk; border.width: 1; radius: 4
+                    width: parent.width; height: 75
+                    color: "#00000000"; border.color: Theme.panelInk; border.width: 1; radius: 6
                     TextEdit {
                         id: notesEdit
-                        anchors.fill: parent; anchors.margins: 5
-                        color: Theme.panelInk; font.pixelSize: 11; wrapMode: TextEdit.Wrap
+                        anchors.fill: parent; anchors.margins: 8
+                        color: Theme.panelInk; font.pixelSize: 16; wrapMode: TextEdit.Wrap
                         onTextChanged: saveNotesTimer.restart()
                     }
                 }
@@ -926,28 +926,28 @@ ShellRoot {
             Column {
                 visible: isWidgetEnabled("todo")
                 width: parent.width
-                spacing: 3
-                Text { text: "TO-DO"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 10; font.bold: true }
+                spacing: 4
+                Text { text: "TO-DO"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 15; font.bold: true }
                 Repeater {
                     model: todoModel
                     delegate: Row {
-                        spacing: 6
+                        spacing: 9
                         Rectangle {
-                            width: 12; height: 12; radius: 2
+                            width: 18; height: 18; radius: 3
                             border.color: Theme.panelInk; border.width: 1
                             color: model.done ? WorkspaceState.activeColor() : "#00000000"
                             MouseArea { anchors.fill: parent; onClicked: { todoModel.setProperty(index, "done", !model.done); widgetPanel.saveTodo(); } }
                         }
-                        Text { text: model.label; color: Theme.panelInk; font.pixelSize: 11; font.strikeout: model.done }
+                        Text { text: model.label; color: Theme.panelInk; font.pixelSize: 16; font.strikeout: model.done }
                     }
                 }
             }
 
             Row {
                 visible: isWidgetEnabled("pomodoro")
-                spacing: 8
+                spacing: 12
                 Text {
-                    color: Theme.panelInk; font.pixelSize: 14; font.family: "monospace"
+                    color: Theme.panelInk; font.pixelSize: 21; font.family: "monospace"
                     text: {
                         var m = Math.floor(pomo.remaining / 60);
                         var s = pomo.remaining % 60;
@@ -955,13 +955,13 @@ ShellRoot {
                     }
                 }
                 Rectangle {
-                    width: 44; height: 18; radius: 4; color: Theme.arena
-                    Text { anchors.centerIn: parent; text: pomo.running ? "Pause" : "Start"; font.pixelSize: 9; color: "#ffffff" }
+                    width: 66; height: 27; radius: 6; color: Theme.arena
+                    Text { anchors.centerIn: parent; text: pomo.running ? "Pause" : "Start"; font.pixelSize: 14; color: "#ffffff" }
                     MouseArea { anchors.fill: parent; onClicked: pomo.running = !pomo.running }
                 }
                 Rectangle {
-                    width: 44; height: 18; radius: 4; color: Theme.vault
-                    Text { anchors.centerIn: parent; text: "Reset"; font.pixelSize: 9; color: "#ffffff" }
+                    width: 66; height: 27; radius: 6; color: Theme.vault
+                    Text { anchors.centerIn: parent; text: "Reset"; font.pixelSize: 14; color: "#ffffff" }
                     MouseArea { anchors.fill: parent; onClicked: { pomo.running = false; pomo.remaining = pomo.totalSeconds; } }
                 }
             }
@@ -972,9 +972,9 @@ ShellRoot {
             visible: false
             anchors.bottom: parent.top
             anchors.right: parent.right
-            anchors.bottomMargin: 6
-            width: 160; height: widgetEditCol.height + 16
-            radius: 8
+            anchors.bottomMargin: 9
+            width: 240; height: widgetEditCol.height + 16
+            radius: 12
             color: Theme.panel
             border.color: Theme.panelInk
             border.width: 1
@@ -982,17 +982,17 @@ ShellRoot {
                 id: widgetEditCol
                 anchors.centerIn: parent
                 width: parent.width - 16
-                spacing: 6
+                spacing: 9
                 Repeater {
                     model: widgetCatalog.items
                     delegate: Row {
                         width: parent.width
-                        Text { text: modelData.label; color: Theme.panelInk; font.pixelSize: 11; width: parent.width - 30 }
+                        Text { text: modelData.label; color: Theme.panelInk; font.pixelSize: 16; width: parent.width - 30 }
                         Rectangle {
-                            width: 24; height: 14; radius: 7
+                            width: 36; height: 21; radius: 10
                             color: modelData.enabled ? WorkspaceState.activeColor() : Theme.panelInk
                             opacity: modelData.enabled ? 1 : 0.25
-                            Rectangle { width: 10; height: 10; radius: 5; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: modelData.enabled ? parent.width - width - 2 : 2 }
+                            Rectangle { width: 15; height: 15; radius: 8; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter; x: modelData.enabled ? parent.width - width - 2 : 2 }
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
@@ -1203,16 +1203,16 @@ ShellRoot {
         // edge instead of fixing the left one).
         Item {
             anchors.fill: parent
-            anchors.topMargin: 50
-            anchors.bottomMargin: 64
-            anchors.leftMargin: 24
-            anchors.rightMargin: 24
+            anchors.topMargin: 75
+            anchors.bottomMargin: 96
+            anchors.leftMargin: 36
+            anchors.rightMargin: 36
 
             // ----- Compact telemetry sidebar (deliberately small - chat is
             // the main event now, not this) -----
             Flickable {
                 id: telemetrySidebar
-                width: 240
+                width: 360
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
@@ -1221,24 +1221,24 @@ ShellRoot {
                 Column {
                     id: telCol
                     width: parent.width
-                    spacing: 14
-                    Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 15; font.bold: true; wrapMode: Text.Wrap; width: parent.width }
-                    Text { text: "Observe"; color: Theme.textSecondary; font.pixelSize: 11 }
+                    spacing: 21
+                    Text { text: "AI COMMAND CENTRE"; color: "#ffffff"; font.pixelSize: 22; font.bold: true; wrapMode: Text.Wrap; width: parent.width }
+                    Text { text: "Observe"; color: Theme.textSecondary; font.pixelSize: 16 }
 
                     SectionHeader { text: "SYSTEM" }
-                    Text { text: "CPU " + (commandCentre.cpuPct >= 0 ? commandCentre.cpuPct.toFixed(0) + "%" : "...") + "  ·  " + (commandCentre.cpuTempC >= 0 ? commandCentre.cpuTempC.toFixed(0) + "°C" : "..."); color: "#ffffff"; font.pixelSize: 12 }
-                    Text { text: "Mem " + (commandCentre.memUsedMB >= 0 ? Math.round(commandCentre.memUsedMB) + "/" + Math.round(commandCentre.memTotalMB) + " MB" : "..."); color: "#ffffff"; font.pixelSize: 12 }
-                    Text { text: "Power " + (commandCentre.powerW >= 0 ? commandCentre.powerW.toFixed(1) + " W" : "n/a"); color: "#ffffff"; font.pixelSize: 12 }
+                    Text { text: "CPU " + (commandCentre.cpuPct >= 0 ? commandCentre.cpuPct.toFixed(0) + "%" : "...") + "  ·  " + (commandCentre.cpuTempC >= 0 ? commandCentre.cpuTempC.toFixed(0) + "°C" : "..."); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { text: "Mem " + (commandCentre.memUsedMB >= 0 ? Math.round(commandCentre.memUsedMB) + "/" + Math.round(commandCentre.memTotalMB) + " MB" : "..."); color: "#ffffff"; font.pixelSize: 18 }
+                    Text { text: "Power " + (commandCentre.powerW >= 0 ? commandCentre.powerW.toFixed(1) + " W" : "n/a"); color: "#ffffff"; font.pixelSize: 18 }
 
                     SectionHeader { text: "AI RUNTIME" }
                     Text {
                         width: parent.width; wrapMode: Text.Wrap
                         text: commandCentre.ollamaRunning.length > 0 ? ("Running: " + commandCentre.ollamaRunning[0].name) : (commandCentre.ollamaInstalled.length + " model(s) installed, idle")
-                        color: "#ffffff"; font.pixelSize: 12
+                        color: "#ffffff"; font.pixelSize: 18
                     }
 
                     SectionHeader { text: "CONTAINERS" }
-                    Text { text: commandCentre.containers.length === 0 ? "None running" : (commandCentre.containers.length + " running"); color: "#ffffff"; font.pixelSize: 12 }
+                    Text { text: commandCentre.containers.length === 0 ? "None running" : (commandCentre.containers.length + " running"); color: "#ffffff"; font.pixelSize: 18 }
 
                     SectionHeader { text: "GPU - AMD VEGA" }
                     Text {
@@ -1246,16 +1246,16 @@ ShellRoot {
                         text: commandCentre.gpuAvailable
                             ? (commandCentre.gpuBusyPct.toFixed(0) + "%  ·  " + Math.round(commandCentre.gpuVramUsedMB) + " MB  ·  " + commandCentre.gpuPowerW.toFixed(1) + " W")
                             : "n/a"
-                        color: "#ffffff"; font.pixelSize: 12
+                        color: "#ffffff"; font.pixelSize: 18
                     }
                 }
             }
 
             Rectangle {
                 id: chatDivider
-                width: 1
+                width: 2
                 anchors.left: telemetrySidebar.right
-                anchors.leftMargin: 24
+                anchors.leftMargin: 36
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 color: Theme.panelInk; opacity: 0.15
@@ -1267,14 +1267,14 @@ ShellRoot {
             // margin, so it's symmetric by construction. -----
             Column {
                 anchors.left: chatDivider.right
-                anchors.leftMargin: 24
+                anchors.leftMargin: 36
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                spacing: 10
+                spacing: 15
 
                 Row {
-                    width: parent.width; spacing: 10
+                    width: parent.width; spacing: 15
                     // Above the message Rectangle below it in this Column's
                     // own paint order, so the dropdown's popup (which
                     // overflows below this Row) isn't drawn underneath it.
@@ -1287,19 +1287,19 @@ ShellRoot {
                     // installed.
                     Item {
                         id: modelPicker
-                        width: 170; height: 24
+                        width: 255; height: 36
                         anchors.verticalCenter: parent.verticalCenter
                         property bool open: false
 
                         Rectangle {
-                            anchors.fill: parent; radius: 5; color: Theme.surfaceRaised
+                            anchors.fill: parent; radius: 8; color: Theme.surfaceRaised
                             Row {
-                                anchors.fill: parent; anchors.margins: 6; spacing: 6
+                                anchors.fill: parent; anchors.margins: 9; spacing: 9
                                 Text {
-                                    text: commandCentre.chatModel; color: "#ffffff"; font.pixelSize: 11
+                                    text: commandCentre.chatModel; color: "#ffffff"; font.pixelSize: 16
                                     width: parent.width - 14; elide: Text.ElideRight
                                 }
-                                Text { text: modelPicker.open ? "▲" : "▼"; color: Theme.textSecondary; font.pixelSize: 8 }
+                                Text { text: modelPicker.open ? "▲" : "▼"; color: Theme.textSecondary; font.pixelSize: 12 }
                             }
                             MouseArea { anchors.fill: parent; onClicked: modelPicker.open = !modelPicker.open }
                         }
@@ -1309,7 +1309,7 @@ ShellRoot {
                             y: parent.height + 4
                             width: Math.max(parent.width, 200)
                             height: modelOptCol.height + 8
-                            radius: 6; color: Theme.surfaceRaised
+                            radius: 9; color: Theme.surfaceRaised
                             border.color: Theme.panelInk; border.width: 1
                             z: 200
                             Column {
@@ -1318,18 +1318,18 @@ ShellRoot {
                                 width: parent.width - 8
                                 Text {
                                     visible: commandCentre.ollamaInstalled.length === 0
-                                    text: "No models installed"; color: Theme.textSecondary; font.pixelSize: 11
+                                    text: "No models installed"; color: Theme.textSecondary; font.pixelSize: 16
                                 }
                                 Repeater {
                                     model: commandCentre.ollamaInstalled
                                     delegate: Rectangle {
-                                        width: parent.width; height: 24; radius: 4
+                                        width: parent.width; height: 36; radius: 6
                                         color: commandCentre.chatModel === modelData.name ? WorkspaceState.activeColor() : "#00000000"
                                         Text {
-                                            anchors.left: parent.left; anchors.leftMargin: 6; anchors.verticalCenter: parent.verticalCenter
+                                            anchors.left: parent.left; anchors.leftMargin: 9; anchors.verticalCenter: parent.verticalCenter
                                             text: modelData.name
                                             color: commandCentre.chatModel === modelData.name ? "#ffffff" : Theme.panelInk
-                                            font.pixelSize: 11
+                                            font.pixelSize: 16
                                         }
                                         MouseArea {
                                             anchors.fill: parent
@@ -1343,35 +1343,35 @@ ShellRoot {
                 }
 
                 Rectangle {
-                    width: parent.width; height: parent.height - 90; radius: 10; color: Theme.surfaceRaised
+                    width: parent.width; height: parent.height - 135; radius: 15; color: Theme.surfaceRaised
                     clip: true
                     Flickable {
                         id: chatFlick
-                        anchors.fill: parent; anchors.margins: 16
+                        anchors.fill: parent; anchors.margins: 24
                         contentHeight: chatCol.height
                         clip: true
                         Column {
                             id: chatCol
                             width: parent.width
-                            spacing: 14
+                            spacing: 21
                             onHeightChanged: chatFlick.contentY = Math.max(0, height - chatFlick.height)
                             Text {
                                 visible: commandCentre.chatMessages.length === 0
                                 width: parent.width; wrapMode: Text.Wrap
                                 text: "Ask " + commandCentre.chatModel + " anything - runs fully local via Ollama, nothing leaves this machine."
-                                color: Theme.textSecondary; font.pixelSize: 12
+                                color: Theme.textSecondary; font.pixelSize: 18
                             }
                             Repeater {
                                 model: commandCentre.chatMessages
                                 delegate: Column {
                                     width: chatCol.width
                                     property var msg: modelData
-                                    spacing: 2
-                                    Text { text: msg.role === "user" ? "You" : commandCentre.chatModel; color: Theme.textSecondary; font.pixelSize: 10 }
+                                    spacing: 3
+                                    Text { text: msg.role === "user" ? "You" : commandCentre.chatModel; color: Theme.textSecondary; font.pixelSize: 15 }
                                     Text {
                                         width: chatCol.width
                                         text: msg.content.length > 0 ? msg.content : "..."
-                                        color: Theme.textPrimary; font.pixelSize: 13; wrapMode: Text.Wrap
+                                        color: Theme.textPrimary; font.pixelSize: 20; wrapMode: Text.Wrap
                                     }
                                 }
                             }
@@ -1380,14 +1380,14 @@ ShellRoot {
                 }
 
                 Row {
-                    width: parent.width; height: 40; spacing: 10
+                    width: parent.width; height: 60; spacing: 15
                     Rectangle {
-                        width: parent.width - 90; height: 40; radius: 8; color: Theme.panel
+                        width: parent.width - 135; height: 60; radius: 12; color: Theme.panel
                         border.color: Theme.panelInk; border.width: 1
                         TextInput {
                             id: chatInputBox
-                            anchors.fill: parent; anchors.margins: 10
-                            color: Theme.textPrimary; font.pixelSize: 13
+                            anchors.fill: parent; anchors.margins: 15
+                            color: Theme.textPrimary; font.pixelSize: 20
                             clip: true
                             focus: commandCentre.visible
                             enabled: !commandCentre.chatBusy
@@ -1395,12 +1395,12 @@ ShellRoot {
                             Keys.onReturnPressed: commandCentre.sendChat()
                             Text {
                                 visible: chatInputBox.text.length === 0
-                                text: "Message..."; color: Theme.textSecondary; font.pixelSize: 13
+                                text: "Message..."; color: Theme.textSecondary; font.pixelSize: 20
                             }
                         }
                     }
                     Button {
-                        width: 80; height: 40
+                        width: 120; height: 60
                         label: commandCentre.chatBusy ? "..." : "Send"
                         enabled: !commandCentre.chatBusy
                         onClicked: commandCentre.sendChat()

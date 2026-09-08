@@ -1089,6 +1089,32 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 
 ---
 
+### Task 31: Decouple JAZZ's own chrome size from monitor scale — **DONE, 8 Sept 2026**
+
+**Description:** Not part of the original plan; found live 8 Sept 2026 while investigating Akash's report that Firefox/apps "look too enlarged." Root cause: `hyprland.lua`'s monitor config used `scale = "auto"`, and Hyprland's auto-detection picked 1.5x for this 1920x1080 13.3" panel (~166 PPI - not really high-DPI, doesn't need scaling). Fixed the monitor scale to 1.0 (correct for this panel - GTK/Qt apps now render at proper density, confirmed live). But JAZZ's own Quickshell panels (top bar/dock/Settings/Command Centre) are Wayland surfaces too, so they scale with the compositor the same way - dropping to 1.0x shrank them to ~67% of their previous on-screen size, since every dimension in `shell.qml`/`Settings.qml` was implicitly tuned assuming a 1.5x compositor scale.
+
+**Real architecture problem, not just a number to tweak:** a single monitor-scale value can't simultaneously give apps correct density AND keep JAZZ's own chrome at a deliberately-chosen size - those need to be decoupled. Monitor scale should stay correct (1.0x here) for every third-party app; JAZZ's own UI dimensions need to be real, deliberately-chosen pixel values that don't depend on whatever the monitor's auto-detected scale happens to be.
+
+**Mechanism:** wrote `scripts/../rescale_qml.py`-style regex transform (scratch, not committed - one-off) that scales bare-integer literals on a curated property list (`implicitHeight`/`implicitWidth`/`width`/`height`/`radius`/`spacing`/`font.pixelSize`/`anchors.*Margin*`) by ×1.5, explicitly excluding `border.width` (hairline borders shouldn't scale) and skipping anything that's part of a larger expression (e.g. `parent.width - 240`) rather than a bare literal - those need separate manual review since scaling them naively could corrupt the arithmetic. Applied to `shell.qml` (218 replacements), `Settings.qml` (305), then the 4 shared `ui/` components (16 more) after Akash caught the sidebar looking undersized - `ui/ListRow.qml`/`Button.qml`/`Toggle.qml`/`SectionHeader.qml` were missed in the first pass since they're separate files the regex script wasn't pointed at.
+
+**Two real follow-up fixes needed after the bulk regex pass, both found via live visual inspection, not assumed correct:**
+1. Two hardcoded arithmetic expressions (`parent.height - 90` reserving space below the chat message list, `parent.width - 90` reserving space for the Send button) were correctly skipped by the regex but were now wrong given everything around them grew - manually updated to `- 135` (90×1.5) each. Caught because the Send button was visibly clipped by the now-taller dock.
+2. `Settings.qml`'s sidebar `height: parent.height - 44` had the same issue, fixed to `- 66`.
+3. The 4 shared `ui/*.qml` components (`ListRow`, `Button`, `Toggle`, `SectionHeader`) were missed in the first pass entirely (regex was only pointed at `shell.qml`/`Settings.qml`) - caught live by Akash ("the settings tab sidebar is smaller, other side is fine"), since `ListRow` backs every sidebar tab. Fixed the same way; `Button.qml`'s `property int fontSize: 10` default also needed a manual bump to 15 since it's a property declaration, not a `font.pixelSize:` binding the regex targets.
+
+**Acceptance criteria:**
+- [x] Monitor scale confirmed at 1.0x, apps render at proper density - confirmed live
+- [x] Top bar, dock, Settings panel, and Command Centre all resized back to a comparable on-screen size to before, independent of monitor scale
+- [x] No broken/overlapping layouts introduced by the resize - live visual check across Settings' tabs, Command Centre, and the shared `ui/` components; two real clipping bugs and one undersized-sidebar bug found and fixed
+- [x] Persisted `hyprland.lua`'s `scale = "auto"` replaced with an explicit `scale = 1.0`, both live and in the repo's `setup-hyprland.sh` source
+
+**Verification:** Live, on the Yoga 6 - visual confirmation via screenshot across top bar/dock/Settings/Command Centre, Akash's own live feedback caught two real bugs (chat clipping, sidebar undersized) that a screenshot-only pass would have missed
+**Dependencies:** none (found and worked live, current session)
+**Files touched:** `scripts/setup-dock.sh` (shell.qml heredoc), `configs/quickshell/Settings.qml`, `configs/quickshell/ui/{Button,Toggle,ListRow,SectionHeader}.qml`, `scripts/setup-hyprland.sh` (persisted monitor scale)
+**Estimated scope:** M-L - touched most of shell.qml/Settings.qml's dimension literals plus all 4 shared components
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README

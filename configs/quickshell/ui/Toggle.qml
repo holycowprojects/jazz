@@ -13,12 +13,12 @@ Rectangle {
     property bool checked: false
     signal toggled()
 
-    width: 38; height: 20; radius: 10
+    width: 57; height: 30; radius: 15
     color: checked ? WorkspaceState.activeColor() : Theme.panelInk
     opacity: checked ? 1 : 0.25
 
     Rectangle {
-        width: 16; height: 16; radius: 8; color: "#ffffff"
+        width: 24; height: 24; radius: 12; color: "#ffffff"
         anchors.verticalCenter: parent.verticalCenter
         x: root.checked ? parent.width - width - 2 : 2
     }

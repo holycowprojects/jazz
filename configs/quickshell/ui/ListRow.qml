@@ -12,20 +12,20 @@ Rectangle {
     property bool showMarker: false
     signal clicked()
 
-    width: parent ? parent.width : 160
-    height: 30; radius: 6
+    width: parent ? parent.width: 240
+    height: 45; radius: 9
     color: selected ? WorkspaceState.activeColor() : "#00000000"
 
     Text {
-        anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
         text: root.label
         color: root.selected ? "#ffffff" : Theme.panelInk
-        font.pixelSize: 12
+        font.pixelSize: 18
     }
     Text {
         visible: root.showMarker
-        anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
-        text: "•"; color: Theme.textSecondary; font.pixelSize: 12
+        anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+        text: "•"; color: Theme.textSecondary; font.pixelSize: 18
     }
     MouseArea {
         anchors.fill: parent

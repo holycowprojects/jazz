@@ -57,11 +57,17 @@ if [[ ! -f "$CONFIG_FILE" ]] || ! grep -q 'JAZZ base Hyprland config' "$CONFIG_F
 
 hl.config({ debug = { enable_stdout_logs = true } })
 
+-- scale is explicit, not "auto" - Hyprland's auto-detection picked 1.5x
+-- for this exact panel (Yoga 6, 1920x1080 13.3", ~166 PPI - not actually
+-- high-DPI), which made every app render oversized (confirmed live,
+-- Akash's report, 8 Sept 2026 - Task 31). 1.0 is correct for this specific
+-- hardware; JAZZ targets this laptop, not arbitrary panels, so a hardcoded
+-- value here is the right call, not a genericization gap.
 hl.monitor({
     output   = "",
     mode     = "preferred",
     position = "auto",
-    scale    = "auto",
+    scale    = 1.0,
 })
 
 local terminal    = "kitty"

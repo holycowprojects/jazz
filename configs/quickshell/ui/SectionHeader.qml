@@ -6,6 +6,6 @@ import "../"
 
 Text {
     color: Theme.textSecondary
-    font.pixelSize: 11
+    font.pixelSize: 16
     font.bold: true
 }

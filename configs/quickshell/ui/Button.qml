@@ -18,12 +18,12 @@ Rectangle {
     // border, panelInk text - the unselected state of a selectable pill
     // group, e.g. Agents' policy buttons)
     property string variant: "primary"
-    property int fontSize: 10
+    property int fontSize: 15
     signal clicked()
 
     implicitWidth: labelText.implicitWidth + 20
-    implicitHeight: 22
-    radius: 4
+    implicitHeight: 33
+    radius: 6
     opacity: enabled ? 1 : 0.4
     color: {
         if (variant === "primary") return WorkspaceState.activeColor()
