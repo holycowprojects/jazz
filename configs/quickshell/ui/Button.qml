@@ -25,11 +25,22 @@ Rectangle {
     implicitHeight: 33
     radius: 6
     opacity: enabled ? 1 : 0.4
-    color: {
+
+    // Real filled variants (primary/danger/subtle) get a raised, glossy
+    // gradient instead of a flat fill - Akash's feedback (8 Sept 2026):
+    // buttons "feel cheap" flat. neutral/outlineDanger/flat stay flat on
+    // purpose - they're meant to read as unselected/quiet, a gloss there
+    // would fight that.
+    readonly property color _base: {
         if (variant === "primary") return WorkspaceState.activeColor()
         if (variant === "danger") return Theme.critical
         if (variant === "subtle") return Theme.surfaceRaised
         return Theme.panel // neutral | outlineDanger | flat
+    }
+    readonly property bool _glossy: variant === "primary" || variant === "danger" || variant === "subtle"
+    gradient: Gradient {
+        GradientStop { position: 0.0; color: root._glossy ? Qt.lighter(root._base, 1.22) : root._base }
+        GradientStop { position: 1.0; color: root._glossy ? Qt.darker(root._base, 1.08) : root._base }
     }
     border.width: (variant === "neutral" || variant === "outlineDanger") ? 1 : 0
     border.color: variant === "outlineDanger" ? Theme.critical : Theme.panelInk

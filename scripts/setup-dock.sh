@@ -300,10 +300,13 @@ ShellRoot {
                     delegate: Rectangle {
                         property bool active: WorkspaceState.active === modelData.name
                         width: pillText.width + 18; height: 30; radius: 15
-                        color: active ? "#ffffff" : "#00000000"
-                        border.color: active ? "#00000000" : "#ffffff"
-                        border.width: active ? 0 : 1
                         opacity: modelData.dormant ? 0.55 : (active ? 1 : 0.85)
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: active ? "#ffffff" : "#40ffffff" }
+                            GradientStop { position: 1.0; color: active ? "#c9cdd3" : "#10ffffff" }
+                        }
+                        border.color: active ? "#ffffff" : "#55ffffff"
+                        border.width: 1
 
                         Row {
                             anchors.centerIn: parent
@@ -407,19 +410,13 @@ ShellRoot {
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["dunstctl", "history-pop"]) }
             }
 
-            Image {
-                source: "icons/symbols/clipboard.svg"
-                width: 22; height: 22
-                anchors.verticalCenter: parent.verticalCenter
-                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "cliphist list | wofi --dmenu | cliphist decode | wl-copy"]) }
-            }
-
             Row {
                 visible: trayState.wifiSsid.length > 0
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
                 Image { source: "icons/symbols/wifi.svg"; width: 18; height: 18; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
+                MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "quicksettings", "toggle"]) }
             }
 
             Row {
