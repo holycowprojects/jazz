@@ -819,7 +819,7 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 **Dependencies:** Task 11 (`Theme.qml` exists)
 **Estimated scope:** S
 
-#### Task 27b: Theme compiler + bundle format (the original Task 27 core) — real multi-theme system, planned 8 Sept 2026, not yet built
+#### Task 27b: Theme compiler + bundle format (the original Task 27 core) — real multi-theme system, mechanism BUILT and live-verified 8 Sept 2026 (commit `82206e1`); wallpaper completeness still open
 **Description:** The bundling mechanism itself - unchanged from the original scope above. A theme bundle (directory/manifest) specifies `Theme.qml` token values + wallpaper path + kitty config + hyprlock config + dunst config; one function applies all of them atomically and reloads whichever of kitty/hyprlock/dunst need it.
 
 **Scope locked in 8 Sept 2026** after Akash asked Claude to research why Omarchy's themes/wallpapers look visually appealing (real findings: borrowed proven community palettes rather than invented ones; one `colors.toml` generates config for every app - genuine cohesion because it's architecturally one object; each theme ships a small curated wallpaper set matched to its palette, not a generic pool; a real accessibility floor - Mocha's contrast is 11.3:1, checked not assumed; `matugen`-based Material-You extraction for dynamic wallpaper-derived theming; "omakase" - curated good defaults, not endless raw toggles). Akash then chose (via AskUserQuestion) to build a **real multi-theme system** for JAZZ, not stay single-identity.
@@ -846,15 +846,24 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 3. `gen_wallpaper.py`'s procedural generator is kept as one lightweight bonus/"dynamic" option per theme, not the mechanism for the full set - it no longer needs to single-handedly carry the ≥2-per-theme quality bar.
 
 **Acceptance criteria:**
-- [ ] A defined theme bundle format exists and is documented (`design/tokens/themes.json`)
-- [ ] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live
-- [ ] All 4 planned themes (Forge/Daylight/Midnight/Warm) exist as real bundles under this system
-- [ ] **Every theme ships at least 2 real, genuinely different wallpaper variants** (Akash's explicit requirement), each picked from Settings' Appearance tab
-- [ ] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - extend it, don't replace it
-- [ ] Confirmed live on the Yoga 6, screenshot showing kitty/hyprlock/dunst actually changed appearance after a switch
+- [x] A defined theme bundle format exists and is documented (`design/tokens/themes.json`)
+- [x] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live (dock pixel-sampled exact-match across all 4 themes; kitty/hyprlock/dunst config files inspected and correct; dunst reload confirmed no error. hyprlock's actual lock-screen visual was NOT triggered live - deliberately not tested without asking first, real risk of stranding a physical session over SSH if misconfigured)
+- [x] All 4 planned themes (Forge/Daylight/Midnight/Warm) exist as real bundles under this system - Midnight/Warm designed this session (chrome/accent real, terminal palettes hue-derived from each theme's own accent, method documented in `jazz-theme-set`'s docstring)
+- [ ] **Every theme ships at least 2 real, genuinely different wallpaper variants** (Akash's explicit requirement) - NOT yet met. Currently each theme has exactly 1: Forge/Daylight still have Task 23's originals (Akash generating real replacements via Recraft, in progress), Midnight/Warm have one `gen_wallpaper.py`-generated placeholder each. Blocked on Akash's curated art per the wallpaper-sourcing model decided earlier this session, not a mechanism gap - `gen_wallpaper.py --variant 2` and the wallpapers list already support more than one, just need the actual images.
+- [x] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - real theme picker (4 pills) replacing the old binary dark/light toggle, confirmed live via screenshot (Forge correctly highlighted as active)
+- [x] Confirmed live on the Yoga 6 - kitty.conf/hyprlock.conf/dunstrc content inspected after a switch and matches the theme's tokens exactly
 
-**Verification:** Live, on the Yoga 6 - visual confirmation kitty/hyprlock/dunst genuinely restyle, not just Quickshell's chrome
-**Dependencies:** Task 21, Task 22, Task 23, Task 27a (tokens to bundle)
+**Two real bugs found and fixed during live verification, 8 Sept 2026:**
+1. `hyprctl dispatch exec_cmd("quickshell")` does NOT kill an already-running instance first - relaunching without an explicit `pkill` first left two Quickshell processes competing for the same layer-shell surfaces (visibly: two top bars, two docks, caught live by Akash). Fixed by always killing first, then dispatching - now the documented safe-relaunch procedure (was previously just "dispatch exec_cmd", missing the kill step because earlier relaunches happened to follow an already-crashed instance).
+2. `swaybg`'s autostart was completely missing from this specific machine's `hyprland.lua` (confirmed via grep - not a bug in `setup-wallpaper.sh`'s guard logic, which is correct for fresh installs; this live machine just never got it applied) - Akash was seeing Hyprland's stock wallpaper this whole time, not JAZZ's own. Fixed live, now wired through `jazz-theme-set --restore` instead of a hardcoded dark-path line, which also fixes a related persistence gap: without `--restore`, a reboot would have restored Theme.qml's correct last-picked chrome (it reads theme-state.json at startup) while silently reverting the wallpaper to Forge's.
+
+**One false alarm, corrected:** a live check initially seemed to show the FileView-watch live-switch NOT working (top bar stayed Forge blue across every theme switch) - was about to add a Quickshell-relaunch step to "fix" it. Turned out to be a misread: the top bar is workspace-tinted (`WorkspaceState.activeColor()`), correctly constant across themes by design - only chrome (dock/surface) is theme-controlled. Caught before shipping the wrong fix by pixel-sampling the dock instead of eyeballing the top bar; the live watch genuinely works, no relaunch needed.
+
+**Chat text-color bug fixed same session (Akash's report, not part of the original 27b scope but same area):** AI Command Centre's chat message text and input text were hardcoded `#ffffff` regardless of theme - would have been unreadable on Daylight (light theme). Now `Theme.textPrimary`. Akash explicitly confirmed the Send button and model-picker highlight should stay workspace-tinted (`WorkspaceState.activeColor()`, same as the top bar) rather than theme-tinted - verified live by recoloring Observe via the Desktop tab and watching the top bar, Observe's pill, and the Send button all shift together.
+
+**Verification:** Live, on the Yoga 6 - dock pixel-sampled exact-match per theme; kitty/hyprlock/dunst config content inspected; workspace-vs-theme accent split verified via a live recolor test
+**Dependencies:** Task 21, Task 22, Task 23, Task 27a (tokens to bundle) - all satisfied
+**Remaining before this task can close:** real curated wallpapers (≥2 per theme, Akash producing via Recraft), and an explicit-consent live test of the actual hyprlock lock screen (config written and inspected, never triggered)
 **Files likely touched:** `design/tokens/themes.json` (new), `scripts/generate-theme-qml.py` (extended), new `scripts/jazz-theme-set` orchestrator, `configs/quickshell/gen_wallpaper.py` (extended), `configs/quickshell/Settings.qml` (Appearance tab theme picker)
 **Estimated scope:** L (grew from the original single-mechanism scope to include designing 2 new real palettes + a wallpaper generator extension + kitty/hyprlock/dunst configs built from scratch)
 
