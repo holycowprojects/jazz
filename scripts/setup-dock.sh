@@ -299,8 +299,19 @@ ShellRoot {
                     model: WorkspaceState.list
                     delegate: Rectangle {
                         property bool active: WorkspaceState.active === modelData.name
-                        width: pillText.width + 18; height: 30; radius: 15
-                        opacity: modelData.dormant ? 0.55 : (active ? 1 : 0.85)
+                        // 32px padding (up from 18) so the gradient/border has
+                        // real breathing room around the dot+label, and a
+                        // width Behavior so renaming a workspace (Settings'
+                        // Desktop tab) resizes the pill smoothly instead of a
+                        // hard jump-cut (Akash's feedback, 8 Sept 2026).
+                        width: pillText.width + 32; height: 30; radius: 15
+                        Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                        // Dormant (Range) no longer dims further than any
+                        // other inactive pill - italic alone is enough of a
+                        // "reserved" cue; the extra 0.55 opacity made its
+                        // text look washed out next to the others (Akash's
+                        // feedback).
+                        opacity: active ? 1 : 0.85
                         gradient: Gradient {
                             GradientStop { position: 0.0; color: active ? "#ffffff" : "#40ffffff" }
                             GradientStop { position: 1.0; color: active ? "#c9cdd3" : "#10ffffff" }
