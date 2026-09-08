@@ -867,16 +867,24 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 **Files likely touched:** `design/tokens/themes.json` (new), `scripts/generate-theme-qml.py` (extended), new `scripts/jazz-theme-set` orchestrator, `configs/quickshell/gen_wallpaper.py` (extended), `configs/quickshell/Settings.qml` (Appearance tab theme picker)
 **Estimated scope:** L (grew from the original single-mechanism scope to include designing 2 new real palettes + a wallpaper generator extension + kitty/hyprlock/dunst configs built from scratch)
 
-#### Task 27c: JAZZ shell icon system (scoped down from the guide's 60-symbol + full freedesktop tree)
+#### Task 27c: JAZZ shell icon system (scoped down from the guide's 60-symbol + full freedesktop tree) — **DONE, 8 Sept 2026**
 **Description:** The guide recommends ~60 symbols across a full freedesktop icon-theme directory structure (16/22/24/32/48/scalable/symbolic × apps/actions/devices/places/status/categories). JAZZ doesn't need to theme every possible Linux app icon - Task 22 already solved third-party app icons via `Quickshell.iconPath()` reading real installed icon themes. Scope this to just what JAZZ's own shell chrome actually renders: the icons Quickshell draws itself (wifi/bluetooth/volume tiers/battery/brightness/notifications/power/lock/search + the saxophone launcher glyph and gear Settings glyph already hand-picked in Task 22).
 **Source:** Lucide (ISC license) as primary geometry per the guide's own recommendation - vendor the specific SVGs needed, not the whole library. `papirus-icon-theme` (confirmed official repo) stays the fallback for third-party apps, already effectively in place via Task 22's icon-theme lookup.
 
-**Acceptance criteria:**
-- [ ] ~20-30 SVGs (not 60) covering exactly the symbols JAZZ's shell/dock/settings currently render, normalized to one spec (24x24 canvas, 1.8px stroke, round linecap/linejoin - the guide's §17 spec)
-- [ ] Stored under `design/icons/symbols/`, referenced by Quickshell instead of any remaining unicode/emoji glyphs
-- [ ] `papirus-icon-theme` installed as the confirmed fallback for non-JAZZ apps
+**Real inventory found (8 Sept 2026), smaller than the wishlist:** grepped every non-ASCII glyph actually rendered in `shell.qml`/`Settings.qml` rather than assuming the guide's full list applied - several categories (Bluetooth, volume, brightness, search) turned out to have no dedicated glyph at all (plain text labels or progress bars), so they were never "cheap-looking" to begin with and needed no replacement. Real inventory: now-playing note, notifications bell, clipboard history, wifi, battery, widgets grid, power (7, top-bar, always white - top bar is always the active workspace's saturated color regardless of theme), Settings gear + Ollama/AI diamond (2, dock, theme-reactive), and the Wi-Fi-secured lock indicator (1, Settings, theme-reactive) = 10 real icons, 13 SVG files (the 3 theme-reactive ones need `-ondark`/`-onlight` baked-color pairs).
 
-**Dependencies:** Task 22 (existing icon-lookup mechanism to extend, not replace)
+**Real constraint found, not guessed:** Quickshell runs Qt's software rendering backend on this hardware (`QT_QUICK_BACKEND=software`, `setup-hyprland.sh`), which doesn't support shader-based SVG recoloring (`ColorOverlay`/`MultiEffect`) - ruled out `currentColor` + runtime tinting as the mechanism. Instead: colors are baked directly into each SVG, and the 3 theme-reactive ones ship as `-ondark`/`-onlight` pairs with QML picking the right file via `Theme.darkMode` at render time (still fully live/reactive across a theme switch, just file-swap based instead of shader-based).
+
+**Deliberate exception:** the saxophone launcher glyph (🎷) stays as the emoji - it's JAZZ's actual brand mark (referenced in the wallpaper logotype concept too), not a generic system icon, and Lucide has no music-instrument icons to substitute. Confirmed live it reads well as a deliberate accent against the new clean line icons, not as leftover inconsistency.
+
+**Acceptance criteria:**
+- [x] SVGs (13, not 60 - the real inventory was smaller than the guide's wishlist) covering exactly the symbols JAZZ's shell/dock/settings currently render, normalized to one spec (24x24 canvas, 1.8px stroke, round linecap/linejoin - the guide's §17 spec)
+- [x] Stored under `design/icons/symbols/`, referenced by Quickshell instead of any remaining unicode/emoji glyphs (except the deliberate saxophone exception above)
+- [x] `papirus-icon-theme` installed live (confirmed via `pacman -Q`, went through a real Snapper pre/post checkpoint) and added to `setup-dock.sh`'s pacman line for fresh installs
+
+**Verification:** Live, on the Yoga 6 - screenshots of the top bar and dock at both close-up and cropped/zoomed resolution confirmed clean rendering; theme-reactivity confirmed by switching Forge→Daylight and back, watching the dock's gear/AI icons flip from light-on-dark to dark-on-light correctly
+**Dependencies:** Task 22 (existing icon-lookup mechanism, left untouched - extended alongside it, not replacing it)
+**Files touched:** `design/icons/symbols/*.svg` (new, 13 files) + `SOURCE.md`, `scripts/setup-dock.sh` (shell.qml heredoc + icon/papirus deployment), `configs/quickshell/Settings.qml` (Wi-Fi lock indicator)
 **Estimated scope:** M
 
 **Confirmed 8 Sept 2026** via the same live-repo research above: Omarchy does zero custom icon design either - each theme's `icons.theme` file is a single line (e.g. `Yaru-magenta`) just naming an existing GTK icon-pack variant; no vendored/drawn icon assets anywhere in the repo. That validates this subtask's plan (Akash's "icons look cheap" complaint traced to raw unicode/emoji glyphs in `shell.qml` - inconsistent stroke weight/style since every emoji comes from a different foundry, doesn't respect `currentColor`/theme accent) - swapping to normalized Lucide SVGs is the right fix, just adapted to QML/SVG since JAZZ is its own shell rather than a GTK app that can reference a system icon-theme name.

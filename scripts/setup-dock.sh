@@ -55,8 +55,9 @@ SCAN_SCRIPT_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && 
 THEME_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/Theme.qml"
 WORKSPACE_STATE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/WorkspaceState.qml"
 UI_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../configs/quickshell" && pwd)/ui"
+ICONS_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../design/icons" && pwd)/symbols"
 
-pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi
+pacman -Sy --noconfirm --needed brightnessctl hyprlock wofi papirus-icon-theme
 
 sudo -u "$USERNAME" mkdir -p "$QS_DIR" "$DATA_DIR"
 sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
@@ -81,6 +82,12 @@ sed -i "s|@@JAZZ_DATA_DIR@@|$DATA_DIR|g" "$QS_DIR/WorkspaceState.qml"
 # Settings.qml.
 sudo -u "$USERNAME" mkdir -p "$QS_DIR/ui"
 sudo -u "$USERNAME" cp "$UI_SRC_DIR"/*.qml "$UI_SRC_DIR/qmldir" "$QS_DIR/ui/"
+# Task 27c: shell icon symbols (Lucide-derived, ISC license - see
+# design/icons/symbols/SOURCE.md), referenced via plain relative paths
+# ("icons/symbols/X.svg") from shell.qml/Settings.qml, resolved against
+# this directory the same way "ui" already is.
+sudo -u "$USERNAME" mkdir -p "$QS_DIR/icons/symbols"
+sudo -u "$USERNAME" cp "$ICONS_SRC_DIR"/*.svg "$QS_DIR/icons/symbols/"
 
 sudo -u "$USERNAME" tee "$SHELL_FILE" > /dev/null << 'SHELLQML'
 // JAZZ Quickshell config (Tasks 10-11, Tier 1 widgets, Task 22 rebuilt
@@ -187,7 +194,7 @@ ShellRoot {
         if (termRunning) usedClasses["kitty"] = true;
         out.push({ name: "Terminal", icon: resolveIcon("kitty"), glyph: "", cmd: ["kitty"], running: termRunning });
         // Ollama - not a real .desktop app, a deliberate JAZZ shortcut
-        out.push({ name: "Ollama", icon: "", glyph: "◈", cmd: ["kitty", "-e", "ollama", "run", "qwen2.5:0.5b"], running: false });
+        out.push({ name: "Ollama", icon: "", glyph: "◈", themeIcon: "ai", cmd: ["kitty", "-e", "ollama", "run", "qwen2.5:0.5b"], running: false });
         // App launcher and Settings - always pinned (Akash's request), so
         // the dock alone can reach every app plus real settings without
         // needing to know any keybind. Neither is a real installed app, so
@@ -195,7 +202,7 @@ ShellRoot {
         // might not resolve: a saxophone for the JAZZ-branded launcher (not
         // a generic search icon), a universal gear for Settings.
         out.push({ name: "App Launcher", icon: "", glyph: "🎷", cmd: ["qs", "ipc", "call", "launcher", "toggle"], running: false });
-        out.push({ name: "Settings", icon: "", glyph: "⚙", cmd: ["qs", "ipc", "call", "settings", "toggle"], running: false });
+        out.push({ name: "Settings", icon: "", glyph: "⚙", themeIcon: "settings", cmd: ["qs", "ipc", "call", "settings", "toggle"], running: false });
         // Any other currently-running app not already pinned - real
         // macOS/Windows dock behavior, not invented
         for (var c = 0; c < runningState.classes.length; c++) {
@@ -384,7 +391,7 @@ ShellRoot {
                 visible: trayState.nowPlaying.length > 0
                 spacing: 8
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "♪"; color: "#ffffff"; font.pixelSize: 20; anchors.verticalCenter: parent.verticalCenter }
+                Image { source: "icons/symbols/now-playing.svg"; width: 20; height: 20; anchors.verticalCenter: parent.verticalCenter }
                 Text {
                     text: trayState.nowPlaying; color: "#ffffff"; font.pixelSize: 16
                     anchors.verticalCenter: parent.verticalCenter
@@ -395,15 +402,14 @@ ShellRoot {
             Row {
                 spacing: 4
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "🔔"; color: "#ffffff"; font.pixelSize: 20; anchors.verticalCenter: parent.verticalCenter }
+                Image { source: "icons/symbols/notifications.svg"; width: 20; height: 20; anchors.verticalCenter: parent.verticalCenter }
                 Text { visible: trayState.notifCount > 0; text: trayState.notifCount; color: "#ffffff"; opacity: 0.8; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["dunstctl", "history-pop"]) }
             }
 
-            Text {
-                text: "⎘"
-                color: "#ffffff"
-                font.pixelSize: 22
+            Image {
+                source: "icons/symbols/clipboard.svg"
+                width: 22; height: 22
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "cliphist list | wofi --dmenu | cliphist decode | wl-copy"]) }
             }
@@ -412,7 +418,7 @@ ShellRoot {
                 visible: trayState.wifiSsid.length > 0
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "📶"; color: "#ffffff"; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Image { source: "icons/symbols/wifi.svg"; width: 18; height: 18; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: trayState.wifiSsid; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
             }
 
@@ -420,7 +426,7 @@ ShellRoot {
                 visible: trayState.batteryPct >= 0
                 spacing: 6
                 anchors.verticalCenter: parent.verticalCenter
-                Text { text: "🔋"; color: "#ffffff"; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                Image { source: "icons/symbols/battery.svg"; width: 18; height: 18; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: trayState.batteryPct + "%"; color: "#ffffff"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
             }
 
@@ -430,10 +436,9 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "launcher", "toggle"]) }
             }
-            Text {
-                text: "▦"
-                color: "#ffffff"
-                font.pixelSize: 21
+            Image {
+                source: "icons/symbols/widgets.svg"
+                width: 21; height: 21
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "widgets", "toggle"]) }
             }
@@ -444,10 +449,9 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "quicksettings", "toggle"]) }
             }
-            Text {
-                text: "⏻"
-                color: "#ffffff"
-                font.pixelSize: 22
+            Image {
+                source: "icons/symbols/power.svg"
+                width: 22; height: 22
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "powermenu", "toggle"]) }
             }
@@ -767,19 +771,21 @@ ShellRoot {
                         Image {
                             anchors.centerIn: parent
                             width: 39; height: 39
-                            source: modelData.icon
+                            source: (modelData.themeIcon || "").length > 0
+                                ? ("icons/symbols/" + modelData.themeIcon + (Theme.darkMode ? "-ondark.svg" : "-onlight.svg"))
+                                : modelData.icon
                             fillMode: Image.PreserveAspectFit
-                            visible: modelData.icon.length > 0
+                            visible: modelData.icon.length > 0 || (modelData.themeIcon || "").length > 0
                         }
                         Text {
                             anchors.centerIn: parent
-                            visible: modelData.icon.length === 0 && modelData.glyph.length > 0
+                            visible: modelData.icon.length === 0 && (modelData.themeIcon || "").length === 0 && modelData.glyph.length > 0
                             text: modelData.glyph
                             color: Theme.panelInk; font.pixelSize: 26
                         }
                         Text {
                             anchors.centerIn: parent
-                            visible: modelData.icon.length === 0 && modelData.glyph.length === 0
+                            visible: modelData.icon.length === 0 && (modelData.themeIcon || "").length === 0 && modelData.glyph.length === 0
                             text: modelData.name.charAt(0)
                             color: Theme.panelInk; font.pixelSize: 21; font.bold: true
                         }

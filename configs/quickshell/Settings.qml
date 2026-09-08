@@ -837,10 +837,20 @@ PanelWindow {
                                                         }
                                                     }
                                                 }
-                                                Text {
-                                                    width: 345; anchors.verticalCenter: parent.verticalCenter
-                                                    text: netData.ssid + (netData.secured ? "  🔒" : "")
-                                                    color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight
+                                                Row {
+                                                    width: 345; anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                                                    Image {
+                                                        visible: netData.secured
+                                                        source: Theme.darkMode ? "icons/symbols/lock-ondark.svg" : "icons/symbols/lock-onlight.svg"
+                                                        width: 14; height: 14
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                    }
+                                                    Text {
+                                                        width: netData.secured ? 327 : 345
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        text: netData.ssid
+                                                        color: Theme.panelInk; font.pixelSize: 18; elide: Text.ElideRight
+                                                    }
                                                 }
                                                 Text {
                                                     visible: netData.connected
