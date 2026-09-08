@@ -64,8 +64,11 @@ sudo -u "$USERNAME" cp "$SCAN_SCRIPT_SRC" "$DATA_DIR/scan-apps.py"
 # design/tokens/colors.json via scripts/generate-theme-qml.py) - just
 # copied like Settings.qml, not hand-authored inline in this heredoc
 # anymore. Regenerate + commit both after editing colors.json, don't
-# hand-edit Theme.qml directly.
+# hand-edit Theme.qml directly. Task 27b: Theme.qml now has its own
+# @@JAZZ_DATA_DIR@@ placeholder (theme-state.json's path), needs the same
+# sed as WorkspaceState.qml below.
 sudo -u "$USERNAME" cp "$THEME_SRC" "$THEME_FILE"
+sed -i "s|@@JAZZ_DATA_DIR@@|$DATA_DIR|g" "$THEME_FILE"
 # Task 27g-followup: WorkspaceState singleton (live active-workspace name +
 # color, including workspace-overrides.json), the one source both
 # shell.qml and Settings.qml read so accent colors actually follow the
@@ -1368,7 +1371,7 @@ ShellRoot {
                                     Text {
                                         width: chatCol.width
                                         text: msg.content.length > 0 ? msg.content : "..."
-                                        color: "#ffffff"; font.pixelSize: 13; wrapMode: Text.Wrap
+                                        color: Theme.textPrimary; font.pixelSize: 13; wrapMode: Text.Wrap
                                     }
                                 }
                             }
@@ -1384,7 +1387,7 @@ ShellRoot {
                         TextInput {
                             id: chatInputBox
                             anchors.fill: parent; anchors.margins: 10
-                            color: "#ffffff"; font.pixelSize: 13
+                            color: Theme.textPrimary; font.pixelSize: 13
                             clip: true
                             focus: commandCentre.visible
                             enabled: !commandCentre.chatBusy

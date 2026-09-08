@@ -127,6 +127,17 @@ PanelWindow {
         MouseArea { anchors.fill: parent }
 
         property var wallpapers: []
+        // Task 27b: real theme picker, replacing the old binary dark/light
+        // toggle. Ids/labels match design/tokens/themes.json - hardcoded
+        // here rather than parsed from themes.json at runtime since it's
+        // a short, rarely-changing list (same judgment call already made
+        // elsewhere in this file for other small option lists).
+        property var themeList: [
+            { id: "forge", label: "Forge" },
+            { id: "daylight", label: "Daylight" },
+            { id: "midnight", label: "Midnight" },
+            { id: "warm", label: "Warm" }
+        ]
         Process {
             id: wallListProc
             command: ["bash", "-c", "ls @@JAZZ_DATA_DIR@@/wallpapers/*.png 2>/dev/null"]
@@ -231,21 +242,35 @@ PanelWindow {
                         width: parent.width
                         spacing: 16
 
-                        // ===== Appearance (existing, unchanged) =====
+                        // ===== Appearance (Task 27b: real theme picker,
+                        // replacing the old binary dark/light toggle) =====
                         Column {
                             visible: settingsPanel.currentPage === "appearance"
                             width: parent.width
                             spacing: 16
                             SectionHeader { text: "APPEARANCE" }
-                            Row {
-                                spacing: 10
-                                Text { text: Theme.darkMode ? "Dark mode" : "Light mode"; color: Theme.panelInk; font.pixelSize: 13 }
-                                Toggle {
-                                    checked: Theme.darkMode
-                                    onToggled: {
-                                        Theme.darkMode = !Theme.darkMode
-                                        var wp = Theme.darkMode ? "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-dark.png" : "@@JAZZ_DATA_DIR@@/wallpapers/jazz-wallpaper-light.png"
-                                        Quickshell.execDetached(["jazz-wallpaper-set", wp])
+                            Text { text: "Theme"; color: Theme.textSecondary; font.pixelSize: 12 }
+                            Flow {
+                                width: parent.width
+                                spacing: 8
+                                Repeater {
+                                    model: settingsBox.themeList
+                                    delegate: Rectangle {
+                                        property bool active: Theme.activeTheme === modelData.id
+                                        width: 92; height: 34; radius: 8
+                                        color: active ? WorkspaceState.activeColor() : Theme.surfaceRaised
+                                        border.color: Theme.textSecondary
+                                        border.width: active ? 0 : 1
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData.label
+                                            color: active ? "#ffffff" : Theme.panelInk
+                                            font.pixelSize: 12
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: Quickshell.execDetached(["jazz-theme-set", modelData.id])
+                                        }
                                     }
                                 }
                             }

@@ -1,14 +1,16 @@
 pragma Singleton
 import QtQuick
+import Quickshell.Io
 
-// JAZZ Theme singleton (Task 11, extended Tier 1/22/23/27a).
-// GENERATED FILE - edit design/tokens/colors.json and re-run
+// JAZZ Theme singleton (Task 11, extended Tier 1/22/23/27a/27b).
+// GENERATED FILE - edit design/tokens/{colors,themes}.json and re-run
 // scripts/generate-theme-qml.py, don't hand-edit the tokens below.
-// Workspace identity colors are deliberately CONSTANT across light/dark -
-// Design-Vision.md sec 2 reserves dynamic theming for non-semantic UI
-// chrome only, never these.
+// Workspace identity colors are deliberately CONSTANT across every
+// theme - Design-Vision.md sec 2 reserves theming for non-semantic UI
+// chrome only (surface/text/accent), never these.
 QtObject {
-    property bool darkMode: true
+    id: root
+    property string activeTheme: "forge"
     // Task 28 Accessibility tab: gates JAZZ's own chrome animations (the
     // top bar's workspace-color transition is the one that exists today).
     property bool reducedMotion: false
@@ -20,10 +22,28 @@ QtObject {
     readonly property color vault: "#3a3d44"   // Secrets, sensitive config
     readonly property color range: "#a23a3a"   // Reserved - dormant
 
-    readonly property color surface: darkMode ? "#1e1d24" : "#e9eaec"
-    readonly property color surfaceRaised: darkMode ? "#26252d" : "#dcdde0"
-    readonly property color textPrimary: darkMode ? "#ede9e2" : "#23262b"
-    readonly property color textSecondary: darkMode ? "#9b968c" : "#6b6e73"
+    // Per-theme chrome/accent lookup table (Task 27b) - one entry per
+    // design/tokens/themes.json theme. Terminal (kitty) palettes and
+    // wallpapers live only in themes.json/jazz-theme-set, not here -
+    // Quickshell's own chrome never needs the full 16-color ANSI set.
+    readonly property var _themes: ({
+        "forge": { mode: "dark", surface: "#1e1d24", surfaceRaised: "#26252d", textPrimary: "#ede9e2", textSecondary: "#9b968c", accent: "#4c6fa0" },
+        "daylight": { mode: "light", surface: "#e9eaec", surfaceRaised: "#dcdde0", textPrimary: "#23262b", textSecondary: "#6b6e73", accent: "#3d5c8a" },
+        "midnight": { mode: "dark", surface: "#0a0a0d", surfaceRaised: "#131319", textPrimary: "#e8e6e0", textSecondary: "#7d7a72", accent: "#5c86ad" },
+        "warm": { mode: "dark", surface: "#201c18", surfaceRaised: "#2a2420", textPrimary: "#ede6da", textSecondary: "#a89a89", accent: "#b8783f" }
+    })
+
+    readonly property var _active: root._themes[root.activeTheme] || root._themes["forge"]
+    readonly property bool darkMode: root._active.mode === "dark"
+    readonly property color surface: root._active.surface
+    readonly property color surfaceRaised: root._active.surfaceRaised
+    readonly property color textPrimary: root._active.textPrimary
+    readonly property color textSecondary: root._active.textSecondary
+    // Used by kitty/hyprlock/dunst (external, non-workspace-aware apps) via
+    // jazz-theme-set. Quickshell's own chrome keeps using the active
+    // WORKSPACE's color as its accent (WorkspaceState.activeColor()),
+    // unchanged - a theme's accent is a separate, narrower concept.
+    readonly property color themeAccent: root._active.accent
 
     // panel/panelInk are the original Task 11 names, kept as aliases so every
     // existing reference across shell.qml/Settings.qml keeps working unchanged.
@@ -37,4 +57,15 @@ QtObject {
     readonly property color positive: "#3e8e76"
     readonly property color warning: "#c98a34"
     readonly property color critical: "#a23a3a"
+
+    // Persisted active-theme choice (Task 27b). jazz-theme-set writes this
+    // file after regenerating kitty/hyprlock/dunst - watchChanges makes the
+    // switch apply here live, no Quickshell relaunch. Same pattern as
+    // WorkspaceState.qml's overridesFile.
+    property FileView themeStateFile: FileView {
+        path: "@@JAZZ_DATA_DIR@@/theme-state.json"
+        watchChanges: true
+        onLoaded: { try { var s = JSON.parse(root.themeStateFile.text()); if (s.activeTheme) root.activeTheme = s.activeTheme } catch (e) {} }
+        onFileChanged: root.themeStateFile.reload()
+    }
 }

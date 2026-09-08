@@ -1,0 +1,145 @@
+{
+  "_comment": "Task 27b. Workspace identity colors (Forge/Lab/Arena/Observe/Vault/Range) live in colors.json and are deliberately NOT themed here - they stay constant across every theme (Design-Vision.md sec 2, Theme.qml's own header comment). A theme controls only: chrome (surface/raised/text), one accent (used by kitty/hyprlock/dunst - Quickshell's own chrome keeps using the active workspace's color as its accent, unchanged), a 16-color terminal palette, and a wallpaper set. Terminal ANSI colors are derived, not hand-picked - see scripts/generate-theme-qml.py's sibling note and design/tokens/README (hue-rotated from each theme's own accent, black/white kept on a fixed dark-to-light ramp independent of theme mode - a real bug in the first pass, inverted black/bright_black on light themes, caught by inspecting output before this file was written).",
+  "themes": {
+    "forge": {
+      "label": "Forge",
+      "mode": "dark",
+      "chrome": {
+        "surface": "#1e1d24",
+        "surfaceRaised": "#26252d",
+        "textPrimary": "#ede9e2",
+        "textSecondary": "#9b968c"
+      },
+      "accent": "#4c6fa0",
+      "terminal": {
+        "background": "#1e1d24",
+        "foreground": "#ede9e2",
+        "cursor": "#4c6fa0",
+        "black": "#232629",
+        "red": "#bf4c40",
+        "green": "#40bf55",
+        "yellow": "#bf9940",
+        "blue": "#4075bf",
+        "magenta": "#bf40bf",
+        "cyan": "#40aabf",
+        "white": "#c9cccf",
+        "bright_black": "#596069",
+        "bright_red": "#d67166",
+        "bright_green": "#66d679",
+        "bright_yellow": "#d6b566",
+        "bright_blue": "#6695d6",
+        "bright_magenta": "#d666d6",
+        "bright_cyan": "#66c4d6",
+        "bright_white": "#f2f2f3"
+      },
+      "wallpapers": [
+        { "path": "jazz-wallpaper-dark.png", "status": "placeholder - Task 23 original, pending replacement with curated Recraft art (in progress)" }
+      ]
+    },
+    "daylight": {
+      "label": "Daylight",
+      "mode": "light",
+      "chrome": {
+        "surface": "#e9eaec",
+        "surfaceRaised": "#dcdde0",
+        "textPrimary": "#23262b",
+        "textSecondary": "#6b6e73"
+      },
+      "accent": "#3d5c8a",
+      "terminal": {
+        "background": "#e9eaec",
+        "foreground": "#23262b",
+        "cursor": "#3d5c8a",
+        "black": "#232629",
+        "red": "#993d33",
+        "green": "#339944",
+        "yellow": "#997a33",
+        "blue": "#335c99",
+        "magenta": "#993399",
+        "cyan": "#338899",
+        "white": "#dfe0e2",
+        "bright_black": "#6a717c",
+        "bright_red": "#792920",
+        "bright_green": "#20792f",
+        "bright_yellow": "#795e20",
+        "bright_blue": "#204479",
+        "bright_magenta": "#792079",
+        "bright_cyan": "#206a79",
+        "bright_white": "#f2f2f3"
+      },
+      "wallpapers": [
+        { "path": "jazz-wallpaper-light.png", "status": "placeholder - Task 23 original, pending a real curated second variant" }
+      ]
+    },
+    "midnight": {
+      "label": "Midnight",
+      "mode": "dark",
+      "chrome": {
+        "surface": "#0a0a0d",
+        "surfaceRaised": "#131319",
+        "textPrimary": "#e8e6e0",
+        "textSecondary": "#7d7a72"
+      },
+      "accent": "#5c86ad",
+      "terminal": {
+        "background": "#0a0a0d",
+        "foreground": "#e8e6e0",
+        "cursor": "#5c86ad",
+        "black": "#232629",
+        "red": "#bf4c40",
+        "green": "#40bf55",
+        "yellow": "#bf9940",
+        "blue": "#4082bf",
+        "magenta": "#bf40bf",
+        "cyan": "#40aabf",
+        "white": "#c9cccf",
+        "bright_black": "#596169",
+        "bright_red": "#d67166",
+        "bright_green": "#66d679",
+        "bright_yellow": "#d6b566",
+        "bright_blue": "#66a0d6",
+        "bright_magenta": "#d666d6",
+        "bright_cyan": "#66c4d6",
+        "bright_white": "#f2f2f3"
+      },
+      "wallpapers": [
+        { "path": "jazz-wallpaper-midnight-01.png", "status": "placeholder - procedurally generated, pending curated replacement" }
+      ]
+    },
+    "warm": {
+      "label": "Warm",
+      "mode": "dark",
+      "chrome": {
+        "surface": "#201c18",
+        "surfaceRaised": "#2a2420",
+        "textPrimary": "#ede6da",
+        "textSecondary": "#a89a89"
+      },
+      "accent": "#b8783f",
+      "terminal": {
+        "background": "#201c18",
+        "foreground": "#ede6da",
+        "cursor": "#b8783f",
+        "black": "#292623",
+        "red": "#bf4c40",
+        "green": "#40bf55",
+        "yellow": "#bf9940",
+        "blue": "#bf7c40",
+        "magenta": "#bf40bf",
+        "cyan": "#40aabf",
+        "white": "#cfccc9",
+        "bright_black": "#696059",
+        "bright_red": "#d67166",
+        "bright_green": "#66d679",
+        "bright_yellow": "#d6b566",
+        "bright_blue": "#d69b66",
+        "bright_magenta": "#d666d6",
+        "bright_cyan": "#66c4d6",
+        "bright_white": "#f3f2f2"
+      },
+      "wallpapers": [
+        { "path": "jazz-wallpaper-warm-01.png", "status": "placeholder - procedurally generated, pending curated replacement" }
+      ]
+    }
+  }
+}

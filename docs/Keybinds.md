@@ -36,6 +36,14 @@ All binds use **Super** (the Windows key) as the main modifier.
 | Super + Tab | Jump back to the previously-focused workspace |
 | Super + Shift + Q | Exit Hyprland (back to the ly login screen) |
 
+## System
+
+| Keybind | Action |
+|---|---|
+| Super + L | Lock the screen (hyprlock) - added by `setup-theme-bundle.sh` (Task 27b), first real binding for it |
+
+**This file has drifted from `setup-hyprland.sh`/`setup-dock.sh` beyond just the line above** (e.g. Task 22's Super+R/S/Comma/Escape rebinds and the dock aren't reflected here yet) - flagged 8 Sept 2026 while adding Super+L, not fixed in this pass since it's pre-existing debt outside Task 27b's scope. Worth a full pass before Task 19 (hygiene gate).
+
 ## Notes
 
 - Forge/Lab/Arena/Observe/Vault/Range are named workspaces per `Design-Vision.md` sec 2 - the colors and the AI Command Centre for them are still unbuilt backlog (Task 22+); right now they're plain workspaces with real names, nothing more.
