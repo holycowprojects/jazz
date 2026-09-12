@@ -42,12 +42,14 @@ directly depends on: icon art, theme art, wallpaper art.
 - **Author:** Tsu Jan (Kvantum's maintainer)
 - **License:** GPL-3.0-or-later (confirmed via `pacman -Qi kvantum`)
 - **Files:** `configs/kvantum/JazzBase.{kvconfig,svg}`
-- **Modifications:** `.svg` unmodified. `.kvconfig` is used as a read-only
-  template - `jazz-theme-set` (Task 27e) generates a real per-JAZZ-theme
-  `.kvconfig` at install/theme-switch time by substituting KvArcDark's
-  hardcoded color values with each JAZZ theme's own tokens from
-  `design/tokens/themes.json`; the vendored template here is never edited
-  in place. See `configs/kvantum/SOURCE.md`.
+- **Modifications:** the vendored `JazzBase.{kvconfig,svg}` here are unmodified.
+  `jazz-theme-set` (Task 27e/27d) generates a real per-JAZZ-theme
+  `.kvconfig` **and** `.svg` at install/theme-switch time by substituting
+  KvArcDark's hardcoded color values with each JAZZ theme's own tokens
+  from `design/tokens/themes.json` - the SVG needs this too, since
+  KvArcDark bakes its accent-blue family directly into shape fills
+  (checkbox ticks, focus rings), not purely via `.kvconfig`; the vendored
+  templates here are never edited in place. See `configs/kvantum/SOURCE.md`.
 
 ## adw-gtk3 (GTK3 theme)
 

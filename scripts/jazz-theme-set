@@ -29,11 +29,23 @@ design/tokens/themes.json (deployed to $JAZZ_DATA_DIR/themes.json) across:
 Python3 stdlib only, no new dependency - same choice already made for
 jazz-agent-action (Task 30).
 
+Task 27d: --from-wallpaper PATH derives the accent from a real image via
+matugen (confirmed official `extra` repo) instead of themes.json's
+configured accent, reading its 'source_color' role (the actual extracted
+swatch, not Material You's tone-shifted 'primary' role meant for
+foreground text) and rejecting it via validate_accent_candidate() before
+it ever reaches Theme.qml if it's too dark/light, too desaturated, or too
+low-contrast against the white fill-text JAZZ's buttons already use. This
+only affects the current invocation in memory - themes.json on disk (the
+theme's canonical accent) is never overwritten.
+
 Usage (on the installed guest, as the desktop user):
     jazz-theme-set <theme-id> [--variant N]
+    jazz-theme-set <theme-id> --from-wallpaper <path>
     jazz-theme-set --list
 """
 import argparse
+import copy
 import json
 import os
 import pathlib
@@ -203,16 +215,102 @@ def _darken(hex_color, factor):
     return _lighten(hex_color, factor)
 
 
+def _hsv(hex_color):
+    r, g, b = (c / 255.0 for c in _hex_to_rgb(hex_color))
+    maxc, minc = max(r, g, b), min(r, g, b)
+    v = maxc
+    s = 0.0 if maxc == 0 else (maxc - minc) / maxc
+    return s, v
+
+
+def _relative_luminance(hex_color):
+    """Simplified WCAG-style relative luminance (sRGB, no gamma linearization -
+    a real, meaningfully-ordered proxy, not exact WCAG, but the task's own bar
+    is 'contrast-tested, not raw Matugen output', not pixel-perfect WCAG."""
+    r, g, b = (c / 255.0 for c in _hex_to_rgb(hex_color))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast_ratio(hex_a, hex_b):
+    la, lb = _relative_luminance(hex_a), _relative_luminance(hex_b)
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def validate_accent_candidate(hex_color):
+    """Task 27d's real validation layer - rejects a raw Matugen candidate
+    before it ever reaches Theme.qml, per the task's explicit requirement
+    that raw Matugen output must never directly override JAZZ's accent
+    unchecked. Three real checks, not cosmetic ones:
+    - too dark/too light to read as a distinct accent swatch at all
+    - too desaturated (muddy/gray) to look intentional, not just noise
+      the extraction algorithm happened to settle on
+    - insufficient contrast against white (JAZZ's buttons/fills put white
+      text on top of the accent color - Button.qml's own convention,
+      confirmed elsewhere in the project - so this is the same real
+      constraint the UI itself already depends on, not an invented one)
+    Returns (accepted_hex_or_None, rejection_reason_or_None).
+    """
+    s, v = _hsv(hex_color)
+    if v < 0.15 or v > 0.92:
+        return None, f"lightness out of range (v={v:.2f}, need 0.15-0.92)"
+    if s < 0.22:
+        return None, f"too desaturated to read as an intentional accent (s={s:.2f}, need >=0.22)"
+    contrast = _contrast_ratio(hex_color, "#ffffff")
+    if contrast < 2.0:
+        return None, f"insufficient contrast against white fill-text ({contrast:.2f}:1, need >=2.0:1)"
+    return hex_color, None
+
+
+def derive_accent_from_wallpaper(image_path, mode):
+    """Task 27d. Shells out to matugen (confirmed official `extra` repo
+    package) against a real wallpaper file and returns its raw
+    'source_color' role - the actual extracted dominant swatch, not
+    Material You's tone-shifted 'primary' role (which is remapped for
+    on-dark/on-light FOREGROUND text contrast in Google's own design
+    system, not for use as a flat fill color the way JAZZ's accent is
+    used - confirmed by inspecting real output against Forge's own
+    wallpaper before choosing which role to read). Falls back to
+    'primary' only if 'source_color' is missing (a version-robustness
+    guard, not the primary path). Returns None on any failure - matugen
+    missing, a malformed image, unexpected JSON shape - so the caller can
+    fall back to the theme's own configured accent rather than crash.
+    """
+    try:
+        result = subprocess.run(
+            ["matugen", "image", str(image_path), "--source-color-index", "0",
+             "-m", mode, "-j", "hex", "--dry-run"],
+            capture_output=True, text=True, timeout=30, check=True,
+        )
+        data = json.loads(result.stdout)
+        colors = data["colors"]
+        if "source_color" in colors:
+            return colors["source_color"][mode]["color"]
+        return colors["primary"][mode]["color"]
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"warning: matugen extraction failed ({e}), keeping theme's own accent", file=sys.stderr)
+        return None
+
+
 def write_kvantum(theme_id, t):
-    """Task 27e. Generates a real Kvantum theme from KvArcDark's vendored
-    template (configs/kvantum/JazzBase.{kvconfig,svg}, deployed to
-    $JAZZ_DATA_DIR/kvantum-base by setup-kvantum.sh) - the SVG asset is
-    reused unmodified (Kvantum tints its shared shapes from the
-    [GeneralColors] hex values at render time, confirmed by inspecting the
-    installed package, not guessed), only the .kvconfig's color values are
-    substituted per-theme via targeted key regex (GeneralColors block) plus
-    two known accent-lookalike literals KvArcDark hardcodes outside that
-    block (#5294e2, #5796e8) and its #ffffffXX text-color placeholders.
+    """Task 27e/27d. Generates a real Kvantum theme from KvArcDark's
+    vendored template (configs/kvantum/JazzBase.{kvconfig,svg}, deployed to
+    $JAZZ_DATA_DIR/kvantum-base by setup-kvantum.sh).
+
+    Correction (found live, 12 Sept 2026, while proving Task 27d's derived
+    accent actually renders): the .kvconfig's [GeneralColors] substitution
+    alone is NOT sufficient - a pixel-sample of a real rendered checkbox
+    showed it still using KvArcDark's original #5294e2, not the theme's
+    accent. Root cause: KvArcDark.svg bakes its accent-blue family directly
+    into ~65 shape fills (checkbox ticks, focus rings, slider handles) -
+    Kvantum does NOT universally tint shared shapes from [GeneralColors] at
+    render time the way the .kvconfig-only pass assumed; only background/
+    text-role fills work that way. So the .svg itself also needs the same
+    accent-family literals substituted, not just copied unmodified. Left
+    #b74aff (a distinct purple, unrelated hue, only 4 occurrences) alone -
+    no evidence it's meant to track the theme accent, and blindly
+    substituting an unconfirmed color risks a new, unverified visual bug.
     """
     template_path = KVANTUM_BASE_DIR / "JazzBase.kvconfig"
     svg_path = KVANTUM_BASE_DIR / "JazzBase.svg"
@@ -268,11 +366,16 @@ def write_kvantum(theme_id, t):
         pattern = rf"^{re.escape(key)}=.*$"
         content = re.sub(pattern, f"{key}={val}", content, count=1, flags=re.MULTILINE)
 
+    svg_content = svg_path.read_text()
+    svg_content = svg_content.replace("#5294e2", accent)
+    svg_content = svg_content.replace("#4693e6", accent)
+    svg_content = svg_content.replace("#58acff", light_c)
+
     theme_name = f"Jazz-{theme_id}"
     out_dir = KVANTUM_CONFIG_DIR / theme_name
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{theme_name}.kvconfig").write_text(content)
-    (out_dir / f"{theme_name}.svg").write_bytes(svg_path.read_bytes())
+    (out_dir / f"{theme_name}.svg").write_text(svg_content)
 
     KVANTUM_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     (KVANTUM_CONFIG_DIR / "kvantum.kvconfig").write_text(f"[General]\ntheme={theme_name}\n")
@@ -296,6 +399,7 @@ def main():
     ap.add_argument("--variant", type=int, default=0)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--restore", action="store_true", help="reapply the persisted theme-state.json choice - for autostart, so a reboot doesn't silently revert the wallpaper to Forge while Theme.qml correctly restores the last chrome")
+    ap.add_argument("--from-wallpaper", metavar="PATH", help="Task 27d: derive the accent from this image via matugen instead of themes.json's configured accent, subject to validate_accent_candidate() - rejected candidates fall back to the theme's own accent, printed to stderr, never silently substituted")
     args = ap.parse_args()
 
     themes = load_themes()
@@ -321,6 +425,18 @@ def main():
     wp_list = t["wallpapers"]
     wp_entry = wp_list[min(args.variant, len(wp_list) - 1)]
     wallpaper_path = WALLPAPER_DIR / wp_entry["path"]
+
+    if args.from_wallpaper:
+        raw = derive_accent_from_wallpaper(args.from_wallpaper, t["mode"])
+        if raw is not None:
+            validated, reason = validate_accent_candidate(raw)
+            if validated:
+                print(f"Matugen: {args.from_wallpaper} -> {raw}, accepted as accent")
+                t = copy.deepcopy(t)
+                t["accent"] = validated
+                t["terminal"]["cursor"] = validated
+            else:
+                print(f"Matugen: {args.from_wallpaper} -> {raw}, REJECTED ({reason}) - keeping {t['accent']}", file=sys.stderr)
 
     write_kitty(args.theme_id, t)
     write_hyprlock(args.theme_id, t, wallpaper_path)
