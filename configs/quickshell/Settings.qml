@@ -1585,16 +1585,22 @@ PanelWindow {
                         }
 
                         // ===== Users (REAL, Task 32) =====
-                        // Privileged actions (add/remove/admin-toggle) open a real
-                        // `kitty --hold -e sudo <script>` terminal - a genuine sudo
-                        // password prompt, same pattern already proven in Task 16b/30.
-                        // pkexec/polkit was tried first and abandoned: both
-                        // polkit-kde-agent and lxqt-policykit-agent register with
-                        // polkitd but never render a visible dialog under plain
-                        // Hyprland, leaving pkexec hanging - confirmed live, see
-                        // tasks/todo.md Task 32. Self-service password change needs
-                        // no elevation (passwd is setuid), so it runs jazz-user-passwd
-                        // directly via a Process, not a terminal.
+                        // Privileged actions (add/remove/admin-toggle) go through
+                        // usersTab.requestSudo() - a small in-app password popup
+                        // (declared as an overlay at the end of settingsBox) that runs
+                        // `sudo -S <script> ...` and feeds the password via Quickshell's
+                        // own Process.stdinEnabled/write() API. First version opened a
+                        // real `kitty --hold -e sudo <script>` terminal instead (same
+                        // idea, proven in Task 16b/30) - Akash's live feedback was that
+                        // it opened behind the Settings panel and was confusing, so this
+                        // was replaced with the in-app popup, same underlying sudo/PAM
+                        // mechanism either way. pkexec/polkit was tried before either of
+                        // these and abandoned: both polkit-kde-agent and
+                        // lxqt-policykit-agent register with polkitd but never render a
+                        // visible dialog under plain Hyprland, leaving pkexec hanging -
+                        // confirmed live, see tasks/todo.md Task 32. Self-service
+                        // password change needs no elevation at all (passwd is setuid),
+                        // so it runs jazz-user-passwd directly via its own Process.
                         Column {
                             id: usersTab
                             visible: settingsPanel.currentPage === "users"
@@ -1605,9 +1611,54 @@ PanelWindow {
                             property string addStatus: ""
                             property string ownUsername: ""
                             readonly property int adminCount: userList.filter(function (u) { return u.admin }).length
+                            property var pendingCommand: null
+                            property string pendingDescription: ""
+                            property string sudoStatus: ""
 
                             function refresh() {
                                 userListProc.running = true
+                            }
+
+                            // Real, root-requiring actions (add/remove/admin-toggle) go
+                            // through this - a small in-app password prompt using
+                            // `sudo -S`, rather than opening a terminal (Akash's feedback:
+                            // a kitty window popping up behind the Settings panel was
+                            // confusing). Same real sudo/PAM stack, just a native-feeling
+                            // prompt instead - confirmed Quickshell's Process type really
+                            // supports stdin (stdinEnabled + write()), not guessed.
+                            function requestSudo(command, description) {
+                                usersTab.pendingCommand = command
+                                usersTab.pendingDescription = description
+                                usersTab.sudoStatus = ""
+                            }
+                            Process {
+                                id: sudoActionProc
+                                stdinEnabled: true
+                                property string outText: ""
+                                property string pw: ""
+                                onStarted: sudoActionProc.write(sudoActionProc.pw + "\n")
+                                stdout: StdioCollector { onStreamFinished: sudoActionProc.outText += this.text }
+                                stderr: StdioCollector { onStreamFinished: sudoActionProc.outText += this.text }
+                                onExited: function (exitCode, exitStatus) {
+                                    sudoActionProc.pw = ""
+                                    if (exitCode === 0) {
+                                        usersTab.sudoStatus = "Done."
+                                        usersTab.refresh()
+                                    } else {
+                                        // sudo's own real error text (wrong password, etc.) -
+                                        // strip its "[sudo] password for X:" echo, keep the rest.
+                                        var msg = sudoActionProc.outText.replace(/^\[sudo\][^\n]*\n?/, "").trim()
+                                        usersTab.sudoStatus = msg || "Failed (exit " + exitCode + ")."
+                                    }
+                                }
+                            }
+                            function runPendingCommand(password) {
+                                sudoActionProc.outText = ""
+                                sudoActionProc.pw = password
+                                sudoActionProc.command = ["sudo", "-S"].concat(usersTab.pendingCommand)
+                                sudoActionProc.running = true
+                                usersTab.pendingCommand = null
+                                usersTab.pendingDescription = ""
                             }
                             Process {
                                 command: ["whoami"]
@@ -1672,7 +1723,9 @@ PanelWindow {
                                             variant: "neutral"
                                             enabled: !parent.parent.isLastAdmin
                                             label: modelData.admin ? "Revoke admin" : "Make admin"
-                                            onClicked: Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-set", modelData.username, "--admin", modelData.admin ? "no" : "yes"])
+                                            onClicked: usersTab.requestSudo(
+                                                ["/usr/local/bin/jazz-user-set", modelData.username, "--admin", modelData.admin ? "no" : "yes"],
+                                                (modelData.admin ? "Revoke admin access from " : "Grant admin access to ") + modelData.username + "?")
                                         }
                                         Button {
                                             height: 33; anchors.verticalCenter: parent.verticalCenter
@@ -1694,6 +1747,12 @@ PanelWindow {
                                 variant: "neutral"
                                 onClicked: usersTab.refresh()
                             }
+                            Text {
+                                visible: usersTab.sudoStatus !== ""
+                                text: usersTab.sudoStatus
+                                color: usersTab.sudoStatus === "Done." ? Theme.textSecondary : Theme.critical
+                                font.family: Theme.uiFont; font.pixelSize: 15
+                            }
 
                             // Inline confirmation, shown only when a user picked
                             // "Remove" above - explicit keep-vs-delete home choice,
@@ -1714,7 +1773,7 @@ PanelWindow {
                                             label: "Delete everything"
                                             variant: "danger"
                                             onClicked: {
-                                                Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "no"])
+                                                usersTab.requestSudo(["/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "no"], "Remove " + usersTab.removeTarget + " and delete their home folder?")
                                                 usersTab.removeTarget = ""
                                             }
                                         }
@@ -1722,7 +1781,7 @@ PanelWindow {
                                             label: "Keep home folder"
                                             variant: "outlineDanger"
                                             onClicked: {
-                                                Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "yes"])
+                                                usersTab.requestSudo(["/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "yes"], "Remove " + usersTab.removeTarget + " but keep their home folder?")
                                                 usersTab.removeTarget = ""
                                             }
                                         }
@@ -1807,7 +1866,7 @@ PanelWindow {
                             SectionHeader { text: "ADD USER" }
                             Text {
                                 font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
-                                text: "Creates a new system account. This opens a real terminal asking for YOUR sudo password to confirm - the same prompt you'd see running sudo yourself."
+                                text: "Creates a new system account. You'll be asked for YOUR own password to confirm - the same check as running sudo yourself."
                                 wrapMode: Text.WordWrap; width: usersTab.width
                             }
                             Column {
@@ -1869,10 +1928,11 @@ PanelWindow {
                                             usersTab.addStatus = "Username and initial password are required."
                                             return
                                         }
-                                        Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-add",
-                                            newUsernameField.text, newFullNameField.text || newUsernameField.text,
-                                            newUserPwField.text, newUserAdminToggle.checked ? "yes" : "no"])
-                                        usersTab.addStatus = "Opened a terminal - enter your sudo password there to finish creating the user, then use Refresh list above."
+                                        usersTab.requestSudo(
+                                            ["/usr/local/bin/jazz-user-add", newUsernameField.text,
+                                             newFullNameField.text || newUsernameField.text,
+                                             newUserPwField.text, newUserAdminToggle.checked ? "yes" : "no"],
+                                            "Create user " + newUsernameField.text + "?")
                                         newUsernameField.text = ""; newFullNameField.text = ""; newUserPwField.text = ""
                                         newUserAdminToggle.checked = false
                                     }
@@ -2247,6 +2307,63 @@ PanelWindow {
                                     wrapMode: Text.Wrap
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Task 32: the small in-app sudo-password confirmation used by the
+        // Users tab's privileged actions (add/remove/admin-toggle) - a real
+        // `sudo -S` Process fed the password via Quickshell's own
+        // stdinEnabled/write() API, not a spawned terminal (Akash's
+        // feedback: a kitty window opening behind the panel was
+        // confusing). Declared last so it renders on top of every tab.
+        Rectangle {
+            visible: usersTab.pendingCommand !== null
+            anchors.fill: parent
+            radius: 21
+            color: "#0a090899"
+            MouseArea { anchors.fill: parent } // swallow clicks to content behind
+            Rectangle {
+                anchors.centerIn: parent
+                width: 360; height: 190; radius: 12
+                color: Theme.surfaceRaised
+                border.color: Theme.panelInk; border.width: 1
+                Column {
+                    anchors.fill: parent; anchors.margins: 18; spacing: 12
+                    Text {
+                        width: parent.width
+                        font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 16
+                        text: usersTab.pendingDescription
+                        wrapMode: Text.WordWrap
+                    }
+                    Column {
+                        spacing: 4
+                        Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Your password (" + usersTab.ownUsername + ")" }
+                        Rectangle {
+                            width: 320; height: 33; radius: 6; color: Theme.panel
+                            border.color: Theme.panelInk; border.width: 1
+                            TextInput {
+                                id: sudoPwField
+                                anchors.fill: parent; anchors.margins: 6
+                                color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                echoMode: TextInput.Password; clip: true
+                                focus: usersTab.pendingCommand !== null
+                                Keys.onReturnPressed: { usersTab.runPendingCommand(text); text = "" }
+                            }
+                        }
+                    }
+                    Row {
+                        spacing: 10
+                        Button {
+                            label: "Confirm"
+                            onClicked: { usersTab.runPendingCommand(sudoPwField.text); sudoPwField.text = "" }
+                        }
+                        Button {
+                            label: "Cancel"
+                            variant: "neutral"
+                            onClicked: { usersTab.pendingCommand = null; usersTab.pendingDescription = ""; sudoPwField.text = "" }
                         }
                     }
                 }
