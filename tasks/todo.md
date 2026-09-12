@@ -1228,6 +1228,36 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 ---
 
+### Task 33: Boot-to-desktop branding chain + first-boot Welcome app
+
+**Description:** Not part of the original plan; scoped 12 Sept 2026 after researching how comparable Arch-based distros (Omarchy, EndeavourOS, Garuda, Manjaro, CachyOS) brand the stretch from power-on to a usable desktop, and confirming live that JAZZ currently has none of it. JAZZ's own theme system (`jazz-theme-set`) already threads one accent/palette through kitty/hyprlock/dunst/Kvantum/GTK3 in one shot (Task 27b/27e) - this task extends that same "set once, propagates everywhere" property to the two pieces still outside it (boot splash, login greeter), and adds the first-boot welcome experience every comparable distro has that JAZZ currently lacks entirely.
+
+**Real findings, confirmed live on the Yoga 6 before writing this spec (not assumed):**
+- `plymouth` is **not installed** (`pacman -Qi plymouth` fails) - JAZZ boots with plain kernel text output, no splash screen at all, right up until Hyprland/Quickshell appears.
+- No `splash`/`quiet` kernel params are set, and `mkinitcpio.conf` has no `plymouth` hook.
+- `ly` (the TUI login greeter, already installed since Task 4) has real built-in animation modes (`animation = matrix|colormix|doom|game_of_life|none` in `/etc/ly/config.ini`) but is currently set to `none` - completely unthemed, never touched by any JAZZ script.
+- There is no first-boot welcome app or equivalent of any kind - a brand-new JAZZ user's first real interaction with the desktop is just the empty Forge workspace, no onboarding at all.
+- **Omarchy's real mechanism, confirmed via its own manual:** `omarchy plymouth set` applies one logo + one color palette to Plymouth's boot splash AND SDDM's login screen together (`omarchy plymouth preview` to try first, `omarchy plymouth reset` to revert); a companion `omarchy transcode ascii` command converts a logo into ASCII/braille/block art for terminal-side branding (used for a themed `fastfetch` banner - CachyOS does the same with a custom `fastfetch` logo + `os-release`). This single-command "propagate everywhere" pattern is exactly what `jazz-theme-set` already does for JAZZ's desktop-side configs - Plymouth/`ly` are the two real gaps in that same pipeline, not a new mechanism to invent.
+- **First-boot welcome apps are near-universal** across comparable distros, each a small standalone app: EndeavourOS's "Welcome" (setup tips/driver tools/doc links, shown in both the live installer and first real boot, toggled via `Hidden=true/false` in its autostart `.desktop`), Garuda's "Setup Assistant" (prompts to open on first boot, walks through system update + curated optional-software picks with real descriptions), Manjaro Hello (Python/GTK3, same autostart-toggle convention), CachyOS's "cachyos-hello"/newer "nabu-welcome" (GTK4, also launchable anytime from the app grid, not just first boot).
+
+**Scope:**
+1. **Plymouth boot splash**: install `plymouth` (confirmed official repo - standard package, not AUR), author a real JAZZ-branded theme (the JAZZ wordmark, matching the project's own "the word JAZZ is the logo" branding decision - Task 27's hyprlock "Welcome to **JAZZ**" label is the closest existing precedent for tone/style), wire the `plymouth` hook into `mkinitcpio.conf` + `splash quiet` kernel params, rebuild the initramfs (`mkinitcpio -P`, real risk - test on a snapshot-protected system, Snapper's already in place from Track A).
+2. **`ly` greeter theming**: extend `jazz-theme-set` (or a new small helper) to write `ly`'s `config.ini` with JAZZ's active theme's real colors, so the login screen matches whichever theme was last active - reusing `design/tokens/themes.json` as the single source, same as every other theme-consuming script.
+3. **First-boot Welcome app**: a small new Quickshell/QML surface (or a lightweight standalone app if that proves simpler) shown once on first real login - real content only (no fake filler): a short JAZZ intro, a link to `docs/Keybinds.md` (already exists), a prompt to pick a theme (reuses Settings' existing Appearance tab picker), and - once Task 32 ships - a nudge toward the Users tab if only the archinstall-created account exists. Autostart-toggle via a marker file in `$JAZZ_DATA_DIR` (e.g. `welcome-shown`), matching the "Hidden=true/false" convention every comparable distro already uses, adapted to JAZZ's own FileView-based state pattern.
+4. **Optional, lower priority**: a themed `fastfetch` config (logo + JAZZ's real palette) as a terminal-side branding touch, matching the CachyOS/Omarchy convention - genuinely optional, not blocking the rest of this task.
+
+**Acceptance criteria:**
+- [ ] `plymouth` installed and shows a real JAZZ-branded boot splash (not the Arch/OEM default `bgrt`), confirmed via a real reboot (not just a config read) - explicit Akash consent needed first, real risk of a broken initramfs stranding the boot the same way Task 27b's hyprlock test needed consent
+- [ ] `ly`'s login screen reflects the currently-active JAZZ theme's real colors, confirmed via screenshot after a logout
+- [ ] A first-boot Welcome app appears exactly once on a fresh install, never again after being dismissed, confirmed via the marker-file mechanism
+- [ ] Welcome app's content is real (working theme picker, real doc links) - no placeholder/fake content, matching the project's own "functional honesty" precedent (Design-Vision.md, the GPU-panel/audio-panel honesty pattern from Tasks 24/26)
+
+**Dependencies:** Task 27b (theme tokens to source colors from), Track A/Snapper (safety net before any `mkinitcpio -P` rebuild), Task 32 (Welcome app's "add more users" nudge, once that tab exists)
+**Files likely touched:** new `scripts/setup-plymouth.sh`, new `design/plymouth/` theme assets, `scripts/jazz-theme-set` (extend to write `ly`'s config too), new Welcome app QML + a `scripts/setup-welcome.sh`, `scripts/install-jazz.sh` (chain the new setup scripts)
+**Estimated scope:** M - Plymouth/initramfs work is genuinely risk-bearing (needs explicit consent + Snapper safety net before a live reboot test, same caution class as Task 27b's hyprlock test), the Welcome app itself is a straightforward, low-risk QML surface
+
+---
+
 ## Phase 4: Public-repo readiness
 
 ### Task 17: README
