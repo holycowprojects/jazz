@@ -33,7 +33,8 @@
         "bright_white": "#f2f2f3"
       },
       "wallpapers": [
-        { "path": "jazz-wallpaper-dark.png", "status": "placeholder - Task 23 original, pending replacement with curated Recraft art (in progress)" }
+        { "path": "jazz-wallpaper-forge-canyon.png", "status": "curated - Recraft-generated source (explosion/canyon composition), color-graded to Forge's palette (surface/accent duotone, warm glow kept as focal accent), cropped to 1920x1080 (12 Sept 2026)" },
+        { "path": "jazz-wallpaper-dark.png", "status": "Task 23 original procedural placeholder, kept as second variant pending a proper second curated piece" }
       ]
     },
     "daylight": {
