@@ -860,7 +860,7 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 
 **Acceptance criteria:**
 - [x] A defined theme bundle format exists and is documented (`design/tokens/themes.json`)
-- [x] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live (dock pixel-sampled exact-match across all 4 themes; kitty/hyprlock/dunst config files inspected and correct; dunst reload confirmed no error. hyprlock's actual lock-screen visual was NOT triggered live - deliberately not tested without asking first, real risk of stranding a physical session over SSH if misconfigured)
+- [x] Switching a theme atomically updates: `Theme.qml` tokens, wallpaper, kitty colors, hyprlock appearance, dunst appearance - confirmed live (dock pixel-sampled exact-match across all 4 themes; kitty/hyprlock/dunst config files inspected and correct; dunst reload confirmed no error; hyprlock's actual lock screen triggered live 12 Sept 2026 with Akash's explicit go-ahead - see the dedicated write-up below)
 - [x] All 4 planned themes (Forge/Daylight/Midnight/Warm) exist as real bundles under this system - Midnight/Warm designed this session (chrome/accent real, terminal palettes hue-derived from each theme's own accent, method documented in `jazz-theme-set`'s docstring)
 - [ ] **Every theme ships at least 2 real, genuinely different wallpaper variants** (Akash's explicit requirement) - NOT yet met. Currently each theme has exactly 1: Forge/Daylight still have Task 23's originals (Akash generating real replacements via Recraft, in progress), Midnight/Warm have one `gen_wallpaper.py`-generated placeholder each. Blocked on Akash's curated art per the wallpaper-sourcing model decided earlier this session, not a mechanism gap - `gen_wallpaper.py --variant 2` and the wallpapers list already support more than one, just need the actual images.
 - [x] Switch is reachable from the Settings panel's existing Appearance tab (Task 22) - real theme picker (4 pills) replacing the old binary dark/light toggle, confirmed live via screenshot (Forge correctly highlighted as active)
@@ -874,9 +874,18 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 
 **Chat text-color bug fixed same session (Akash's report, not part of the original 27b scope but same area):** AI Command Centre's chat message text and input text were hardcoded `#ffffff` regardless of theme - would have been unreadable on Daylight (light theme). Now `Theme.textPrimary`. Akash explicitly confirmed the Send button and model-picker highlight should stay workspace-tinted (`WorkspaceState.activeColor()`, same as the top bar) rather than theme-tinted - verified live by recoloring Observe via the Desktop tab and watching the top bar, Observe's pill, and the Send button all shift together.
 
-**Verification:** Live, on the Yoga 6 - dock pixel-sampled exact-match per theme; kitty/hyprlock/dunst config content inspected; workspace-vs-theme accent split verified via a live recolor test
+**hyprlock live test, 12 Sept 2026 (Akash's explicit go-ahead obtained first):**
+Triggered the real lock screen (`hyprctl dispatch 'hl.dsp.exec_cmd("hyprlock")'`) rather than continuing to defer it. First attempt produced a real scare, worth recording in full: the screenshot taken immediately after showed no visible password box at all, which read as a rendering failure - killed the process via SSH as a safety precaution (`pkill -x hyprlock`) before asking Akash to touch anything. That triggered Hyprland's own built-in "lockscreen app died" recovery screen - a real, deliberate Hyprland safety feature (a crashed lock client does NOT auto-unlock the session, to prevent exactly this kind of accident from becoming a security hole) - fully recovered via `hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'` over the same SSH session, no physical intervention needed, confirmed via screenshot. Akash then clarified: the password box was never broken - `fade_on_empty = true` (already present in the config) intentionally hides the empty input field until a key is pressed, and he'd seen it appear correctly when he tried it physically. **The only real "bug" here was mine: killing a perfectly working process because a static screenshot of its correct idle state looked wrong.**
+
+Retriggered for real after that, this time leaving it running: Akash unlocked it himself with his real password, `hyprlock` exited cleanly (confirmed via `pgrep`, no crash-recovery screen this time), desktop fully restored. Repeated a second full cycle under Daylight (light mode, never tested before) + Observe workspace - correctly renders dark text on the dimmed light wallpaper, real accent-colored input outline, clean unlock, confirmed via screenshot both mid-lock (password dots visible, accent-correct) and post-unlock.
+
+**Real UX gap found by Akash, fixed same session:** the lock screen had no username shown at all, and no JAZZ branding - just clock/date/password box. Added two new labels to `write_hyprlock()`: "Welcome to **JAZZ**" (JAZZ bolded via Pango markup, matching the project's own "the word JAZZ is the logo" branding decision) above the clock, and the real logged-in username (`cmd[update:3600000] echo "$(whoami)"`, same `cmd[]` mechanism already proven working for the clock/date, not a guessed hyprlock-native `$USER` syntax) just above the password field. Verified live via screenshot under Forge - both render correctly, theme-colored.
+
+**Status: hyprlock's live lock screen is now genuinely tested end-to-end (2 full lock/unlock cycles, Forge/dark and Daylight/light, different workspaces each time) and includes a real username + JAZZ branding.** This closes the last open item blocking Task 27b.
+
+**Verification:** Live, on the Yoga 6 - dock pixel-sampled exact-match per theme; kitty/hyprlock/dunst config content inspected; workspace-vs-theme accent split verified via a live recolor test; hyprlock's real lock/unlock cycle completed twice with Akash physically at the keyboard
 **Dependencies:** Task 21, Task 22, Task 23, Task 27a (tokens to bundle) - all satisfied
-**Remaining before this task can close:** real curated wallpapers (≥2 per theme, Akash producing via Recraft), and an explicit-consent live test of the actual hyprlock lock screen (config written and inspected, never triggered)
+**Remaining before this task can close:** real curated wallpapers (≥2 per theme, Akash producing via Recraft) - Forge/Warm now have 2 each (Task 27b's own follow-up work), Daylight/Midnight still need a 2nd
 **Files likely touched:** `design/tokens/themes.json` (new), `scripts/generate-theme-qml.py` (extended), new `scripts/jazz-theme-set` orchestrator, `configs/quickshell/gen_wallpaper.py` (extended), `configs/quickshell/Settings.qml` (Appearance tab theme picker)
 **Estimated scope:** L (grew from the original single-mechanism scope to include designing 2 new real palettes + a wallpaper generator extension + kitty/hyprlock/dunst configs built from scratch)
 
@@ -1165,6 +1174,34 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 **Dependencies:** none (found and worked live, current session)
 **Files touched:** `scripts/setup-dock.sh` (shell.qml heredoc), `configs/quickshell/Settings.qml`, `configs/quickshell/ui/{Button,Toggle,ListRow,SectionHeader}.qml`, `scripts/setup-hyprland.sh` (persisted monitor scale)
 **Estimated scope:** M-L - touched most of shell.qml/Settings.qml's dimension literals plus all 4 shared components
+
+---
+
+### Task 32: User management (Settings' new Users tab)
+**Description:** Not part of the original plan; raised by Akash 12 Sept 2026 alongside the hyprlock username-label fix - the lock screen should show whose account it is, and Settings should let a user change their own password and add additional system users, rather than only ever having the one account `archinstall` created.
+
+**Real findings, checked live before writing this spec (12 Sept 2026):**
+- `passwd`, `chpasswd`, `useradd`, `userdel` are all standard `shadow`-package binaries, already present (core system tooling, not something to install).
+- `polkit` (127-3) is installed and its daemon (`polkitd`) is already running - but no polkit *authentication agent* is running, and none is autostarted from `hyprland.lua`. `polkit-kde-agent` (6.7.4-1) is already installed too (a Plasma dependency pulled in earlier, confirmed via `pacman -Qi`) but sits unused - `pkexec`-based privilege escalation (the standard, secure way for a GUI app to ask for the admin password, rather than baking `sudo` calls into Settings.qml) won't show a prompt until this agent is autostarted the same way `swaybg`/Quickshell are.
+- Self-service password change (a user changing their OWN password) needs no root/pkexec at all - `passwd` is setuid and already permits this. What's NOT yet confirmed live: whether `passwd` can be driven non-interactively from a QML-collected old/new/confirm password flow (piped stdin) or whether PAM's config on this install requires a real TTY - needs testing against a **disposable throwaway test account**, never the real `holycowstudios` login, before this is trusted in the real UI.
+- Adding/removing a system user is unambiguously a **Red tier** action per Task 30's own permission model (creates real accounts, home directories, touches `/etc/passwd`/`/etc/shadow`) - should go through `pkexec` for a real system authentication prompt, and ideally a Snapper checkpoint first (Task 30's own Yellow/Red-tier convention), not a hardcoded `NOPASSWD` sudoers entry.
+
+**Scope:**
+1. Autostart a polkit authentication agent (`polkit-kde-agent`, already installed) from `hyprland.lua`, same `hl.on("hyprland.start", ...)` pattern as Quickshell's own autostart.
+2. New "Users" tab in Jazz Settings: lists real system users (via `getent passwd` filtered to real login-shell accounts, not system/service accounts), a "Change my password" form (current/new/confirm), an "Add user" form (username, full name, initial password, admin-or-not) gated behind `pkexec`, and a remove-user action (also `pkexec`-gated, with a strong explicit confirmation dialog - this deletes a real home directory).
+3. New backend script(s), e.g. `jazz-user-add`/`jazz-user-passwd` (Python or bash, called via `Quickshell.execDetached` same as `jazz-theme-set`/`jazz-wallpaper-set`), rather than shell logic embedded in QML.
+4. Update hyprlock's username label (already shipped, Task 27b) to read the *actual currently-locked* user if JAZZ ever supports fast user switching - not required for v1 (single real desktop user is the common case), noted so it isn't forgotten if multi-user switching is ever built.
+
+**Acceptance criteria:**
+- [ ] Polkit agent autostarted and confirmed live (`pkexec` shows a real graphical prompt, not a silent failure/hang)
+- [ ] A user can change their own password via Settings, verified end-to-end against a disposable test account (log out/lock and back in with the new password), never tested against the real login account first
+- [ ] An admin can add a new real system user via Settings (real `useradd` + home directory created, confirmed via `getent passwd`/`ls /home`), gated behind a real `pkexec` prompt
+- [ ] Removing a user requires strong explicit confirmation and is confirmed live against a disposable test account
+- [ ] Users tab lists real accounts, not a hardcoded/fake list
+
+**Dependencies:** Task 28 (Jazz Settings, to add the tab to), Task 30 (permission-tier precedent for the Red-tier add/remove actions)
+**Files likely touched:** `configs/quickshell/Settings.qml` (new Users tab), new `scripts/jazz-user-add`/`scripts/jazz-user-passwd`, `scripts/setup-hyprland.sh` or a new `scripts/setup-polkit-agent.sh` (autostart line), `scripts/jazz-theme-set` (hyprlock username label already ships, may need revisiting for multi-user)
+**Estimated scope:** M - real root-privileged operations needing careful, safe testing (disposable test account, not the real login) before trusting it in the UI
 
 ---
 
