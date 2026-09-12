@@ -2,7 +2,9 @@
 # Task 32. Removes a system user, explicitly asking (via the caller's own
 # argument, not a hidden default) whether to keep or delete their home
 # directory - real data-loss decision, never silently picked one way.
-# Runs as root - invoked via pkexec from Jazz Settings' Users tab.
+# Runs as root - invoked from Jazz Settings' Users tab via the in-app sudo
+# password popup (`sudo -S`), not pkexec (tried and abandoned, see
+# tasks/todo.md Task 32).
 #
 # Usage: jazz-user-remove <username> <keep-home: yes|no>
 set -eu

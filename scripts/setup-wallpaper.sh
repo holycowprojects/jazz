@@ -28,7 +28,14 @@ pacman -Sy --noconfirm --needed swaybg python-pillow
 
 sudo -u "$USERNAME" mkdir -p "$WALL_DIR"
 if [[ ! -f "$WALL_DIR/jazz-wallpaper-dark.png" ]] || [[ ! -f "$WALL_DIR/jazz-wallpaper-light.png" ]]; then
-    sudo -u "$USERNAME" bash -c "cd '$WALL_DIR' && python3 '$GEN_SCRIPT_SRC'"
+    # Real regression fixed 12 Sept 2026: gen_wallpaper.py stopped taking no
+    # arguments once Task 27b theme-parameterized it (base/accent/mode per
+    # theme instead of hardcoded dark/light) - this call was never updated
+    # to match, invisible on the existing dev machine since its wallpapers
+    # already existed so this branch never actually ran there. --all
+    # regenerates every theme missing a real file, same as
+    # setup-theme-bundle.sh's own (already-correct) bootstrap call.
+    sudo -u "$USERNAME" bash -c "cd '$WALL_DIR' && python3 '$GEN_SCRIPT_SRC' --all"
 fi
 
 tee "$SET_SCRIPT" > /dev/null << 'EOF'

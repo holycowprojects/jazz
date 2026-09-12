@@ -1,8 +1,25 @@
 #!/usr/bin/env bash
 # Task 32. Creates a new system user with a home directory and an initial
-# password, optionally granting sudo (wheel group) access. Runs as root -
-# invoked via pkexec from Jazz Settings' Users tab, never called directly
-# by a non-root process.
+# password, optionally granting sudo (wheel group) access, then provisions
+# them with JAZZ's own real desktop (Task 32/33 finding, 12 Sept 2026) -
+# without this, a new account only gets Hyprland's own generic
+# auto-generated config (no top bar/dock/theme at all, confirmed live by
+# actually logging in as one). Runs as root - invoked from Jazz Settings'
+# Users tab via the in-app sudo password popup (`sudo -S`, Task 32's
+# revised mechanism after pkexec/polkit proved unworkable on this stack -
+# see tasks/todo.md Task 32).
+#
+# Real desktop provisioning reuses install-jazz.sh's own Track B script
+# chain (Hyprland/Quickshell/theme/widgets/dock/settings/wallpaper/
+# Kvantum/theme-bundle), sourced from /opt/jazz/scripts - a persistent
+# copy of this repo kept current by setup-jazz-repo.sh, since the
+# scripts/ directory used during initial install doesn't otherwise
+# survive on the guest at all (confirmed live: it's only ever pushed
+# transiently per SSH session before this existed). Track A (Snapper)
+# and Track C (Podman/Ollama/PyRIT) are deliberately NOT re-run here -
+# those are already-done system-wide setup, not per-user config; a new
+# user who wants AI-engineering tooling too can be given that
+# separately, it's not required for a normal working desktop.
 #
 # Usage: jazz-user-add <username> <full-name> <initial-password> <admin: yes|no>
 set -eu
@@ -11,6 +28,7 @@ USERNAME="${1:?Usage: jazz-user-add <username> <full-name> <initial-password> <a
 FULL_NAME="${2:?}"
 INITIAL_PASSWORD="${3:?}"
 ADMIN="${4:?}"
+JAZZ_SCRIPTS="/opt/jazz/scripts"
 
 if id "$USERNAME" &>/dev/null; then
     echo "error: user '$USERNAME' already exists" >&2
@@ -22,6 +40,21 @@ echo "$USERNAME:$INITIAL_PASSWORD" | chpasswd
 
 if [[ "$ADMIN" == "yes" ]]; then
     usermod -aG wheel "$USERNAME"
+fi
+
+if [[ -d "$JAZZ_SCRIPTS" ]]; then
+    echo "Provisioning JAZZ desktop for $USERNAME..."
+    for script in setup-hyprland.sh setup-quickshell.sh setup-theme.sh \
+                  setup-widgets-tier1.sh setup-dock.sh setup-settings.sh \
+                  setup-wallpaper.sh setup-kvantum.sh setup-theme-bundle.sh; do
+        if [[ -f "$JAZZ_SCRIPTS/$script" ]]; then
+            bash "$JAZZ_SCRIPTS/$script" "$USERNAME"
+        else
+            echo "warning: $script not found in $JAZZ_SCRIPTS, skipped" >&2
+        fi
+    done
+else
+    echo "warning: $JAZZ_SCRIPTS not found - $USERNAME will only have a bare Linux account, no JAZZ desktop. Run setup-jazz-repo.sh first." >&2
 fi
 
 echo "Created user: $USERNAME (admin: $ADMIN)"

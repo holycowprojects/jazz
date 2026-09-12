@@ -29,6 +29,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USERNAME="${1:?Usage: install-jazz.sh <username> [ollama-model]}"
 MODEL="${2:-qwen2.5:0.5b}"
 
+echo "=== JAZZ install: persist repo at /opt/jazz (for per-user re-provisioning, Task 32) ==="
+bash "$SCRIPT_DIR/setup-jazz-repo.sh"
+
 echo "=== JAZZ install: Track A (filesystem/recovery) ==="
 bash "$SCRIPT_DIR/setup-snapper.sh"
 
