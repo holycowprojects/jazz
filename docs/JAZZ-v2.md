@@ -216,3 +216,17 @@ get taken from this doc on their own merits, not because JAZZ is trying to be a 
   development" by this same doc; no new information here beyond what §5e already decided.
 
 ## 7. (Space for more v2 items as they come up)
+
+- **"Prepare for another owner" deferred first-user setup, borrowed from Omarchy** (research done
+  12 Sept 2026 while scoping Task 32's Users tab, checked against Omarchy/archinstall/CachyOS's
+  real install flows). Omarchy's installer lets you hit Ctrl+C on its very first screen (keyboard
+  selection) to skip personal setup entirely - the system still installs right away, but
+  username/password/keyboard-layout selection is deferred until the machine's actual first boot,
+  for someone provisioning a machine to hand off to a different person. JAZZ has no equivalent
+  today - `install/base-credentials.json` always bakes in a real chosen username/password before
+  `archinstall` ever runs, same as archinstall's own default interactive flow (also confirmed
+  live: its "User Account" TUI step, and CachyOS's Calamares "Users" GUI step, both create the
+  account during install too - JAZZ's own credentials-file approach is a scripted/reproducible
+  stand-in for that same normal step, not a gap). Worth a real "first boot setup wizard" for v2 if
+  JAZZ is ever handed to someone else to install and give to a third party, rather than always
+  being self-installed by its own eventual user.

@@ -74,6 +74,7 @@ PanelWindow {
         { id: "storage", title: "Storage", real: true },
         { id: "power", title: "Battery & Power", real: true },
         { id: "security", title: "Security", real: true },
+        { id: "users", title: "Users", real: true },
         { id: "updates", title: "Updates", real: true },
         { id: "accessibility", title: "Accessibility", real: true },
         { id: "system", title: "System", real: true },
@@ -1581,6 +1582,310 @@ PanelWindow {
                             Text { font.family: Theme.uiFont; text: "SSH: " + securityTab.sshStatus; color: Theme.panelInk; font.pixelSize: 20 }
                             Text { font.family: Theme.uiFont; text: "Secure Boot: " + securityTab.secureBoot; color: Theme.panelInk; font.pixelSize: 20 }
                             Text { font.family: Theme.uiFont; text: "Disk Encryption: " + securityTab.diskEncryption; color: Theme.panelInk; font.pixelSize: 20 }
+                        }
+
+                        // ===== Users (REAL, Task 32) =====
+                        // Privileged actions (add/remove/admin-toggle) open a real
+                        // `kitty --hold -e sudo <script>` terminal - a genuine sudo
+                        // password prompt, same pattern already proven in Task 16b/30.
+                        // pkexec/polkit was tried first and abandoned: both
+                        // polkit-kde-agent and lxqt-policykit-agent register with
+                        // polkitd but never render a visible dialog under plain
+                        // Hyprland, leaving pkexec hanging - confirmed live, see
+                        // tasks/todo.md Task 32. Self-service password change needs
+                        // no elevation (passwd is setuid), so it runs jazz-user-passwd
+                        // directly via a Process, not a terminal.
+                        Column {
+                            id: usersTab
+                            visible: settingsPanel.currentPage === "users"
+                            width: parent.width; spacing: 15
+                            property var userList: []
+                            property string removeTarget: ""
+                            property string pwStatus: ""
+                            property string addStatus: ""
+                            property string ownUsername: ""
+                            readonly property int adminCount: userList.filter(function (u) { return u.admin }).length
+
+                            function refresh() {
+                                userListProc.running = true
+                            }
+                            Process {
+                                command: ["whoami"]
+                                running: true
+                                stdout: SplitParser { onRead: function (data) { if (data) usersTab.ownUsername = data } }
+                            }
+                            Process {
+                                id: userListProc
+                                command: ["bash", "-c", "getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 && ($7 ~ /bash|zsh|fish|sh$/) {print $1\":\"$5}' | while IFS=: read -r u n; do w=$(groups \"$u\" | grep -qw wheel && echo yes || echo no); echo \"$u:$n:$w\"; done"]
+                                stdout: StdioCollector {
+                                    onStreamFinished: {
+                                        var lines = this.text.split("\n").filter(function (s) { return s.length > 0 })
+                                        usersTab.userList = lines.map(function (l) {
+                                            var parts = l.split(":")
+                                            return { username: parts[0], displayName: parts[1] || "", admin: parts[2] === "yes" }
+                                        })
+                                    }
+                                }
+                            }
+                            Component.onCompleted: refresh()
+
+                            Process {
+                                id: passwdProc
+                                property string outText: ""
+                                stdout: StdioCollector { onStreamFinished: passwdProc.outText += this.text }
+                                stderr: StdioCollector { onStreamFinished: passwdProc.outText += this.text }
+                                onExited: function (exitCode, exitStatus) {
+                                    usersTab.pwStatus = exitCode === 0 ? "Password changed successfully." : (passwdProc.outText.trim() || "Password change failed.")
+                                    if (exitCode === 0) { currentPwField.text = ""; newPwField.text = ""; confirmPwField.text = "" }
+                                }
+                            }
+
+                            SectionHeader { text: "USERS" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: "Everyone with a real login on this machine. \"admin\" means they can install software and change system settings."
+                                wrapMode: Text.WordWrap; width: usersTab.width
+                            }
+                            Repeater {
+                                model: usersTab.userList
+                                delegate: Rectangle {
+                                    // The real login username always leads - a friendly display
+                                    // name is shown alongside it, never in place of it (Akash's
+                                    // feedback: the actual account identity must be front and
+                                    // center, not hidden behind a GECOS name).
+                                    readonly property bool isSelf: modelData.username === usersTab.ownUsername
+                                    readonly property bool isLastAdmin: modelData.admin && usersTab.adminCount <= 1
+                                    width: usersTab.width; height: 51; radius: 9; color: Theme.surfaceRaised
+                                    Row {
+                                        anchors.fill: parent; anchors.margins: 9; spacing: 12
+                                        Text {
+                                            width: 420; anchors.verticalCenter: parent.verticalCenter
+                                            font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18
+                                            elide: Text.ElideRight
+                                            text: modelData.username
+                                                + (parent.parent.isSelf ? " (you)" : "")
+                                                + (modelData.displayName ? " — " + modelData.displayName : "")
+                                                + (modelData.admin ? " · admin" : "")
+                                        }
+                                        Button {
+                                            height: 33; anchors.verticalCenter: parent.verticalCenter
+                                            variant: "neutral"
+                                            enabled: !parent.parent.isLastAdmin
+                                            label: modelData.admin ? "Revoke admin" : "Make admin"
+                                            onClicked: Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-set", modelData.username, "--admin", modelData.admin ? "no" : "yes"])
+                                        }
+                                        Button {
+                                            height: 33; anchors.verticalCenter: parent.verticalCenter
+                                            variant: "outlineDanger"
+                                            enabled: !parent.parent.isSelf
+                                            label: "Remove"
+                                            onClicked: usersTab.removeTarget = modelData.username
+                                        }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 13
+                                            text: parent.parent.isLastAdmin ? "Only admin - can't revoke" : (parent.parent.isSelf ? "Can't remove yourself" : "")
+                                        }
+                                    }
+                                }
+                            }
+                            Button {
+                                label: "Refresh list"
+                                variant: "neutral"
+                                onClicked: usersTab.refresh()
+                            }
+
+                            // Inline confirmation, shown only when a user picked
+                            // "Remove" above - explicit keep-vs-delete home choice,
+                            // never a silent default (Task 32's own acceptance bar).
+                            Rectangle {
+                                visible: usersTab.removeTarget !== ""
+                                width: usersTab.width; height: 90; radius: 9
+                                color: Theme.surfaceRaised; border.color: Theme.critical; border.width: 1
+                                Column {
+                                    anchors.fill: parent; anchors.margins: 12; spacing: 8
+                                    Text {
+                                        font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 16
+                                        text: "Remove " + usersTab.removeTarget + "? This cannot be undone."
+                                    }
+                                    Row {
+                                        spacing: 10
+                                        Button {
+                                            label: "Delete everything"
+                                            variant: "danger"
+                                            onClicked: {
+                                                Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "no"])
+                                                usersTab.removeTarget = ""
+                                            }
+                                        }
+                                        Button {
+                                            label: "Keep home folder"
+                                            variant: "outlineDanger"
+                                            onClicked: {
+                                                Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-remove", usersTab.removeTarget, "yes"])
+                                                usersTab.removeTarget = ""
+                                            }
+                                        }
+                                        Button {
+                                            label: "Cancel"
+                                            variant: "neutral"
+                                            onClicked: usersTab.removeTarget = ""
+                                        }
+                                    }
+                                }
+                            }
+
+                            SectionHeader { text: "CHANGE MY PASSWORD" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: "Changes the password for your own account (" + usersTab.ownUsername + ") - no admin approval needed."
+                            }
+                            Column {
+                                width: usersTab.width; spacing: 12
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Current password" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: currentPwField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            echoMode: TextInput.Password; clip: true
+                                        }
+                                    }
+                                }
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "New password" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: newPwField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            echoMode: TextInput.Password; clip: true
+                                        }
+                                    }
+                                }
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Confirm new password" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: confirmPwField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            echoMode: TextInput.Password; clip: true
+                                        }
+                                    }
+                                }
+                                Button {
+                                    label: "Change Password"
+                                    onClicked: {
+                                        if (newPwField.text.length === 0 || newPwField.text !== confirmPwField.text) {
+                                            usersTab.pwStatus = "New password and confirmation don't match."
+                                            return
+                                        }
+                                        passwdProc.outText = ""
+                                        passwdProc.command = ["jazz-user-passwd", currentPwField.text, newPwField.text]
+                                        passwdProc.running = true
+                                    }
+                                }
+                                Text {
+                                    visible: usersTab.pwStatus !== ""
+                                    text: usersTab.pwStatus
+                                    color: usersTab.pwStatus.indexOf("successfully") >= 0 ? Theme.textSecondary : Theme.critical
+                                    font.family: Theme.uiFont; font.pixelSize: 15
+                                }
+                            }
+
+                            SectionHeader { text: "ADD USER" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: "Creates a new system account. This opens a real terminal asking for YOUR sudo password to confirm - the same prompt you'd see running sudo yourself."
+                                wrapMode: Text.WordWrap; width: usersTab.width
+                            }
+                            Column {
+                                width: usersTab.width; spacing: 12
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Username (lowercase, no spaces)" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: newUsernameField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            clip: true
+                                        }
+                                    }
+                                }
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Full name (shown on the lock screen)" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: newFullNameField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            clip: true
+                                        }
+                                    }
+                                }
+                                Column {
+                                    spacing: 4
+                                    Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Initial password (they can change it later)" }
+                                    Rectangle {
+                                        width: 280; height: 33; radius: 6; color: Theme.panel
+                                        border.color: Theme.panelInk; border.width: 1
+                                        TextInput {
+                                            id: newUserPwField
+                                            anchors.fill: parent; anchors.margins: 6
+                                            color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                            echoMode: TextInput.Password; clip: true
+                                        }
+                                    }
+                                }
+                                Row {
+                                    spacing: 12
+                                    Text { anchors.verticalCenter: parent.verticalCenter; font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18; text: "Admin (sudo) access" }
+                                    Toggle {
+                                        id: newUserAdminToggle
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                Button {
+                                    label: "Create User"
+                                    onClicked: {
+                                        if (newUsernameField.text.length === 0 || newUserPwField.text.length === 0) {
+                                            usersTab.addStatus = "Username and initial password are required."
+                                            return
+                                        }
+                                        Quickshell.execDetached(["kitty", "--hold", "-e", "sudo", "/usr/local/bin/jazz-user-add",
+                                            newUsernameField.text, newFullNameField.text || newUsernameField.text,
+                                            newUserPwField.text, newUserAdminToggle.checked ? "yes" : "no"])
+                                        usersTab.addStatus = "Opened a terminal - enter your sudo password there to finish creating the user, then use Refresh list above."
+                                        newUsernameField.text = ""; newFullNameField.text = ""; newUserPwField.text = ""
+                                        newUserAdminToggle.checked = false
+                                    }
+                                }
+                                Text {
+                                    visible: usersTab.addStatus !== ""
+                                    text: usersTab.addStatus
+                                    color: Theme.textSecondary
+                                    font.family: Theme.uiFont; font.pixelSize: 15
+                                    wrapMode: Text.WordWrap
+                                    width: usersTab.width
+                                }
+                            }
                         }
 
                         // ===== Updates (REAL) =====
