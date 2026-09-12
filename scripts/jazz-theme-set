@@ -8,6 +8,11 @@ design/tokens/themes.json (deployed to $JAZZ_DATA_DIR/themes.json) across:
   - hyprlock     (writes ~/.config/hypr/hyprlock.conf)
   - dunst        (writes ~/.config/dunst/dunstrc, reloads the running daemon)
   - wallpaper    (calls the existing jazz-wallpaper-set helper, Task 23)
+  - Kvantum      (Task 27e: writes ~/.config/Kvantum/Jazz-<id>/, a real
+                   per-theme Qt widget style generated from a vendored
+                   KvArcDark template - see configs/kvantum/SOURCE.md)
+  - GTK3         (Task 27e: writes ~/.config/gtk-3.0/settings.ini,
+                   picking adw-gtk3 or adw-gtk3-dark by theme mode)
   - Quickshell   (writes $JAZZ_DATA_DIR/theme-state.json - Theme.qml's
                    FileView (watchChanges: true) picks it up live, confirmed
                    8 Sept 2026 on the Yoga 6 by sampling actual dock pixel
@@ -32,6 +37,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -41,6 +47,9 @@ WALLPAPER_DIR = DATA_DIR / "wallpapers"
 KITTY_DIR = pathlib.Path.home() / ".config/kitty"
 HYPR_DIR = pathlib.Path.home() / ".config/hypr"
 DUNST_DIR = pathlib.Path.home() / ".config/dunst"
+KVANTUM_BASE_DIR = DATA_DIR / "kvantum-base"
+KVANTUM_CONFIG_DIR = pathlib.Path.home() / ".config/Kvantum"
+GTK3_DIR = pathlib.Path.home() / ".config/gtk-3.0"
 
 
 def load_themes():
@@ -176,6 +185,111 @@ def write_dunst(theme_id, t):
     subprocess.run(["dunstctl", "reload"], capture_output=True)
 
 
+def _hex_to_rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _rgb_to_hex(rgb):
+    return "#" + "".join(f"{max(0, min(255, round(c))):02x}" for c in rgb)
+
+
+def _lighten(hex_color, factor):
+    r, g, b = _hex_to_rgb(hex_color)
+    return _rgb_to_hex((r * factor, g * factor, b * factor))
+
+
+def _darken(hex_color, factor):
+    return _lighten(hex_color, factor)
+
+
+def write_kvantum(theme_id, t):
+    """Task 27e. Generates a real Kvantum theme from KvArcDark's vendored
+    template (configs/kvantum/JazzBase.{kvconfig,svg}, deployed to
+    $JAZZ_DATA_DIR/kvantum-base by setup-kvantum.sh) - the SVG asset is
+    reused unmodified (Kvantum tints its shared shapes from the
+    [GeneralColors] hex values at render time, confirmed by inspecting the
+    installed package, not guessed), only the .kvconfig's color values are
+    substituted per-theme via targeted key regex (GeneralColors block) plus
+    two known accent-lookalike literals KvArcDark hardcodes outside that
+    block (#5294e2, #5796e8) and its #ffffffXX text-color placeholders.
+    """
+    template_path = KVANTUM_BASE_DIR / "JazzBase.kvconfig"
+    svg_path = KVANTUM_BASE_DIR / "JazzBase.svg"
+    if not template_path.exists() or not svg_path.exists():
+        print(f"warning: {KVANTUM_BASE_DIR} missing base theme, skipped Kvantum", file=sys.stderr)
+        return
+
+    c = t["chrome"]
+    accent = t["accent"]
+    is_light = t["mode"] == "light"
+
+    window_c = c["surface"]
+    base_c = "#ffffff" if is_light else c["surfaceRaised"]
+    altbase_c = c["surfaceRaised"]
+    button_c = c["surfaceRaised"]
+    light_c = _lighten(accent, 1.35)
+    midlight_c = _darken(c["surface"], 0.92 if is_light else 0.85)
+    dark_c = _darken(c["surface"], 0.35 if is_light else 0.05) if is_light else "black"
+    mid_c = _darken(c["surface"], 0.6)
+    accent_focus_c = _lighten(accent, 1.15)
+
+    content = template_path.read_text()
+
+    # Blanket substitutions run FIRST, against the raw template only - they
+    # must never touch anything the key-based pass below writes (a real bug
+    # caught testing Daylight: base.color's own "#ffffff" for light mode was
+    # getting re-matched and overwritten by this same #ffffffXX->textPrimary
+    # rule when it ran second, since "#ffffff" with no alpha suffix is a
+    # valid match for both purposes).
+    content = content.replace("#5294e2", accent)
+    content = content.replace("#5796e8", accent_focus_c)
+    content = content.replace("#eefcff", c["textPrimary"])
+    content = re.sub(
+        r"#ffffff([0-9a-fA-F]{2})?",
+        lambda m: c["textPrimary"] + (m.group(1) or ""),
+        content,
+    )
+
+    key_subs = {
+        "window.color": window_c,
+        "base.color": base_c,
+        "alt.base.color": altbase_c,
+        "button.color": button_c,
+        "light.color": light_c,
+        "mid.light.color": midlight_c,
+        "dark.color": dark_c,
+        "mid.color": mid_c,
+        "highlight.color": accent,
+        "inactive.highlight.color": accent,
+        "link.color": accent,
+    }
+    for key, val in key_subs.items():
+        pattern = rf"^{re.escape(key)}=.*$"
+        content = re.sub(pattern, f"{key}={val}", content, count=1, flags=re.MULTILINE)
+
+    theme_name = f"Jazz-{theme_id}"
+    out_dir = KVANTUM_CONFIG_DIR / theme_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{theme_name}.kvconfig").write_text(content)
+    (out_dir / f"{theme_name}.svg").write_bytes(svg_path.read_bytes())
+
+    KVANTUM_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    (KVANTUM_CONFIG_DIR / "kvantum.kvconfig").write_text(f"[General]\ntheme={theme_name}\n")
+
+
+def write_gtk3(t):
+    """Task 27e. adw-gtk-theme (official repo) ships both a light and a
+    dark variant - picks the one matching this theme's own mode, so
+    Daylight (JAZZ's one light theme) doesn't get stuck with a dark GTK3
+    look. Kvantum handles the Qt side; this is GTK3's equivalent switch.
+    """
+    gtk_theme = "adw-gtk3" if t["mode"] == "light" else "adw-gtk3-dark"
+    GTK3_DIR.mkdir(parents=True, exist_ok=True)
+    conf = f"[Settings]\ngtk-theme-name={gtk_theme}\ngtk-application-prefer-dark-theme={'false' if t['mode'] == 'light' else 'true'}\n"
+    (GTK3_DIR / "settings.ini").write_text(conf)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("theme_id", nargs="?")
@@ -211,6 +325,8 @@ def main():
     write_kitty(args.theme_id, t)
     write_hyprlock(args.theme_id, t, wallpaper_path)
     write_dunst(args.theme_id, t)
+    write_kvantum(args.theme_id, t)
+    write_gtk3(t)
 
     if wallpaper_path.exists():
         subprocess.run(["jazz-wallpaper-set", str(wallpaper_path)], check=False)

@@ -43,6 +43,7 @@ bash "$SCRIPT_DIR/setup-widgets-tier1.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-dock.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-settings.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-wallpaper.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-kvantum.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-theme-bundle.sh" "$USERNAME"
 
 echo "=== JAZZ install: Track C (AI engineering) ==="
