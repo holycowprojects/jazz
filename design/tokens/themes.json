@@ -139,7 +139,8 @@
         "bright_white": "#f3f2f2"
       },
       "wallpapers": [
-        { "path": "jazz-wallpaper-warm-01.png", "status": "placeholder - procedurally generated, pending curated replacement" }
+        { "path": "jazz-wallpaper-warm-canyon.png", "status": "curated - same Recraft-generated source as Forge's canyon piece, color-graded to Warm's own tan/amber palette (surface/accent duotone, fire glow kept as a deeper red-orange focal accent), cropped to 1920x1080 (12 Sept 2026)" },
+        { "path": "jazz-wallpaper-warm-01.png", "status": "Task 27b procedural placeholder, kept as second variant pending a proper second curated piece" }
       ]
     }
   }
