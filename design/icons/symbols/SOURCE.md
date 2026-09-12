@@ -13,5 +13,4 @@ where QML picks the file matching `Theme.darkMode` - see `shell.qml`/`Settings.q
 names (no suffix) are top-bar icons, always white since the top bar is always the active
 workspace's saturated color regardless of theme.
 
-Full source/license/modification record: see Task 27f (asset licensing), not yet written -
-this file is the interim note.
+Full source/license/modification record: see `licenses/ASSETS.md` (Task 27f).

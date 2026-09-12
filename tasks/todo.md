@@ -941,12 +941,14 @@ This matters because JAZZ's `gen_wallpaper.py` is pure procedural Pillow (radial
 **Dependencies:** Task 27a (tokens), Task 15c (app list to test against)
 **Estimated scope:** S
 
-#### Task 27f: Asset licensing record
+#### Task 27f: Asset licensing record — **DONE, 12 Sept 2026**
 **Description:** Lightweight but non-optional given JAZZ's existing public-repo-readiness requirement (project memory: clean history, no unlicensed assets). Every vendored asset from 27c (Lucide SVGs) and 27e (Papirus, Kvantum, any vendored adw-gtk3) needs a source/license/modification record, per the guide's §48 schema.
 
+**Real findings, 12 Sept 2026:** `licenses/ASSETS.md` written with 6 entries: Lucide (ISC, 27c's 10 icons/13 files), Papirus (GPL-3.0, confirmed live via `pacman -Qi papirus-icon-theme` - the URL/license weren't just assumed), KvArcDark (GPL-3.0-or-later, author Tsu Jan, confirmed via `pacman -Qi kvantum`, 27e), adw-gtk3 (LGPL-2.1-only, confirmed live via `pacman -Qi adw-gtk-theme` - a real license check, not guessed from the project name), plus Forge/Warm's curated wallpapers (Akash's own Recraft generations, not third-party-licensed stock) and an explicit "not yet covered" note for Daylight/Midnight's still-placeholder wallpapers. Task 27d has no assets yet (not built) so nothing to record there currently - the dependency is satisfied vacuously, not skipped. `design/icons/symbols/SOURCE.md`'s interim "see Task 27f, not yet written" note updated to point at the real file.
+
 **Acceptance criteria:**
-- [ ] `licenses/ASSETS.md` exists, one entry per vendored asset (source, author, license, URL, modifications)
-- [ ] Covers everything pulled in by 27c/27d/27e at minimum
+- [x] `licenses/ASSETS.md` exists, one entry per vendored asset (source, author, license, URL, modifications)
+- [x] Covers everything pulled in by 27c/27e (27d has no assets yet, nothing to cover)
 
 **Dependencies:** 27c, 27d, 27e (needs their assets to exist first)
 **Estimated scope:** XS
