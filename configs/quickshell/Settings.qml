@@ -1607,6 +1607,7 @@ PanelWindow {
                             width: parent.width; spacing: 15
                             property var userList: []
                             property string removeTarget: ""
+                            property string switchTarget: ""
                             property string pwStatus: ""
                             property string addStatus: ""
                             property string ownUsername: ""
@@ -1694,7 +1695,7 @@ PanelWindow {
                             SectionHeader { text: "USERS" }
                             Text {
                                 font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
-                                text: "Everyone with a real login on this machine. \"admin\" means they can install software and change system settings."
+                                text: "Everyone with a real login on this machine. \"admin\" means they can install software and change system settings. \"Switch to this user\" logs you out and returns to the login screen."
                                 wrapMode: Text.WordWrap; width: usersTab.width
                             }
                             Repeater {
@@ -1710,13 +1711,29 @@ PanelWindow {
                                     Row {
                                         anchors.fill: parent; anchors.margins: 9; spacing: 12
                                         Text {
-                                            width: 420; anchors.verticalCenter: parent.verticalCenter
+                                            width: 300; anchors.verticalCenter: parent.verticalCenter
                                             font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18
                                             elide: Text.ElideRight
                                             text: modelData.username
                                                 + (parent.parent.isSelf ? " (you)" : "")
                                                 + (modelData.displayName ? " — " + modelData.displayName : "")
                                                 + (modelData.admin ? " · admin" : "")
+                                        }
+                                        Button {
+                                            // Real "switch user" - not fake concurrent
+                                            // sessions (Hyprland has a documented crash
+                                            // risk there, confirmed via research, see
+                                            // tasks/todo.md Task 32) - a clean logout via
+                                            // the same hl.dsp.exit() the power menu's own
+                                            // "Log out" already uses, landing back at ly's
+                                            // login screen to type the target user's
+                                            // password. Akash's own explicit choice after
+                                            // being shown the crash-risk tradeoff.
+                                            height: 33; anchors.verticalCenter: parent.verticalCenter
+                                            visible: !parent.parent.isSelf
+                                            variant: "primary"
+                                            label: "Switch to this user"
+                                            onClicked: usersTab.switchTarget = modelData.username
                                         }
                                         Button {
                                             height: 33; anchors.verticalCenter: parent.verticalCenter
@@ -1794,6 +1811,45 @@ PanelWindow {
                                 }
                             }
 
+                            // Inline confirmation for "Switch to this user" - a clean
+                            // logout (same hl.dsp.exit() the power menu's own Log Out
+                            // uses), not a fake in-place switch. Real work in the
+                            // current session closes, same as any normal logout.
+                            Rectangle {
+                                visible: usersTab.switchTarget !== ""
+                                width: usersTab.width; height: 160; radius: 9
+                                color: Theme.surfaceRaised; border.color: WorkspaceState.activeColor(); border.width: 1
+                                Column {
+                                    anchors.fill: parent; anchors.margins: 12; spacing: 8
+                                    Text {
+                                        font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 16
+                                        text: "Log out and switch to " + usersTab.switchTarget + "? Your current session will close - save anything open first."
+                                        wrapMode: Text.WordWrap; width: parent.width
+                                    }
+                                    Text {
+                                        font.family: Theme.uiFont; color: Theme.critical; font.pixelSize: 14
+                                        text: "At the login screen, it will still show \"" + usersTab.ownUsername + "\" typed in from last time - clear that field first (Backspace), then type \"" + usersTab.switchTarget + "\" and their password. If this account was JUST created and the machine hasn't rebooted since, the login screen won't recognize it yet - reboot first."
+                                        wrapMode: Text.WordWrap; width: parent.width
+                                    }
+                                    Row {
+                                        spacing: 10
+                                        Button {
+                                            label: "Log out now"
+                                            variant: "primary"
+                                            onClicked: {
+                                                Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.exit()"])
+                                                usersTab.switchTarget = ""
+                                            }
+                                        }
+                                        Button {
+                                            label: "Cancel"
+                                            variant: "neutral"
+                                            onClicked: usersTab.switchTarget = ""
+                                        }
+                                    }
+                                }
+                            }
+
                             SectionHeader { text: "CHANGE MY PASSWORD" }
                             Text {
                                 font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
@@ -1866,7 +1922,7 @@ PanelWindow {
                             SectionHeader { text: "ADD USER" }
                             Text {
                                 font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
-                                text: "Creates a new system account. You'll be asked for YOUR own password to confirm - the same check as running sudo yourself."
+                                text: "Creates a new system account. You'll be asked for YOUR own password to confirm - the same check as running sudo yourself. The login screen won't recognize the new account until you reboot (a real limitation of ly, the login screen software - it only reads the user list once at startup)."
                                 wrapMode: Text.WordWrap; width: usersTab.width
                             }
                             Column {
