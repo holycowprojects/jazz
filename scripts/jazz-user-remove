@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Task 32. Removes a system user, explicitly asking (via the caller's own
+# argument, not a hidden default) whether to keep or delete their home
+# directory - real data-loss decision, never silently picked one way.
+# Runs as root - invoked via pkexec from Jazz Settings' Users tab.
+#
+# Usage: jazz-user-remove <username> <keep-home: yes|no>
+set -eu
+
+USERNAME="${1:?Usage: jazz-user-remove <username> <keep-home: yes|no>}"
+KEEP_HOME="${2:?}"
+
+if ! id "$USERNAME" &>/dev/null; then
+    echo "error: user '$USERNAME' does not exist" >&2
+    exit 1
+fi
+
+if [[ "$KEEP_HOME" == "yes" ]]; then
+    userdel "$USERNAME"
+else
+    userdel -r "$USERNAME"
+fi
+
+echo "Removed user: $USERNAME (home kept: $KEEP_HOME)"

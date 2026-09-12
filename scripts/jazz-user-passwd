@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""jazz-user-passwd <current-password> <new-password>
+
+Task 32. Self-service password change for the CURRENT invoking user -
+`passwd` is setuid-root already, changing your own password needs no
+pkexec/sudo escalation, unlike jazz-user-add/-remove/-set.
+
+Confirmed live (12 Sept 2026, against a disposable test account, never
+the real login) that `passwd` genuinely accepts its three interactive
+prompts (current/new/confirm) via piped stdin - no real TTY required,
+not a guessed hyprlock-style workaround. A wrong current password is
+correctly rejected ("Authentication failure"); real PAM error text is
+always surfaced to the caller rather than replaced with a generic
+message, since a lockout/weak-password/reuse rejection all look
+different and the user should see which one actually happened.
+"""
+import subprocess
+import sys
+
+
+def main():
+    if len(sys.argv) != 3:
+        sys.exit("Usage: jazz-user-passwd <current-password> <new-password>")
+    current, new = sys.argv[1], sys.argv[2]
+    stdin_data = f"{current}\n{new}\n{new}\n"
+    result = subprocess.run(
+        ["passwd"], input=stdin_data, capture_output=True, text=True,
+    )
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode == 0 and "password updated successfully" in output:
+        print("Password changed successfully")
+        sys.exit(0)
+    print(f"Password change failed: {output}", file=sys.stderr)
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

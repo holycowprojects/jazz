@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Task 32. Creates a new system user with a home directory and an initial
+# password, optionally granting sudo (wheel group) access. Runs as root -
+# invoked via pkexec from Jazz Settings' Users tab, never called directly
+# by a non-root process.
+#
+# Usage: jazz-user-add <username> <full-name> <initial-password> <admin: yes|no>
+set -eu
+
+USERNAME="${1:?Usage: jazz-user-add <username> <full-name> <initial-password> <admin: yes|no>}"
+FULL_NAME="${2:?}"
+INITIAL_PASSWORD="${3:?}"
+ADMIN="${4:?}"
+
+if id "$USERNAME" &>/dev/null; then
+    echo "error: user '$USERNAME' already exists" >&2
+    exit 1
+fi
+
+useradd -m -c "$FULL_NAME" "$USERNAME"
+echo "$USERNAME:$INITIAL_PASSWORD" | chpasswd
+
+if [[ "$ADMIN" == "yes" ]]; then
+    usermod -aG wheel "$USERNAME"
+fi
+
+echo "Created user: $USERNAME (admin: $ADMIN)"

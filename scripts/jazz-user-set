@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Task 32. Per-user admin actions that each need root - display name and
+# admin (wheel group) toggle for an EXISTING user. Runs as root - invoked
+# via pkexec from Jazz Settings' Users tab.
+#
+# Real finding (12 Sept 2026): self-service `chfn` is blocked on this
+# install by login.defs' CHFN_RESTRICT setting even for a user changing
+# their OWN display name ("chfn: login.defs forbids setting Name") -
+# confirmed live, not assumed. `usermod -c` works with root, so display
+# name changes go through this root-gated script even when a user is
+# setting their own name, not just an admin setting someone else's.
+#
+# Usage: jazz-user-set <username> --displayname "Full Name"
+#        jazz-user-set <username> --admin yes|no
+set -eu
+
+USERNAME="${1:?Usage: jazz-user-set <username> --displayname NAME | --admin yes|no}"
+ACTION="${2:?}"
+VALUE="${3:?}"
+
+if ! id "$USERNAME" &>/dev/null; then
+    echo "error: user '$USERNAME' does not exist" >&2
+    exit 1
+fi
+
+case "$ACTION" in
+    --displayname)
+        usermod -c "$VALUE" "$USERNAME"
+        echo "Set display name for $USERNAME: $VALUE"
+        ;;
+    --admin)
+        if [[ "$VALUE" == "yes" ]]; then
+            usermod -aG wheel "$USERNAME"
+            echo "Granted admin (wheel) access to $USERNAME"
+        else
+            gpasswd -d "$USERNAME" wheel || true
+            echo "Revoked admin (wheel) access from $USERNAME"
+        fi
+        ;;
+    *)
+        echo "error: unknown action '$ACTION' (expected --displayname or --admin)" >&2
+        exit 1
+        ;;
+esac
