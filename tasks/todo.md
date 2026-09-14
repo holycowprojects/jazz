@@ -1177,7 +1177,7 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 ---
 
-### Task 32: User management (Settings' new Users tab)
+### Task 32: User management (Settings' new Users tab) — **DONE, 15 Sept 2026**
 **Description:** Not part of the original plan; raised by Akash 12 Sept 2026 alongside the hyprlock username-label fix - the lock screen should show whose account it is, and Settings should let a user change their own password and add additional system users, rather than only ever having the one account `archinstall` created.
 
 **Real findings, checked live before writing this spec (12 Sept 2026):**
@@ -1240,7 +1240,7 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 ---
 
-### Task 33: Boot-to-desktop branding chain + first-boot Welcome app
+### Task 33: Boot-to-desktop branding chain + first-boot Welcome app — **DONE (v1 scope), 15 Sept 2026** — Plymouth splash attempted and reverted (see below), USB boot-stall + real GUI login screen deferred to v2
 
 **Description:** Not part of the original plan; scoped 12 Sept 2026 after researching how comparable Arch-based distros (Omarchy, EndeavourOS, Garuda, Manjaro, CachyOS) brand the stretch from power-on to a usable desktop, and confirming live that JAZZ currently has none of it. JAZZ's own theme system (`jazz-theme-set`) already threads one accent/palette through kitty/hyprlock/dunst/Kvantum/GTK3 in one shot (Task 27b/27e) - this task extends that same "set once, propagates everywhere" property to the two pieces still outside it (boot splash, login greeter), and adds the first-boot welcome experience every comparable distro has that JAZZ currently lacks entirely.
 
