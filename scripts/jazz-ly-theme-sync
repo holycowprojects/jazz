@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""jazz-ly-theme-sync - Task 33.
+
+Runs as root via a systemd drop-in (ExecStartPre on ly@.service) right
+before the login greeter starts, so ly's own colors match whichever JAZZ
+theme was last active on this machine - extends jazz-theme-set's existing
+"set once, propagates everywhere" chain to the one surface outside any
+user's own session (Plymouth's boot splash is the other, a separate
+follow-on within this same task).
+
+Reads /var/lib/jazz/ly-theme.json - written by jazz-theme-set (any desktop
+user, no root needed: the file is seeded at mode 0666 by setup-ly-theme.sh,
+so a plain truncate-write to the existing file works regardless of which
+user is writing - no sticky-bit/ownership tricks needed).
+
+If the state file doesn't exist yet, or is missing a key (fresh install,
+no theme ever applied by any user), this leaves ly's corresponding
+config.ini line untouched rather than guessing - a no-op, not a crash.
+
+Real color-format confirmed by reading /etc/ly/config.ini's own header
+comment before writing this: 0xSSRRGGBB (SS = styling bits, ignored here -
+0x00 means no styling), not guessed from a generic ncurses convention.
+"""
+import json
+import pathlib
+import re
+
+STATE_FILE = pathlib.Path("/var/lib/jazz/ly-theme.json")
+CONFIG_FILE = pathlib.Path("/etc/ly/config.ini")
+
+# Maps our state-file keys to ly's real config.ini key names.
+LY_KEYS = {
+    "bg": "bg",
+    "fg": "fg",
+    "border": "border_fg",
+    "error": "error_fg",
+}
+
+
+def to_ly_hex(hex_color):
+    return "0x00" + hex_color.lstrip("#").upper()
+
+
+def main():
+    if not STATE_FILE.exists():
+        return
+    try:
+        state = json.loads(STATE_FILE.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+    if not CONFIG_FILE.exists():
+        return
+
+    conf = CONFIG_FILE.read_text()
+    changed = False
+    for state_key, ly_key in LY_KEYS.items():
+        hex_color = state.get(state_key)
+        if not hex_color:
+            continue
+        new_conf = re.sub(rf"(?m)^{ly_key} = .*$", f"{ly_key} = {to_ly_hex(hex_color)}", conf)
+        if new_conf != conf:
+            changed = True
+        conf = new_conf
+
+    if changed:
+        CONFIG_FILE.write_text(conf)
+
+
+if __name__ == "__main__":
+    main()

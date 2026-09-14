@@ -43,12 +43,23 @@ tee "$SET_SCRIPT" > /dev/null << 'EOF'
 # JAZZ wallpaper setter (Task 23). swaybg has no IPC to swap images live -
 # the only way to change wallpaper is kill the old process and start a
 # new one, confirmed live against this swaybg version.
+#
+# Real bug fixed 12 Sept 2026: this used to log to a single shared
+# /tmp/jazz-swaybg.log for every user on the machine - whichever user's
+# swaybg ran first "owned" that file (mode 644, not group-writable), so
+# every OTHER user's `>` redirection failed with Permission denied before
+# swaybg could even start, and the screen just kept showing whatever was
+# already composited (no crash, no visible error - looked like nothing
+# happened). Confirmed live: holycowstudios's wallpaper silently failed
+# this way after anve had already run swaybg once. $XDG_RUNTIME_DIR is
+# per-user (mode 700) and already exported by Hyprland, so it can't collide.
 # Usage: jazz-wallpaper-set <path-to-image>
 set -eu
 IMG="${1:?Usage: jazz-wallpaper-set <path-to-image>}"
+LOG="${XDG_RUNTIME_DIR:-/tmp}/jazz-swaybg.log"
 pkill -u "$(whoami)" swaybg 2>/dev/null || true
 sleep 0.3
-nohup swaybg -i "$IMG" -m fill > /tmp/jazz-swaybg.log 2>&1 < /dev/null &
+nohup swaybg -i "$IMG" -m fill > "$LOG" 2>&1 < /dev/null &
 disown
 EOF
 chmod +x "$SET_SCRIPT"

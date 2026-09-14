@@ -32,6 +32,12 @@ MODEL="${2:-qwen2.5:0.5b}"
 echo "=== JAZZ install: persist repo at /opt/jazz (for per-user re-provisioning, Task 32) ==="
 bash "$SCRIPT_DIR/setup-jazz-repo.sh"
 
+echo "=== JAZZ install: standalone /usr/local/bin scripts (theme/font/user/idle helpers) ==="
+bash "$SCRIPT_DIR/setup-jazz-bin.sh"
+
+echo "=== JAZZ install: ly login-screen theming (Task 33) ==="
+bash "$SCRIPT_DIR/setup-ly-theme.sh"
+
 echo "=== JAZZ install: Track A (filesystem/recovery) ==="
 bash "$SCRIPT_DIR/setup-snapper.sh"
 
@@ -42,12 +48,13 @@ echo "=== JAZZ install: Track B (desktop) ==="
 bash "$SCRIPT_DIR/setup-hyprland.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-quickshell.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-theme.sh" "$USERNAME"
-bash "$SCRIPT_DIR/setup-widgets-tier1.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-dock.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-settings.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-welcome.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-wallpaper.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-kvantum.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-theme-bundle.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-hypridle.sh" "$USERNAME"
 
 echo "=== JAZZ install: Track C (AI engineering) ==="
 bash "$SCRIPT_DIR/setup-podman.sh" "$USERNAME"

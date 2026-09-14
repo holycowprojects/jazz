@@ -711,6 +711,9 @@ ShellRoot {
     // ---------- Full Settings app (Task 28: grown out to its own file, Settings.qml - see that file for all sections) ----------
     Loader { source: "Settings.qml" }
 
+    // ---------- First-boot Welcome app (Task 33) ----------
+    Loader { source: "Welcome.qml" }
+
     // ---------- Power menu ----------
     PanelWindow {
         id: powerMenu

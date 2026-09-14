@@ -1612,12 +1612,31 @@ PanelWindow {
                             property string addStatus: ""
                             property string ownUsername: ""
                             readonly property int adminCount: userList.filter(function (u) { return u.admin }).length
+                            // Real backend already refuses these for a non-admin viewer -
+                            // sudo just rejects anyone not in wheel, correct password or not
+                            // (confirmed live, 12 Sept 2026, testing as a non-admin account).
+                            // Hiding the buttons too is pure UX - a non-admin was seeing a
+                            // "Remove"/"Revoke admin" that would always fail, not a security
+                            // gap on its own.
+                            readonly property bool viewerIsAdmin: userList.some(function (u) { return u.username === usersTab.ownUsername && u.admin })
                             property var pendingCommand: null
                             property string pendingDescription: ""
                             property string sudoStatus: ""
+                            property bool idleEnabled: true
+                            property int idleMinutes: 10
+                            property string idleStatus: ""
+                            property string autoLoginUser: ""
 
                             function refresh() {
                                 userListProc.running = true
+                                autoLoginProc.running = true
+                            }
+                            Process {
+                                id: autoLoginProc
+                                // /etc/ly/config.ini is world-readable - no sudo needed just to
+                                // show which account (if any) currently skips the login prompt.
+                                command: ["bash", "-c", "grep '^auto_login_user' /etc/ly/config.ini | sed 's/auto_login_user = //'"]
+                                stdout: SplitParser { onRead: function (data) { usersTab.autoLoginUser = (data && data !== "null") ? data : "" } }
                             }
 
                             // Real, root-requiring actions (add/remove/admin-toggle) go
@@ -1676,10 +1695,16 @@ PanelWindow {
                                             var parts = l.split(":")
                                             return { username: parts[0], displayName: parts[1] || "", admin: parts[2] === "yes" }
                                         })
+                                        // Pre-fill the display-name field from the just-refreshed
+                                        // list, but never clobber text the user is actively editing.
+                                        if (!displayNameField.activeFocus && displayNameField.text === "") {
+                                            var mine = usersTab.userList.find(function (u) { return u.username === usersTab.ownUsername })
+                                            if (mine) displayNameField.text = mine.displayName
+                                        }
                                     }
                                 }
                             }
-                            Component.onCompleted: refresh()
+                            Component.onCompleted: { refresh(); loadIdleStatus() }
 
                             Process {
                                 id: passwdProc
@@ -1701,23 +1726,28 @@ PanelWindow {
                             Repeater {
                                 model: usersTab.userList
                                 delegate: Rectangle {
+                                    id: userDelegate
                                     // The real login username always leads - a friendly display
                                     // name is shown alongside it, never in place of it (Akash's
                                     // feedback: the actual account identity must be front and
                                     // center, not hidden behind a GECOS name).
                                     readonly property bool isSelf: modelData.username === usersTab.ownUsername
                                     readonly property bool isLastAdmin: modelData.admin && usersTab.adminCount <= 1
-                                    width: usersTab.width; height: 51; radius: 9; color: Theme.surfaceRaised
+                                    readonly property bool autoLoginOn: modelData.username === usersTab.autoLoginUser && usersTab.autoLoginUser !== ""
+                                    width: usersTab.width; height: usersTab.viewerIsAdmin ? 90 : 51; radius: 9; color: Theme.surfaceRaised
+                                    Column {
+                                        anchors.fill: parent; anchors.margins: 9; spacing: 6
                                     Row {
-                                        anchors.fill: parent; anchors.margins: 9; spacing: 12
+                                        spacing: 12
                                         Text {
                                             width: 300; anchors.verticalCenter: parent.verticalCenter
                                             font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18
                                             elide: Text.ElideRight
                                             text: modelData.username
-                                                + (parent.parent.isSelf ? " (you)" : "")
+                                                + (userDelegate.isSelf ? " (you)" : "")
                                                 + (modelData.displayName ? " — " + modelData.displayName : "")
                                                 + (modelData.admin ? " · admin" : "")
+                                                + (userDelegate.autoLoginOn ? " · auto-login" : "")
                                         }
                                         Button {
                                             // Real "switch user" - not fake concurrent
@@ -1730,7 +1760,7 @@ PanelWindow {
                                             // password. Akash's own explicit choice after
                                             // being shown the crash-risk tradeoff.
                                             height: 33; anchors.verticalCenter: parent.verticalCenter
-                                            visible: !parent.parent.isSelf
+                                            visible: !userDelegate.isSelf
                                             variant: "primary"
                                             label: "Switch to this user"
                                             onClicked: usersTab.switchTarget = modelData.username
@@ -1738,7 +1768,8 @@ PanelWindow {
                                         Button {
                                             height: 33; anchors.verticalCenter: parent.verticalCenter
                                             variant: "neutral"
-                                            enabled: !parent.parent.isLastAdmin
+                                            visible: usersTab.viewerIsAdmin
+                                            enabled: !userDelegate.isLastAdmin
                                             label: modelData.admin ? "Revoke admin" : "Make admin"
                                             onClicked: usersTab.requestSudo(
                                                 ["/usr/local/bin/jazz-user-set", modelData.username, "--admin", modelData.admin ? "no" : "yes"],
@@ -1747,15 +1778,39 @@ PanelWindow {
                                         Button {
                                             height: 33; anchors.verticalCenter: parent.verticalCenter
                                             variant: "outlineDanger"
-                                            enabled: !parent.parent.isSelf
+                                            visible: usersTab.viewerIsAdmin
+                                            enabled: !userDelegate.isSelf
                                             label: "Remove"
                                             onClicked: usersTab.removeTarget = modelData.username
                                         }
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter
                                             font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 13
-                                            text: parent.parent.isLastAdmin ? "Only admin - can't revoke" : (parent.parent.isSelf ? "Can't remove yourself" : "")
+                                            text: !usersTab.viewerIsAdmin ? "Only admins can manage users" : (userDelegate.isLastAdmin ? "Only admin - can't revoke" : (userDelegate.isSelf ? "Can't remove yourself" : ""))
                                         }
+                                    }
+                                    Row {
+                                        visible: usersTab.viewerIsAdmin
+                                        spacing: 12
+                                        Text {
+                                            width: 300; anchors.verticalCenter: parent.verticalCenter
+                                            font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 13
+                                            text: userDelegate.autoLoginOn
+                                                ? "Auto-login: skips the password prompt for this account on next boot"
+                                                : "Auto-login: off"
+                                        }
+                                        Button {
+                                            height: 27; anchors.verticalCenter: parent.verticalCenter
+                                            fontSize: 10
+                                            variant: userDelegate.autoLoginOn ? "outlineDanger" : "neutral"
+                                            label: userDelegate.autoLoginOn ? "Disable auto-login" : "Enable auto-login"
+                                            onClicked: usersTab.requestSudo(
+                                                ["/usr/local/bin/jazz-user-set", modelData.username, "--autologin", userDelegate.autoLoginOn ? "no" : "yes"],
+                                                userDelegate.autoLoginOn
+                                                    ? ("Disable auto-login? " + modelData.username + " will need their password again at the next boot.")
+                                                    : ("Enable auto-login for " + modelData.username + "? Anyone who turns this machine on gets straight into their account with NO password prompt - a real security tradeoff, not just a convenience toggle. Takes effect on the next boot, not the next logout. Only one account can have this at a time."))
+                                        }
+                                    }
                                     }
                                 }
                             }
@@ -1916,6 +1971,107 @@ PanelWindow {
                                     text: usersTab.pwStatus
                                     color: usersTab.pwStatus.indexOf("successfully") >= 0 ? Theme.textSecondary : Theme.critical
                                     font.family: Theme.uiFont; font.pixelSize: 15
+                                }
+                            }
+
+                            SectionHeader { text: "MY DISPLAY NAME" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: "Shown on the lock screen instead of your raw username (\"" + usersTab.ownUsername + "\"). `chfn` (the normal self-service way to do this) is blocked by this system's login policy even for your own account, so this goes through the same admin-password confirmation as the other actions above."
+                                wrapMode: Text.WordWrap; width: usersTab.width
+                            }
+                            Row {
+                                spacing: 10
+                                Rectangle {
+                                    width: 280; height: 33; radius: 6; color: Theme.panel
+                                    border.color: Theme.panelInk; border.width: 1
+                                    TextInput {
+                                        id: displayNameField
+                                        anchors.fill: parent; anchors.margins: 6
+                                        color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                        clip: true
+                                    }
+                                }
+                                Button {
+                                    height: 33; anchors.verticalCenter: parent.verticalCenter
+                                    label: "Save"
+                                    onClicked: usersTab.requestSudo(
+                                        ["/usr/local/bin/jazz-user-set", usersTab.ownUsername, "--displayname", displayNameField.text],
+                                        "Set your display name to \"" + displayNameField.text + "\"?")
+                                }
+                            }
+
+                            SectionHeader { text: "IDLE LOCK" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: usersTab.idleStatus || "loading..."
+                                wrapMode: Text.WordWrap; width: usersTab.width
+                            }
+                            Process {
+                                id: idleProc
+                                property string outText: ""
+                                stdout: StdioCollector { onStreamFinished: idleProc.outText += this.text }
+                                stderr: StdioCollector { onStreamFinished: idleProc.outText += this.text }
+                                onExited: function (exitCode, exitStatus) {
+                                    if (exitCode === 0) {
+                                        try {
+                                            var parsed = JSON.parse(idleProc.outText.trim().split("\n").pop())
+                                            usersTab.idleEnabled = parsed.enabled
+                                            usersTab.idleMinutes = parsed.minutes
+                                            idleMinutesField.text = String(parsed.minutes)
+                                            usersTab.idleStatus = parsed.enabled
+                                                ? ("Locks after " + parsed.minutes + " minute" + (parsed.minutes === 1 ? "" : "s") + " of inactivity.")
+                                                : "Idle auto-lock is off."
+                                        } catch (e) {
+                                            usersTab.idleStatus = "Couldn't read idle-lock status."
+                                        }
+                                    } else {
+                                        usersTab.idleStatus = idleProc.outText.trim() || ("Failed (exit " + exitCode + ").")
+                                    }
+                                }
+                            }
+                            function loadIdleStatus() {
+                                idleProc.outText = ""
+                                idleProc.command = ["jazz-idle-set", "--status"]
+                                idleProc.running = true
+                            }
+                            function applyIdle(enabled, minutes) {
+                                idleProc.outText = ""
+                                idleProc.command = ["jazz-idle-set", "--enabled", enabled ? "true" : "false", "--minutes", String(minutes)]
+                                idleProc.running = true
+                            }
+                            Row {
+                                spacing: 12
+                                Text { anchors.verticalCenter: parent.verticalCenter; font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18; text: "Lock screen after inactivity" }
+                                Toggle {
+                                    id: idleEnabledToggle
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    checked: usersTab.idleEnabled
+                                    onToggled: usersTab.applyIdle(!usersTab.idleEnabled, usersTab.idleMinutes)
+                                }
+                            }
+                            Row {
+                                spacing: 10
+                                visible: usersTab.idleEnabled
+                                Rectangle {
+                                    width: 80; height: 33; radius: 6; color: Theme.panel
+                                    border.color: Theme.panelInk; border.width: 1
+                                    TextInput {
+                                        id: idleMinutesField
+                                        anchors.fill: parent; anchors.margins: 6
+                                        color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                        clip: true; validator: IntValidator { bottom: 1; top: 180 }
+                                    }
+                                }
+                                Text { anchors.verticalCenter: parent.verticalCenter; font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 18; text: "minutes" }
+                                Button {
+                                    height: 33; anchors.verticalCenter: parent.verticalCenter
+                                    label: "Save"
+                                    onClicked: {
+                                        var mins = parseInt(idleMinutesField.text)
+                                        if (isNaN(mins) || mins < 1) { usersTab.idleStatus = "Enter a whole number of minutes, at least 1."; return }
+                                        usersTab.applyIdle(true, mins)
+                                    }
                                 }
                             }
 

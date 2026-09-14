@@ -11,8 +11,22 @@
 # name changes go through this root-gated script even when a user is
 # setting their own name, not just an admin setting someone else's.
 #
+# --autologin (14 Sept 2026): writes ly's auto_login_user/auto_login_session
+# keys in /etc/ly/config.ini directly (not via jazz-theme-set - this isn't
+# theme state, it's a real security-tradeoff toggle, Red-tier per Task 30's
+# own model). Confirmed live against ly's real config.ini comments before
+# writing this: auto_login_session must be a .desktop filename (without
+# extension) from /usr/share/wayland-sessions/ - this system only has
+# "hyprland.desktop", hardcoded below since JAZZ only ships one session.
+# ly's own doc also confirms "Autologin only happens once at startup - it
+# won't re-trigger after logout" - surfaced as a warning in the Settings UI,
+# not hidden. Since ly supports exactly one auto-login user at a time,
+# setting it for a new user naturally "unsets" any previous one - no extra
+# cleanup needed, it's one shared key, not per-user state.
+#
 # Usage: jazz-user-set <username> --displayname "Full Name"
 #        jazz-user-set <username> --admin yes|no
+#        jazz-user-set <username> --autologin yes|no
 set -eu
 
 USERNAME="${1:?Usage: jazz-user-set <username> --displayname NAME | --admin yes|no}"
@@ -38,8 +52,18 @@ case "$ACTION" in
             echo "Revoked admin (wheel) access from $USERNAME"
         fi
         ;;
+    --autologin)
+        LY_CONFIG="/etc/ly/config.ini"
+        if [[ "$VALUE" == "yes" ]]; then
+            sed -i "s|^auto_login_session = .*|auto_login_session = hyprland|; s|^auto_login_user = .*|auto_login_user = $USERNAME|" "$LY_CONFIG"
+            echo "Enabled auto-login for $USERNAME (takes effect on next boot, not next logout)"
+        else
+            sed -i "s|^auto_login_session = .*|auto_login_session = null|; s|^auto_login_user = .*|auto_login_user = null|" "$LY_CONFIG"
+            echo "Disabled auto-login"
+        fi
+        ;;
     *)
-        echo "error: unknown action '$ACTION' (expected --displayname or --admin)" >&2
+        echo "error: unknown action '$ACTION' (expected --displayname, --admin, or --autologin)" >&2
         exit 1
         ;;
 esac

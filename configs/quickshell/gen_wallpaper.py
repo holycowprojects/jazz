@@ -28,12 +28,14 @@ import json
 import math
 import pathlib
 import random
+import shutil
 
 from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 1920, 1080
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 THEMES_PATH = ROOT / "design/tokens/themes.json"
+CURATED_ASSETS_DIR = ROOT / "design/wallpapers"
 
 
 def hex_to_rgb(h):
@@ -113,12 +115,29 @@ def main():
     themes = json.loads(THEMES_PATH.read_text())["themes"]
 
     if args.all:
+        # Real bug fixed 12 Sept 2026: this used to guess "does this theme
+        # need a placeholder?" from substrings in the filename (e.g. "warm"
+        # in the path) - that also matched jazz-wallpaper-warm-canyon.png
+        # (the real curated file, not a placeholder) and skipped Forge
+        # entirely, so brand-new users got a procedurally-mangled "canyon"
+        # file and NO Forge wallpaper at all. Now driven by each entry's
+        # explicit "curated" flag in themes.json: curated entries are
+        # copied from the real asset store (persisted at
+        # design/wallpapers/, shipped to /opt/jazz by setup-jazz-repo.sh),
+        # non-curated entries get the procedural placeholder as before.
         for theme_id, t in themes.items():
             for wp in t["wallpapers"]:
                 out = pathlib.Path(wp["path"])
                 if out.exists():
                     continue
-                if "midnight" in wp["path"] or "warm" in wp["path"] or theme_id in ("midnight", "warm"):
+                if wp.get("curated"):
+                    src = CURATED_ASSETS_DIR / wp["path"]
+                    if src.exists():
+                        shutil.copy(src, out)
+                        print(f"copied curated {wp['path']} from {src}")
+                    else:
+                        print(f"warning: curated asset missing at {src}, skipping {wp['path']} (theme {theme_id} will have no wallpaper until this is fixed)")
+                else:
                     make_wallpaper(t["chrome"]["surface"], t["accent"], t["mode"], str(out), variant=1)
         return
 
