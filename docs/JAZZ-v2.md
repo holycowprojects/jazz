@@ -230,3 +230,15 @@ get taken from this doc on their own merits, not because JAZZ is trying to be a 
   stand-in for that same normal step, not a gap). Worth a real "first boot setup wizard" for v2 if
   JAZZ is ever handed to someone else to install and give to a third party, rather than always
   being self-installed by its own eventual user.
+
+- **Universal USB-enumeration boot-stall bound, deferred from Task 33 (15 Sept 2026).** Found while
+  troubleshooting Plymouth on the Yoga 6: an integrated USB peripheral (likely the webcam) fails to
+  respond during early boot, and the kernel's USB stack retries repeatedly before giving up - adding
+  over a minute to every boot on AMD Renoir/Cezanne chipsets (full trail in
+  `docs/Research-Reference-List.md` section 0). Akash explicitly declined the fast, per-machine
+  workaround (disable the camera in BIOS) and asked for a universal fix instead - something that
+  bounds how long boot waits on *any* slow/misbehaving USB device generically, benefiting anyone on
+  similar hardware, not just this unit. Likely shape: bound `udevadm settle`'s timeout in the
+  initramfs `udev` hook (or an equivalent generic mkinitcpio-level change) rather than targeting this
+  exact peripheral's vendor/product ID. Not started - v1 ships with the honest "boots, just slower on
+  this hardware" framing in the README instead (Task 17's draft "Known Issues" section).

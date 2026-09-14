@@ -1304,11 +1304,11 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 > ## Known Issues
 >
-> **Slow boot on AMD Renoir/Cezanne laptops (e.g. Lenovo Yoga 6 82FN).** On some AMD Ryzen 4000/5000-mobile ("Renoir"/"Cezanne") laptops, an integrated USB peripheral (commonly the webcam) fails to respond during early boot, and the kernel's USB stack retries repeatedly before giving up - adding well over a minute to every boot. This is a known chipset/peripheral timing issue (see `docs/Research-Reference-List.md` for the full trail and sources), not something JAZZ's own scripts cause, and it isn't specific to any one physical unit - any Linux distro on the same chipset family will show the same symptom (`dmesg`/`journalctl -b` will show repeated `usb N-M: device descriptor read/64, error -110` lines from the same port).
+> **Boot takes longer than expected on AMD Renoir/Cezanne laptops (e.g. Lenovo Yoga 6 82FN) - it will still boot, just not quickly.** On some AMD Ryzen 4000/5000-mobile ("Renoir"/"Cezanne") laptops, an integrated USB peripheral (commonly the webcam) fails to respond during early boot, and the kernel's USB stack retries repeatedly before giving up - adding well over a minute before the desktop appears. This is a known chipset/peripheral timing issue (see `docs/Research-Reference-List.md` for the full trail and sources), not something JAZZ's own scripts cause, and it isn't specific to any one physical unit - any Linux distro on the same chipset family will show the same symptom (`dmesg`/`journalctl -b` will show repeated `usb N-M: device descriptor read/64, error -110` lines from the same port).
 >
-> JAZZ does **not** currently hide this delay behind a boot splash - Plymouth was tried and then deliberately reverted back to plain scrolling boot text, specifically so this delay stays visible as real progress rather than reading as a silent hang.
+> JAZZ does **not** currently hide this delay behind a boot splash - Plymouth was tried and then deliberately reverted back to plain scrolling boot text, specifically so this delay stays visible as real progress (it's still moving, just slow) rather than reading as a silent hang.
 >
-> If you hit this and don't need the affected device (usually the integrated camera), disabling it in your BIOS/UEFI setup is the fastest fix.
+> **A universal fix (bounding how long boot waits on any slow/misbehaving USB device, not specific to any one machine's exact hardware) is planned for v2, not v1** - deliberately not rushed. If you don't need the affected device (usually the integrated camera) and want to remove the delay now, disabling it in your BIOS/UEFI setup is a workaround, not something JAZZ does for you.
 
 **Acceptance criteria:**
 - [ ] README covers: what/why, install steps, current status, at least one visual (screenshot/GIF), and the Known Issues section drafted above
