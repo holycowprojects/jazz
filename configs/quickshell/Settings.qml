@@ -1626,6 +1626,10 @@ PanelWindow {
                             property int idleMinutes: 10
                             property string idleStatus: ""
                             property string autoLoginUser: ""
+                            property bool hasAvatar: false
+                            property string avatarPath: ""
+                            property real avatarCacheBust: 0
+                            property string avatarStatus: ""
 
                             function refresh() {
                                 userListProc.running = true
@@ -1704,7 +1708,7 @@ PanelWindow {
                                     }
                                 }
                             }
-                            Component.onCompleted: { refresh(); loadIdleStatus() }
+                            Component.onCompleted: { refresh(); loadIdleStatus(); loadAvatarStatus() }
 
                             Process {
                                 id: passwdProc
@@ -1998,6 +2002,106 @@ PanelWindow {
                                     onClicked: usersTab.requestSudo(
                                         ["/usr/local/bin/jazz-user-set", usersTab.ownUsername, "--displayname", displayNameField.text],
                                         "Set your display name to \"" + displayNameField.text + "\"?")
+                                }
+                            }
+
+                            SectionHeader { text: "MY AVATAR" }
+                            Text {
+                                font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14
+                                text: "Shown on your lock screen. Enter the full path to an image already on this machine - a real file picker is coming with Jazz Files."
+                                wrapMode: Text.WordWrap; width: usersTab.width
+                            }
+                            Process {
+                                id: avatarCheckProc
+                                command: ["bash", "-c", "f=\"$HOME/.face.icon\"; [ -f \"$f\" ] && echo \"$f\" || echo ''"]
+                                stdout: SplitParser {
+                                    onRead: function (data) {
+                                        usersTab.hasAvatar = !!data
+                                        usersTab.avatarPath = data || ""
+                                        usersTab.avatarCacheBust = Date.now()
+                                    }
+                                }
+                            }
+                            function loadAvatarStatus() { avatarCheckProc.running = true }
+                            Process {
+                                id: avatarProc
+                                property string outText: ""
+                                stdout: StdioCollector { onStreamFinished: avatarProc.outText += this.text }
+                                stderr: StdioCollector { onStreamFinished: avatarProc.outText += this.text }
+                                onExited: function (exitCode, exitStatus) {
+                                    usersTab.avatarStatus = avatarProc.outText.trim() || (exitCode === 0 ? "Done." : "Failed (exit " + exitCode + ").")
+                                    if (exitCode === 0) {
+                                        avatarPathField.text = ""
+                                        usersTab.loadAvatarStatus()
+                                        // Regenerates hyprlock.conf's avatar block against the
+                                        // now-current ~/.face.icon, without needing a theme switch.
+                                        Quickshell.execDetached(["jazz-theme-set", "--restore"])
+                                    }
+                                }
+                            }
+                            Row {
+                                spacing: 16
+                                Rectangle {
+                                    width: 80; height: 80; radius: 40
+                                    color: Theme.surfaceRaised
+                                    border.color: Theme.panelInk; border.width: 1
+                                    clip: true
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: !usersTab.hasAvatar
+                                        text: usersTab.ownUsername.length > 0 ? usersTab.ownUsername[0].toUpperCase() : "?"
+                                        font.family: Theme.uiFont; font.pixelSize: 32; font.bold: true; color: Theme.panelInk
+                                    }
+                                    Image {
+                                        anchors.fill: parent
+                                        visible: usersTab.hasAvatar
+                                        source: usersTab.hasAvatar ? ("file://" + usersTab.avatarPath + "?" + usersTab.avatarCacheBust) : ""
+                                        fillMode: Image.PreserveAspectCrop
+                                    }
+                                }
+                                Column {
+                                    spacing: 10
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Row {
+                                        spacing: 10
+                                        Rectangle {
+                                            width: 280; height: 33; radius: 6; color: Theme.panel
+                                            border.color: Theme.panelInk; border.width: 1
+                                            TextInput {
+                                                id: avatarPathField
+                                                anchors.fill: parent; anchors.margins: 6
+                                                color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                                clip: true
+                                            }
+                                        }
+                                        Button {
+                                            height: 33; anchors.verticalCenter: parent.verticalCenter
+                                            label: "Set"
+                                            onClicked: {
+                                                if (avatarPathField.text.length === 0) { usersTab.avatarStatus = "Enter a file path first."; return }
+                                                avatarProc.outText = ""
+                                                avatarProc.command = ["jazz-user-avatar", avatarPathField.text]
+                                                avatarProc.running = true
+                                            }
+                                        }
+                                        Button {
+                                            height: 33; anchors.verticalCenter: parent.verticalCenter
+                                            variant: "outlineDanger"
+                                            visible: usersTab.hasAvatar
+                                            label: "Remove"
+                                            onClicked: {
+                                                avatarProc.outText = ""
+                                                avatarProc.command = ["jazz-user-avatar", "--remove"]
+                                                avatarProc.running = true
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        visible: usersTab.avatarStatus !== ""
+                                        text: usersTab.avatarStatus
+                                        color: usersTab.avatarStatus.indexOf("error") >= 0 || usersTab.avatarStatus.indexOf("Failed") >= 0 ? Theme.critical : Theme.textSecondary
+                                        font.family: Theme.uiFont; font.pixelSize: 15
+                                    }
                                 }
                             }
 

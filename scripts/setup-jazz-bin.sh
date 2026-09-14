@@ -24,7 +24,7 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-for script in jazz-theme-set jazz-font-set jazz-user-add jazz-user-remove jazz-user-set jazz-user-passwd jazz-idle-set; do
+for script in jazz-theme-set jazz-font-set jazz-user-add jazz-user-remove jazz-user-set jazz-user-passwd jazz-idle-set jazz-user-avatar; do
     install -Dm755 "$SCRIPT_DIR/$script" "/usr/local/bin/$script"
 done
 

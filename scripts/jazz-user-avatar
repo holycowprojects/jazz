@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""jazz-user-avatar <path-to-image> | --remove
+
+Task 32's avatar feature. Self-service, no root needed - writes only to the
+invoking user's own ~/.face.icon, the same convention GDM/LightDM/SDDM all
+read natively (confirmed live via research, 15 Sept 2026: SDDM checks
+~/.face.icon as one of its real lookup paths, no config needed) - a
+deliberate choice so this v1 work carries forward with zero migration once
+v2 switches the login screen to SDDM (see docs/JAZZ-v2.md).
+
+Normalizes whatever image is given (any Pillow-readable format) into a
+square, reasonably-sized PNG - center-cropped, not stretched, so an
+arbitrary source photo doesn't end up distorted on the lock screen.
+
+Usage:
+    jazz-user-avatar /path/to/photo.jpg   # set
+    jazz-user-avatar --remove             # clear, falls back to initials
+"""
+import pathlib
+import sys
+
+FACE_ICON = pathlib.Path.home() / ".face.icon"
+SIZE = 256
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit("Usage: jazz-user-avatar <path-to-image> | --remove")
+    arg = sys.argv[1]
+
+    if arg == "--remove":
+        FACE_ICON.unlink(missing_ok=True)
+        print("Avatar removed")
+        return
+
+    src = pathlib.Path(arg).expanduser()
+    if not src.is_file():
+        sys.exit(f"error: '{src}' is not a file")
+
+    try:
+        from PIL import Image
+    except ImportError:
+        sys.exit("error: python-pillow not installed")
+
+    try:
+        img = Image.open(src)
+        img.verify()
+        img = Image.open(src)  # re-open after verify() - it invalidates the handle
+    except Exception as e:
+        sys.exit(f"error: '{src}' isn't a readable image ({e})")
+
+    img = img.convert("RGBA")
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    img = img.crop((left, top, left + side, top + side)).resize((SIZE, SIZE), Image.LANCZOS)
+
+    img.save(FACE_ICON, "PNG")
+    print(f"Avatar set from {src}")
+
+
+if __name__ == "__main__":
+    main()
