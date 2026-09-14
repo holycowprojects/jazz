@@ -38,6 +38,9 @@ bash "$SCRIPT_DIR/setup-jazz-bin.sh"
 echo "=== JAZZ install: ly login-screen theming (Task 33) ==="
 bash "$SCRIPT_DIR/setup-ly-theme.sh"
 
+echo "=== JAZZ install: boot branding (os-release title, stub splash, EFI entry label - Task 33) ==="
+bash "$SCRIPT_DIR/setup-boot-branding.sh"
+
 echo "=== JAZZ install: Track A (filesystem/recovery) ==="
 bash "$SCRIPT_DIR/setup-snapper.sh"
 
