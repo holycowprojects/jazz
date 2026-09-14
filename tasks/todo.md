@@ -23,6 +23,8 @@ Reasoned out with Akash 7 Sept 2026, covering everything open after Task 30 was 
 - Task 24: turned out to already work via the plain HDA audio path — **DONE**, downgraded from open investigation to resolved.
 - Task 29: Dolphin/`Super+E` wiring confirmed trivial to retire (single variable, one bind).
 
+**Update, 15 Sept 2026 (Akash's explicit sequencing call, after Tasks 32/33 wrapped):** the conditional in item 6 above is now resolved firmly, not just leaning one way — **Task 25 (design polish) comes after Task 29 (Jazz Files), not before or interleaved with it.** Current remaining order: **Task 29 → Task 25 → Task 17 → Task 19 → Task 20**, with Task 16 (GPU rental) and any v2 work (SDDM login screen, universal USB boot-stall fix - both decided/researched in `docs/JAZZ-v2.md` the same night, neither started) sitting outside this sequence, gated on Akash's own money/timing or explicitly deferred.
+
 ---
 
 ## Phase 0: Foundation
