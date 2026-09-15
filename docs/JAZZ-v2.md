@@ -262,3 +262,33 @@ get taken from this doc on their own merits, not because JAZZ is trying to be a 
   **Where to stay careful when this gets built**: the failure mode is genuinely worse than Plymouth's (no login at all vs. an ugly boot) - keep `ly` installed as a live fallback, test the Wayland session handoff thoroughly before disabling `ly`, and don't rush it the way tonight's Plymouth iteration got rushed (three live reboot cycles before landing on the right call - same discipline applies here, just with higher stakes). Estimated M-to-L scope (comparable to a chunk of Task 32's Users tab), not a quick swap.
 
   Sources: [Hyprland Wiki - Master Tutorial](https://wiki.hypr.land/Getting-Started/Master-Tutorial/), [ArchWiki - greetd](https://wiki.archlinux.org/title/Greetd), [ReGreet GitHub](https://github.com/rharish101/ReGreet), [ArchWiki - SDDM](https://wiki.archlinux.org/title/SDDM), [hyprshutdown issue #17 - SDDM/Hyprland shutdown hang](https://github.com/hyprwm/hyprshutdown/issues/17), [Omarchy Branding manual](https://omarchy.org/manual/branding/) (SDDM + Plymouth themed together via one command - real precedent for the "sync colors everywhere" pattern `jazz-theme-set` already follows)
+
+## 6. Findings from the 15 Sept 2026 birdeye review (post-Task-25 design polish)
+
+Akash asked for a full top-to-bottom review of JAZZ against comparable Hyprland setups, researched
+online. Two real, cheap gaps were promoted straight to done that same session (not left as backlog):
+a real screenshot capture flow (`jazz-screenshot` + `satty`, mirroring Omarchy's own real scheme -
+Print/Shift+Print/Ctrl+Print for region/window/full, save+clipboard+notification+annotate) and a full
+`docs/Keybinds.md` accuracy pass (it had self-flagged its own drift since 8 Sept 2026). The two items
+below are genuine v2-scope findings from that same review, recorded rather than built immediately:
+
+- **No clipboard-history picker keybind.** `cliphist` is already running and auto-storing clipboard
+  history (`wl-paste --watch cliphist store`, confirmed live in `setup-dock.sh:1684`), but the only
+  way to reach that history today is a top-bar tray icon - there's no fast keyboard picker.
+  Omarchy's own real precedent is `Super+V` (a `cliphist list | wofi --dmenu | cliphist decode |
+  wl-copy`-shaped picker, confirmed as the standard pattern across Hyprland dotfiles generally, not
+  just Omarchy). **Note:** JAZZ's own `Super+V` is already taken (toggle floating for the focused
+  window - see Window State above), so this needs a different combo when built - `Super+Shift+V` is
+  free and keeps the "V for clipboard-ish" mnemonic Omarchy users would recognize.
+
+- **Accessibility tab is real but only ~2 of 9 originally-scoped sub-features exist.** Checked the
+  actual built code (`configs/quickshell/Settings.qml` around `accessTab`, confirmed live, not
+  assumed from Task 28's "DONE" status): it genuinely covers **reduced motion** and **whole-desktop UI
+  scale** (both real, both wired to real Hyprland state). The original Task 28 spec (sec 5b above)
+  listed seven more: text size (independent of UI scale), high contrast, cursor size, screen-reader
+  support, sticky/slow keys, mono audio, and color filters - `docs/Research-Reference-List.md` already
+  found screen-reader support "not currently achievable on Hyprland" (Orca depends on AT-SPI2/D-Bus
+  integration wlroots compositors haven't reliably implemented - a real upstream limitation, not
+  JAZZ's own gap), so that one specifically stays aspirational rather than buildable. The other six
+  are real, scoped, currently-absent v2 candidates - worth a dedicated pass rather than assuming the
+  Accessibility tab is feature-complete because its parent task is marked done.
