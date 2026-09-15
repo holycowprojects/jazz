@@ -236,9 +236,17 @@ PanelWindow {
     function openEntry(entry) {
         if (entry.is_dir) { navigateTo(entry.path); return }
         Quickshell.execDetached(["xdg-open", entry.path])
+        // Files is a layer-shell panel, which sits above regular app windows
+        // by protocol - the app xdg-open just launched would otherwise open
+        // correctly but stay hidden underneath. Get out of the way, same as
+        // a launcher closing once you pick something. Found live, 15 Sept
+        // 2026: Akash double-clicked a PNG, it genuinely opened in Firefox,
+        // just invisibly behind this panel.
+        filesPanel.visible = false
     }
     function openWithApp(app, path) {
         Quickshell.execDetached(["sh", "-c", app.exec + " " + filesPanel.shellQuote(path)])
+        filesPanel.visible = false
         filesPanel.dialogMode = ""
     }
 
