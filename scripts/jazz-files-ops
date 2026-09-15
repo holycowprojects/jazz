@@ -1,0 +1,544 @@
+#!/usr/bin/env python3
+"""jazz-files-ops <subcommand> [args...]
+
+Task 29's backend: every real file-management operation Jazz Files' QML
+frontend needs, as one self-service (no root) dispatcher script - same
+"Quickshell frontend calls a plain CLI tool via Process" pattern as
+jazz-theme-set/jazz-user-set (see docs/JAZZ-v2.md sec 5f: no Rust service,
+no daemon, promote only if a piece earns it). Every subcommand prints a
+single JSON object/array to stdout and exits 0 on success, non-zero with a
+JSON {"error": "..."} on failure - the QML side never has to parse text.
+
+Operates only within the invoking user's own permissions - mount/unmount/
+eject go through udisksctl, which already has its own polkit rule letting
+the active seat user manage removable media without a password (confirmed
+live, 15 Sept 2026). No sudo/pkexec anywhere in this script, matching Task
+32's finding that pkexec has no working GUI agent under plain Hyprland.
+
+Subcommands:
+    list <dir>
+    mkdir <dir> <name>
+    rename <path> <new-name>
+    copy <src> <dest-dir>
+    move <src> <dest-dir>
+    trash <path>
+    list-trash
+    restore <trash-id>
+    empty-trash
+    delete-permanent <trash-id>
+    properties <path>
+    chmod-translated <path> <owner:none|read|readwrite> <group:...> <other:...>
+    undo
+    mounts
+    mount <device-path>
+    unmount <device-path>
+    eject <device-path>
+"""
+import grp
+import json
+import os
+import pathlib
+import pwd
+import shutil
+import subprocess
+import sys
+import time
+import urllib.parse
+import uuid
+
+DATA_DIR = pathlib.Path(os.environ.get("JAZZ_DATA_DIR", pathlib.Path.home() / ".local/share/jazz"))
+UNDO_LOG = DATA_DIR / "files-undo-log.json"
+TRASH_DIR = pathlib.Path.home() / ".local/share/Trash"
+TRASH_FILES = TRASH_DIR / "files"
+TRASH_INFO = TRASH_DIR / "info"
+MAX_UNDO = 50
+
+
+def fail(msg):
+    print(json.dumps({"error": str(msg)}))
+    sys.exit(1)
+
+
+def ok(obj):
+    print(json.dumps(obj))
+
+
+def load_undo_log():
+    try:
+        return json.loads(UNDO_LOG.read_text())
+    except Exception:
+        return []
+
+
+def save_undo_log(entries):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    UNDO_LOG.write_text(json.dumps(entries[-MAX_UNDO:]))
+
+
+def push_undo(kind, **fields):
+    entries = load_undo_log()
+    entries.append({"kind": kind, "at": time.time(), **fields})
+    save_undo_log(entries)
+
+
+def translate_mode(mode_bits):
+    def level(bits):
+        if bits & 0o6:
+            return "readwrite" if bits & 0o2 else "read"
+        return "none"
+    return {
+        "owner": level((mode_bits >> 6) & 0o7),
+        "group": level((mode_bits >> 3) & 0o7),
+        "other": level(mode_bits & 0o7),
+    }
+
+
+def level_to_bits(level, is_dir):
+    base = {"none": 0, "read": 4, "readwrite": 6}.get(level)
+    if base is None:
+        fail(f"invalid permission level '{level}' (want none|read|readwrite)")
+    if base and is_dir:
+        base |= 1  # execute bit, so the directory stays enterable
+    return base
+
+
+def entry_info(p: pathlib.Path):
+    st = p.lstat()
+    is_dir = p.is_dir() and not p.is_symlink()
+    try:
+        owner = pwd.getpwuid(st.st_uid).pw_name
+    except KeyError:
+        owner = str(st.st_uid)
+    try:
+        group = grp.getgrgid(st.st_gid).gr_name
+    except KeyError:
+        group = str(st.st_gid)
+    return {
+        "name": p.name,
+        "path": str(p),
+        "is_dir": is_dir,
+        "is_symlink": p.is_symlink(),
+        "size": None if is_dir else st.st_size,
+        "mtime": st.st_mtime,
+        "hidden": p.name.startswith("."),
+        "ext": p.suffix.lstrip(".").lower() if not is_dir else "",
+        "owner": owner,
+        "group": group,
+        "mode_octal": oct(st.st_mode & 0o777)[2:],
+        "mode_translated": translate_mode(st.st_mode & 0o777),
+    }
+
+
+def cmd_list(args):
+    if len(args) != 1:
+        fail("usage: list <dir>")
+    d = pathlib.Path(args[0]).expanduser()
+    if not d.is_dir():
+        fail(f"'{d}' is not a directory")
+    out = []
+    for child in d.iterdir():
+        try:
+            out.append(entry_info(child))
+        except (FileNotFoundError, PermissionError):
+            continue
+    ok(out)
+
+
+def cmd_mkdir(args):
+    if len(args) != 2:
+        fail("usage: mkdir <dir> <name>")
+    d = pathlib.Path(args[0]).expanduser() / args[1]
+    if d.exists():
+        fail(f"'{d}' already exists")
+    d.mkdir(parents=False)
+    push_undo("mkdir", path=str(d))
+    ok(entry_info(d))
+
+
+def unique_dest(dest_dir: pathlib.Path, name: str) -> pathlib.Path:
+    candidate = dest_dir / name
+    if not candidate.exists():
+        return candidate
+    stem, suffix = pathlib.Path(name).stem, pathlib.Path(name).suffix
+    n = 2
+    while True:
+        candidate = dest_dir / f"{stem} ({n}){suffix}"
+        if not candidate.exists():
+            return candidate
+        n += 1
+
+
+def cmd_rename(args):
+    if len(args) != 2:
+        fail("usage: rename <path> <new-name>")
+    src = pathlib.Path(args[0]).expanduser()
+    if not src.exists():
+        fail(f"'{src}' does not exist")
+    if "/" in args[1]:
+        fail("new name may not contain '/'")
+    dest = src.parent / args[1]
+    if dest.exists():
+        fail(f"'{dest}' already exists")
+    src.rename(dest)
+    push_undo("rename", src=str(dest), dest=str(src))  # reversed, for undo
+    ok(entry_info(dest))
+
+
+def cmd_copy(args):
+    if len(args) != 2:
+        fail("usage: copy <src> <dest-dir>")
+    src = pathlib.Path(args[0]).expanduser()
+    dest_dir = pathlib.Path(args[1]).expanduser()
+    if not src.exists():
+        fail(f"'{src}' does not exist")
+    if not dest_dir.is_dir():
+        fail(f"'{dest_dir}' is not a directory")
+    dest = unique_dest(dest_dir, src.name)
+    if src.is_dir():
+        shutil.copytree(src, dest, symlinks=True)
+    else:
+        shutil.copy2(src, dest, follow_symlinks=False)
+    push_undo("copy", path=str(dest))
+    ok(entry_info(dest))
+
+
+def cmd_move(args):
+    if len(args) != 2:
+        fail("usage: move <src> <dest-dir>")
+    src = pathlib.Path(args[0]).expanduser()
+    dest_dir = pathlib.Path(args[1]).expanduser()
+    if not src.exists():
+        fail(f"'{src}' does not exist")
+    if not dest_dir.is_dir():
+        fail(f"'{dest_dir}' is not a directory")
+    dest = unique_dest(dest_dir, src.name)
+    shutil.move(str(src), str(dest))
+    push_undo("move", src=str(dest), dest=str(src))  # reversed, for undo
+    ok(entry_info(dest))
+
+
+def cmd_trash(args):
+    if len(args) != 1:
+        fail("usage: trash <path>")
+    src = pathlib.Path(args[0]).expanduser().resolve()
+    if not src.exists():
+        fail(f"'{src}' does not exist")
+    TRASH_FILES.mkdir(parents=True, exist_ok=True)
+    TRASH_INFO.mkdir(parents=True, exist_ok=True)
+    trash_id = f"{src.name}-{uuid.uuid4().hex[:8]}"
+    trashed_path = TRASH_FILES / trash_id
+    info_path = TRASH_INFO / f"{trash_id}.trashinfo"
+    info_path.write_text(
+        "[Trash Info]\n"
+        f"Path={urllib.parse.quote(str(src))}\n"
+        f"DeletionDate={time.strftime('%Y-%m-%dT%H:%M:%S')}\n"
+    )
+    shutil.move(str(src), str(trashed_path))
+    push_undo("trash", trash_id=trash_id)
+    ok({"trash_id": trash_id, "original_path": str(src)})
+
+
+def _read_trashinfo(trash_id):
+    info_path = TRASH_INFO / f"{trash_id}.trashinfo"
+    if not info_path.exists():
+        return None
+    original_path, deletion_date = None, None
+    for line in info_path.read_text().splitlines():
+        if line.startswith("Path="):
+            original_path = urllib.parse.unquote(line[len("Path="):])
+        elif line.startswith("DeletionDate="):
+            deletion_date = line[len("DeletionDate="):]
+    return {"trash_id": trash_id, "original_path": original_path, "deletion_date": deletion_date}
+
+
+def cmd_list_trash(args):
+    if not TRASH_INFO.is_dir():
+        ok([])
+        return
+    out = []
+    for info_file in TRASH_INFO.glob("*.trashinfo"):
+        meta = _read_trashinfo(info_file.stem)
+        trashed_path = TRASH_FILES / info_file.stem
+        if meta and trashed_path.exists():
+            meta["size"] = None if trashed_path.is_dir() else trashed_path.stat().st_size
+            meta["is_dir"] = trashed_path.is_dir()
+            out.append(meta)
+    ok(out)
+
+
+def _restore(trash_id, remove_undo_entry=False):
+    meta = _read_trashinfo(trash_id)
+    if not meta:
+        fail(f"no such trash entry '{trash_id}'")
+    trashed_path = TRASH_FILES / trash_id
+    if not trashed_path.exists():
+        fail(f"trashed file for '{trash_id}' is missing")
+    dest = pathlib.Path(meta["original_path"])
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        dest = unique_dest(dest.parent, dest.name)
+    shutil.move(str(trashed_path), str(dest))
+    (TRASH_INFO / f"{trash_id}.trashinfo").unlink(missing_ok=True)
+    return dest
+
+
+def discard_undo_entries(predicate):
+    entries = load_undo_log()
+    kept = [e for e in entries if not predicate(e)]
+    if len(kept) != len(entries):
+        save_undo_log(kept)
+
+
+def cmd_restore(args):
+    if len(args) != 1:
+        fail("usage: restore <trash-id>")
+    trash_id = args[0]
+    dest = _restore(trash_id)
+    # A manual restore already achieves what undoing this trash entry would -
+    # drop it so a later `undo` doesn't try to re-restore an already-restored
+    # file and fail (found live, 15 Sept 2026: that failure used to leave the
+    # stale entry on top of the stack, permanently blocking every undo after
+    # it - see the cmd_undo fix below for the other half of this).
+    discard_undo_entries(lambda e: e.get("kind") == "trash" and e.get("trash_id") == trash_id)
+    ok(entry_info(dest))
+
+
+def cmd_empty_trash(args):
+    count = 0
+    if TRASH_INFO.is_dir():
+        for info_file in TRASH_INFO.glob("*.trashinfo"):
+            trash_id = info_file.stem
+            trashed_path = TRASH_FILES / trash_id
+            if trashed_path.is_dir():
+                shutil.rmtree(trashed_path, ignore_errors=True)
+            else:
+                trashed_path.unlink(missing_ok=True)
+            info_file.unlink(missing_ok=True)
+            count += 1
+    discard_undo_entries(lambda e: e.get("kind") == "trash")
+    ok({"emptied": count})
+
+
+def cmd_delete_permanent(args):
+    if len(args) != 1:
+        fail("usage: delete-permanent <trash-id>")
+    trash_id = args[0]
+    trashed_path = (TRASH_FILES / trash_id).resolve()
+    if TRASH_FILES.resolve() not in trashed_path.parents:
+        fail("refusing to delete outside the Trash - use the real path via trash-permanent workflow")
+    if not trashed_path.exists():
+        fail(f"no such trash entry '{trash_id}'")
+    if trashed_path.is_dir():
+        shutil.rmtree(trashed_path)
+    else:
+        trashed_path.unlink()
+    (TRASH_INFO / f"{trash_id}.trashinfo").unlink(missing_ok=True)
+    discard_undo_entries(lambda e: e.get("kind") == "trash" and e.get("trash_id") == trash_id)
+    ok({"deleted": trash_id})
+
+
+def cmd_properties(args):
+    if len(args) != 1:
+        fail("usage: properties <path>")
+    p = pathlib.Path(args[0]).expanduser()
+    if not p.exists():
+        fail(f"'{p}' does not exist")
+    info = entry_info(p)
+    if p.is_dir():
+        total_size = 0
+        item_count = 0
+        for root, dirs, files in os.walk(p, onerror=lambda e: None):
+            item_count += len(dirs) + len(files)
+            for f in files:
+                try:
+                    total_size += (pathlib.Path(root) / f).lstat().st_size
+                except OSError:
+                    pass
+        info["size"] = total_size
+        info["item_count"] = item_count
+    st = p.lstat()
+    info["created"] = getattr(st, "st_birthtime", st.st_ctime)
+    info["accessed"] = st.st_atime
+    ok(info)
+
+
+def cmd_chmod_translated(args):
+    if len(args) != 4:
+        fail("usage: chmod-translated <path> <owner-level> <group-level> <other-level>")
+    p = pathlib.Path(args[0]).expanduser()
+    if not p.exists():
+        fail(f"'{p}' does not exist")
+    is_dir = p.is_dir()
+    mode = (level_to_bits(args[1], is_dir) << 6) | (level_to_bits(args[2], is_dir) << 3) | level_to_bits(args[3], is_dir)
+    os.chmod(p, mode)
+    ok(entry_info(p))
+
+
+def cmd_undo(args):
+    entries = load_undo_log()
+    if not entries:
+        fail("nothing to undo")
+    last = entries.pop()
+    # Trim and save BEFORE attempting the reversal, not after - fail() exits
+    # immediately, so saving only on success left a stale/failing entry
+    # (e.g. a trash already restored manually) stuck on top of the stack
+    # forever, permanently blocking every undo after it. Found live, 15
+    # Sept 2026, testing the restore-then-undo sequence.
+    save_undo_log(entries)
+    kind = last["kind"]
+    if kind == "move" or kind == "rename":
+        src, dest = pathlib.Path(last["src"]), pathlib.Path(last["dest"])
+        if not src.exists():
+            fail(f"cannot undo: '{src}' no longer exists")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(dest))
+        result = {"undone": kind, "restored_to": str(dest)}
+    elif kind == "trash":
+        dest = _restore(last["trash_id"])
+        result = {"undone": kind, "restored_to": str(dest)}
+    elif kind == "mkdir":
+        p = pathlib.Path(last["path"])
+        if p.exists() and p.is_dir() and not any(p.iterdir()):
+            p.rmdir()
+            result = {"undone": kind, "removed": str(p)}
+        else:
+            fail("cannot undo mkdir: folder is missing or no longer empty")
+    elif kind == "copy":
+        p = pathlib.Path(last["path"])
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+        else:
+            p.unlink(missing_ok=True)
+        result = {"undone": kind, "removed": str(p)}
+    else:
+        fail(f"unknown undo entry kind '{kind}'")
+    ok(result)
+
+
+def _btrfs_usage(mountpoint):
+    try:
+        out = subprocess.run(["btrfs", "filesystem", "usage", "-b", mountpoint],
+                              capture_output=True, text=True, timeout=5)
+        if out.returncode != 0:
+            return None
+        usage = {}
+        for line in out.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("Device size:"):
+                usage["device_size"] = int(line.split(":")[1].strip())
+            elif line.startswith("Used:"):
+                usage["used"] = int(line.split(":")[1].strip())
+            elif line.startswith("Free (estimated):"):
+                usage["free_estimated"] = int(line.split(":", 1)[1].strip().split()[0])
+        return usage or None
+    except Exception:
+        return None
+
+
+def cmd_mounts(args):
+    try:
+        out = subprocess.run(
+            ["lsblk", "-J", "-b", "-o", "NAME,PATH,FSTYPE,SIZE,MOUNTPOINTS,RM,TRAN,LABEL,TYPE"],
+            capture_output=True, text=True, timeout=5)
+        data = json.loads(out.stdout)
+    except Exception as e:
+        fail(f"lsblk failed: {e}")
+
+    def walk(devices, results):
+        for dev in devices:
+            mountpoints = [m for m in (dev.get("mountpoints") or []) if m and m != "[SWAP]"]
+            if dev.get("type") in ("disk", "part", "crypt") and mountpoints:
+                # A btrfs device can mount several subvolumes at once (JAZZ's
+                # own root disk does: /, /home, /.snapshots, confirmed live
+                # 15 Sept 2026 via `findmnt -t btrfs`) - usage numbers are
+                # identical from any of them since it's one physical volume,
+                # so this collapses to ONE sidebar entry rather than one per
+                # subvolume (which would misleadingly triple-count the same
+                # disk). "/" is preferred as the entry's own mountpoint/browse
+                # target when present; the rest are listed as other_mounts.
+                primary = "/" if "/" in mountpoints else mountpoints[0]
+                other = [m for m in mountpoints if m != primary]
+                entry = {
+                    "name": dev.get("name"),
+                    "path": dev.get("path"),
+                    "label": dev.get("label"),
+                    "fstype": dev.get("fstype"),
+                    "mountpoint": primary,
+                    "other_mounts": other,
+                    "size": dev.get("size"),
+                    "removable": dev.get("rm") in (True, "1", 1),
+                    "transport": dev.get("tran"),
+                }
+                try:
+                    df = subprocess.run(["df", "-B1", "--output=size,used,avail", primary],
+                                         capture_output=True, text=True, timeout=5)
+                    parts = df.stdout.splitlines()[1].split()
+                    entry["df_size"], entry["df_used"], entry["df_avail"] = map(int, parts)
+                except Exception:
+                    pass
+                if dev.get("fstype") == "btrfs":
+                    btrfs = _btrfs_usage(primary)
+                    if btrfs:
+                        entry["btrfs"] = btrfs
+                results.append(entry)
+            if dev.get("children"):
+                walk(dev["children"], results)
+        return results
+
+    ok(walk(data.get("blockdevices", []), []))
+
+
+def _udisksctl(verb, device):
+    proc = subprocess.run(["udisksctl", verb, "-b", device], capture_output=True, text=True, timeout=30)
+    if proc.returncode != 0:
+        fail(proc.stderr.strip() or proc.stdout.strip() or f"udisksctl {verb} failed")
+    return proc.stdout.strip()
+
+
+def cmd_mount(args):
+    if len(args) != 1:
+        fail("usage: mount <device-path>")
+    ok({"result": _udisksctl("mount", args[0])})
+
+
+def cmd_unmount(args):
+    if len(args) != 1:
+        fail("usage: unmount <device-path>")
+    ok({"result": _udisksctl("unmount", args[0])})
+
+
+def cmd_eject(args):
+    if len(args) != 1:
+        fail("usage: eject <device-path>")
+    ok({"result": _udisksctl("power-off", args[0])})
+
+
+COMMANDS = {
+    "list": cmd_list,
+    "mkdir": cmd_mkdir,
+    "rename": cmd_rename,
+    "copy": cmd_copy,
+    "move": cmd_move,
+    "trash": cmd_trash,
+    "list-trash": cmd_list_trash,
+    "restore": cmd_restore,
+    "empty-trash": cmd_empty_trash,
+    "delete-permanent": cmd_delete_permanent,
+    "properties": cmd_properties,
+    "chmod-translated": cmd_chmod_translated,
+    "undo": cmd_undo,
+    "mounts": cmd_mounts,
+    "mount": cmd_mount,
+    "unmount": cmd_unmount,
+    "eject": cmd_eject,
+}
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
+        sys.exit(f"Usage: jazz-files-ops <{'|'.join(COMMANDS)}> [args...]")
+    COMMANDS[sys.argv[1]](sys.argv[2:])
+
+
+if __name__ == "__main__":
+    main()
