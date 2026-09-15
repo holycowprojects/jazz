@@ -1,11 +1,12 @@
 {
+  "_comment": "Workspace identity colors adopted as default 15 Sept 2026 - remapped to a gemstone motif (real hex references researched: emerald #1F6F54, navy/sapphire #1B2A4A family, burgundy/garnet #6E1E2E-#830E0D family, antique gold #B8860B/24k gold #C69B3C, charcoal/onyx #2E3440-#0A0A0A, platinum/smoky quartz #9B9A9D - see zoviz.com/blog/luxury-brand-colors-meanings, digiquack.com/luxury-brand-color-palettes, madegooddesigns.com's burgundy/gold-pairing pages, color-name.com's garnet entry). Ties into the already-adopted Sapphire chrome theme's own navy/gold language (Theme.qml's default theme) - previewed live end-to-end, then confirmed by Akash. Semantic mapping (status.positive->lab, status.warning->arena, status.critical->range) preserved exactly, just richer jewel tones of the same hue family each already had.",
   "workspaces": {
-    "forge": { "value": "#4c6fa0", "description": "Coding, AI app engineering" },
-    "lab": { "value": "#3e8e76", "description": "Notebooks, PyTorch/Jupyter" },
-    "arena": { "value": "#c98a34", "description": "AI red-teaming" },
-    "observe": { "value": "#7c919a", "description": "Logs, metrics, AI Command Centre" },
-    "vault": { "value": "#3a3d44", "description": "Secrets, sensitive config" },
-    "range": { "value": "#a23a3a", "description": "Reserved - dormant" }
+    "forge": { "value": "#2C5F94", "description": "Coding, AI app engineering", "gem": "Sapphire" },
+    "lab": { "value": "#1F6F54", "description": "Notebooks, PyTorch/Jupyter", "gem": "Emerald" },
+    "arena": { "value": "#B8823C", "description": "AI red-teaming", "gem": "Topaz" },
+    "observe": { "value": "#8B8478", "description": "Logs, metrics, AI Command Centre", "gem": "Smoky Quartz" },
+    "vault": { "value": "#24211D", "description": "Secrets, sensitive config", "gem": "Onyx" },
+    "range": { "value": "#7A1F2B", "description": "Reserved - dormant", "gem": "Garnet" }
   },
   "chrome": {
     "dark": {
@@ -22,8 +23,8 @@
     }
   },
   "status": {
-    "positive": { "value": "#3e8e76", "source": "workspaces.lab" },
-    "warning": { "value": "#c98a34", "source": "workspaces.arena" },
-    "critical": { "value": "#a23a3a", "source": "workspaces.range" }
+    "positive": { "value": "#1F6F54", "source": "workspaces.lab" },
+    "warning": { "value": "#B8823C", "source": "workspaces.arena" },
+    "critical": { "value": "#7A1F2B", "source": "workspaces.range" }
   }
 }

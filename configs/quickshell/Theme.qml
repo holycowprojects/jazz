@@ -15,12 +15,12 @@ QtObject {
     // top bar's workspace-color transition is the one that exists today).
     property bool reducedMotion: false
 
-    readonly property color forge: "#4c6fa0"   // Coding, AI app engineering
-    readonly property color lab: "#3e8e76"   // Notebooks, PyTorch/Jupyter
-    readonly property color arena: "#c98a34"   // AI red-teaming
-    readonly property color observe: "#7c919a"   // Logs, metrics, AI Command Centre
-    readonly property color vault: "#3a3d44"   // Secrets, sensitive config
-    readonly property color range: "#a23a3a"   // Reserved - dormant
+    readonly property color forge: "#2C5F94"   // Coding, AI app engineering
+    readonly property color lab: "#1F6F54"   // Notebooks, PyTorch/Jupyter
+    readonly property color arena: "#B8823C"   // AI red-teaming
+    readonly property color observe: "#8B8478"   // Logs, metrics, AI Command Centre
+    readonly property color vault: "#24211D"   // Secrets, sensitive config
+    readonly property color range: "#7A1F2B"   // Reserved - dormant
 
     // Per-theme chrome/accent lookup table (Task 27b) - one entry per
     // design/tokens/themes.json theme. Terminal (kitty) palettes and
@@ -55,9 +55,9 @@ QtObject {
     // the right hue rather than inventing new ones - critical already matches
     // what Settings.qml's destructive actions (Disconnect/Forget/Remove/Clear)
     // have been using via Theme.range since Task 28.
-    readonly property color positive: "#3e8e76"
-    readonly property color warning: "#c98a34"
-    readonly property color critical: "#a23a3a"
+    readonly property color positive: "#1F6F54"
+    readonly property color warning: "#B8823C"
+    readonly property color critical: "#7A1F2B"
 
     // Persisted active-theme choice (Task 27b). jazz-theme-set writes this
     // file after regenerating kitty/hyprlock/dunst - watchChanges makes the
