@@ -1342,7 +1342,7 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 **Acceptance criteria:**
 - [x] README covers: what/why, install steps, current status, and the Known Issues section drafted above
-- [ ] At least one visual (screenshot/GIF) - deliberately not added yet, Akash's call
+- [x] At least one visual (screenshot/GIF) - `docs/images/jazz-desktop.png` added 15 Sept 2026, a real live screenshot (Sapphire theme, gemstone workspace pills, dock)
 
 **Verification:**
 - [x] Manual read-through: could a stranger follow this?

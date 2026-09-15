@@ -4,9 +4,11 @@
 
 JAZZ is a complete, opinionated Linux workstation for people building with AI: local models, notebooks, containers, and red-team testing, all on hardware you already own. You don't glue this together yourself from twenty blog posts. You clone one repo, run two commands, and you have it — Hyprland, a hand-built desktop shell, PyTorch, JupyterLab, Ollama, PyRIT, and a set of workspaces that actually mean something, all pre-wired and already talking to each other.
 
-It is not a distro fork and not a theme pack on top of someone else's desktop. It's script-installed on vanilla Arch (the same approach used by Omarchy and every other serious modern Hyprland project — no custom ISO to maintain, no drift from upstream Arch), built and verified from scratch by one person with an AI pair-programmer, and running as a real daily-driver dual-boot install on an ordinary laptop today — not a VM screenshot.
+It is not a distro fork and not a theme pack on top of someone else's desktop. It installs as a script on top of vanilla Arch rather than a custom ISO — a deliberate v1 choice, not a limitation: a custom ISO (Omarchy now ships one) is real, ongoing maintenance (build pipeline, signing, CI boot-testing), worth taking on if there's real demand for GUI-first onboarding, not assumed up front. Built and verified from scratch by one person with an AI pair-programmer, and running as a real daily-driver dual-boot install on an ordinary laptop today — not a VM screenshot.
 
 If you're going to spend a weekend setting up a Linux box for AI work anyway, spend it running JAZZ's install script instead of hand-rolling your own.
+
+![JAZZ desktop - the Sapphire theme, gemstone workspace colors, and the dock](docs/images/jazz-desktop.png)
 
 ---
 
