@@ -158,21 +158,46 @@ ShellRoot {
     // loaded component) and ui/Button.qml/Toggle.qml can read the same live
     // accent color too - not just this file's top bar.
 
-    // Real running-window classes, polled - drives the dock's running-dot
-    // and pulls in currently-running apps that aren't in the pinned set
-    // (macOS/Windows both do this - a running app shows up even unpinned).
+    // Real running windows, polled - drives the dock's running-dot and
+    // pulls in currently-running apps for the dock's dynamic middle
+    // section (macOS/Windows both do this). Carries address+minimized
+    // state per window too (Task 25 follow-up, 15 Sept 2026: Akash's
+    // "Super+H isn't working" turned out to be a real UX gap, not a
+    // broken bind - the window genuinely was minimizing into a hidden
+    // special:minimized workspace, confirmed live, it just had no dock
+    // representation and no way to restore one SPECIFIC window - only
+    // Super+Shift+H's LIFO "undo last minimize"), so the dock can restore
+    // or focus the exact window a click was meant for.
     QtObject {
         id: runningState
-        property var classes: []
+        property var windows: []  // [{class, address, minimized}]
     }
     Process {
         id: clientsPollProc
-        command: ["bash", "-c", "hyprctl -j clients | python3 -c 'import json,sys; print(\",\".join(sorted(set(w[\"class\"] for w in json.load(sys.stdin) if w[\"class\"]))))'"]
-        stdout: SplitParser {
-            onRead: function (data) { runningState.classes = data ? data.split(",") : [] }
+        command: ["bash", "-c", "hyprctl -j clients | python3 -c 'import json,sys; print(json.dumps([{\"class\": w[\"class\"], \"address\": w[\"address\"], \"minimized\": w.get(\"workspace\", {}).get(\"name\") == \"special:minimized\"} for w in json.load(sys.stdin) if w.get(\"class\")]))'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { runningState.windows = JSON.parse(this.text) } catch (e) { runningState.windows = [] }
+            }
         }
     }
     Timer { interval: 1500; repeat: true; running: true; onTriggered: clientsPollProc.running = true }
+
+    // Restores a specific minimized window to the current workspace, or
+    // just focuses it if already visible somewhere - confirmed live
+    // before wiring this up (both hl.dsp.window.move and hl.dsp.focus
+    // accept a plain "address:0x..." string selector for `window`, same
+    // mechanism already proven by Super+H/Shift+H).
+    function activateDockEntry(entry) {
+        if (entry.address) {
+            if (entry.minimized) {
+                Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.window.move({window=\"address:" + entry.address + "\", workspace=\"name:" + WorkspaceState.active + "\"})"])
+            }
+            Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({window=\"address:" + entry.address + "\"})"])
+        } else {
+            Quickshell.execDetached(entry.cmd)
+        }
+    }
 
     // Task 25 design polish, 15 Sept 2026 (Akash's explicit dock spec):
     // exactly four fixed slots - App Launcher and Files always first,
@@ -186,14 +211,26 @@ ShellRoot {
     readonly property int dockCap: 15
     property var dockEntries: []
     function rebuildDock() {
-        var termRunning = runningState.classes.indexOf("kitty") !== -1;
-
+        // Dedup windows by class (one dock icon per app, taskbar-style) -
+        // prefer a non-minimized window as the representative if the same
+        // app has more than one window open, so the icon's click target
+        // is "the one you can already see" over "some hidden one."
+        var byClass = {};
+        var termWindow = null;
+        for (var i = 0; i < runningState.windows.length; i++) {
+            var w = runningState.windows[i];
+            var clsKey = w.class.toLowerCase();
+            if (clsKey === "kitty") {
+                if (!termWindow || (termWindow.minimized && !w.minimized)) termWindow = w;
+                continue; // Terminal is its own fixed slot, never duplicated in the middle
+            }
+            if (!byClass[clsKey] || (byClass[clsKey].minimized && !w.minimized)) byClass[clsKey] = w;
+        }
         var middle = [];
-        for (var c = 0; c < runningState.classes.length; c++) {
-            var cls = runningState.classes[c];
-            if (cls.toLowerCase() === "kitty") continue; // Terminal is its own fixed slot, never duplicated in the middle
-            var app = findAppByClass(cls);
-            middle.push({ name: app ? app.name : cls, icon: resolveIcon(app ? (app.iconPath || app.icon) : cls), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [cls], running: true });
+        for (var clsKey in byClass) {
+            var w = byClass[clsKey];
+            var app = findAppByClass(w.class);
+            middle.push({ name: app ? app.name : w.class, icon: resolveIcon(app ? (app.iconPath || app.icon) : w.class), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [w.class], running: true, minimized: w.minimized, address: w.address });
         }
         var maxMiddle = Math.max(0, dockCap - 4);
 
@@ -206,12 +243,12 @@ ShellRoot {
         out.push({ name: "App Launcher", icon: "", glyph: "🎷", cmd: ["qs", "ipc", "call", "launcher", "toggle"], running: false });
         out.push({ name: "Files", icon: "", glyph: "📁", cmd: ["qs", "ipc", "call", "files", "toggle"], running: false });
         out = out.concat(middle.slice(0, maxMiddle));
-        out.push({ name: "Terminal", icon: resolveIcon("kitty"), glyph: "", cmd: ["kitty"], running: termRunning });
+        out.push({ name: "Terminal", icon: resolveIcon("kitty"), glyph: "", cmd: ["kitty"], running: !!termWindow, minimized: termWindow ? termWindow.minimized : false, address: termWindow ? termWindow.address : "" });
         out.push({ name: "Settings", icon: "", glyph: "⚙", themeIcon: "settings", cmd: ["qs", "ipc", "call", "settings", "toggle"], running: false });
         dockEntries = out;
     }
     Connections { target: appCatalog; function onAppsChanged() { rebuildDock() } }
-    Connections { target: runningState; function onClassesChanged() { rebuildDock() } }
+    Connections { target: runningState; function onWindowsChanged() { rebuildDock() } }
 
     // ---------- Widget catalog (Design-Vision.md sec 6 - real edit panel) ----------
     QtObject {
@@ -907,9 +944,13 @@ ShellRoot {
                     { label: "Shut down", cmd: ["systemctl", "poweroff"] }
                 ]
                 delegate: Rectangle {
+                    // Same opacity-cascades-to-children bug already found
+                    // and fixed in the launcher/search-list (Akash caught
+                    // this one live too, 15 Sept 2026): hovering was fading
+                    // the label text to 8% instead of showing a clean
+                    // highlight - fixed with a real alpha color.
                     width: parent.width; height: 42; radius: 9
-                    color: powerMouse.containsMouse ? Theme.panelInk : "#00000000"
-                    opacity: powerMouse.containsMouse ? 0.08 : 1
+                    color: powerMouse.containsMouse ? Qt.rgba(Theme.panelInk.r, Theme.panelInk.g, Theme.panelInk.b, 0.08) : "#00000000"
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                         text: modelData.label
@@ -982,13 +1023,20 @@ ShellRoot {
                             id: dockMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: Quickshell.execDetached(modelData.cmd)
+                            onClicked: activateDockEntry(modelData)
                         }
                     }
                     Rectangle {
+                        // Minimized apps get a hollow dot instead of a
+                        // solid one - a real, distinct state (window is
+                        // genuinely hidden in special:minimized right now,
+                        // not just "running somewhere"), same as the fix
+                        // above: clicking it restores that exact window.
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 6; height: 6; radius: 3
-                        color: WorkspaceState.activeColor()
+                        color: modelData.minimized ? "#00000000" : WorkspaceState.activeColor()
+                        border.color: WorkspaceState.activeColor()
+                        border.width: modelData.minimized ? 1 : 0
                         visible: modelData.running
                     }
                 }

@@ -122,6 +122,20 @@ hl.bind(mainMod .. " + H", function()
     if w == nil then return end
     table.insert(minimizeStack, { address = w.address, origin = w.workspace.name })
     hl.dispatch(hl.dsp.window.move({ window = "address:" .. w.address, workspace = "special:minimized" }))
+    -- Real bug found live, 15 Sept 2026 (Akash: "Super+H is not working"):
+    -- moving a window into a special workspace does NOT hide it by
+    -- itself - a separate toggle_special() call controls visibility
+    -- (confirmed via hyprland-wiki's own docs/code-snippets.md, not
+    -- guessed), and this machine's special:minimized had ended up
+    -- already toggled SHOWN, so the window just sat there as a visible
+    -- overlay - looked exactly like nothing had happened. Ensure it's
+    -- actually hidden afterward, checking state first
+    -- (hl.get_active_special_workspace(), also confirmed from the real
+    -- wiki source) rather than blindly toggling, since a blind toggle
+    -- would incorrectly SHOW it if it happened to already be hidden.
+    if hl.get_active_special_workspace() ~= nil then
+        hl.dispatch(hl.dsp.workspace.toggle_special("minimized"))
+    end
 end)
 
 hl.bind(mainMod .. " + SHIFT + H", function()
