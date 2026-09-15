@@ -187,7 +187,7 @@ ShellRoot {
             for (var c = 0; c < runningState.classes.length; c++) {
                 if (a.wmClass && a.wmClass.toLowerCase() === runningState.classes[c].toLowerCase()) { running = true; usedClasses[runningState.classes[c]] = true; }
             }
-            out.push({ name: a.name, icon: resolveIcon(a.icon), glyph: "", cmd: ["sh", "-c", a.exec], running: running });
+            out.push({ name: a.name, icon: resolveIcon(a.iconPath || a.icon), glyph: "", cmd: ["sh", "-c", a.exec], running: running });
         }
         // Terminal is always pinned - not every distro ships a kitty
         // .desktop entry with a matching StartupWMClass, and JAZZ always
@@ -211,7 +211,7 @@ ShellRoot {
             var cls = runningState.classes[c];
             if (usedClasses[cls]) continue;
             var app = findAppByClass(cls);
-            out.push({ name: app ? app.name : cls, icon: resolveIcon(app ? app.icon : cls), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [cls], running: true });
+            out.push({ name: app ? app.name : cls, icon: resolveIcon(app ? (app.iconPath || app.icon) : cls), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [cls], running: true });
         }
         dockEntries = out;
     }
@@ -579,27 +579,45 @@ ShellRoot {
                         Repeater {
                             model: appCatalog.apps
                             delegate: Rectangle {
+                                // Task 25 design polish, 15 Sept 2026 (Akash:
+                                // "there should be no colour behind it... on
+                                // cursor move, colour theme should come in
+                                // background"): two real bugs fixed here -
+                                // (1) `opacity: ... ? 0.18 : 1` on hover was
+                                // set on this WHOLE delegate, and QtQuick's
+                                // opacity cascades to every child, so hovering
+                                // actually faded the icon+text to 18% instead
+                                // of showing a clean colored highlight (same
+                                // bug class as the search box fix earlier) -
+                                // fixed with a real alpha color instead of
+                                // opacity. (2) the icon's own circular badge
+                                // was ALWAYS a solid workspace-colored disc
+                                // regardless of whether a real icon existed -
+                                // real apps now float with no color behind
+                                // them at rest; the colored disc only appears
+                                // for the rare letter-fallback case.
+                                id: appTile
+                                readonly property bool hasIcon: resolveIcon(modelData.iconPath || modelData.icon).length > 0
                                 width: 114; height: 74; radius: 12
-                                color: launchMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
-                                opacity: launchMouse.containsMouse ? 0.18 : 1
+                                color: launchMouse.containsMouse ? Qt.rgba(WorkspaceState.activeColor().r, WorkspaceState.activeColor().g, WorkspaceState.activeColor().b, 0.18) : "#00000000"
                                 Column {
                                     anchors.centerIn: parent
                                     spacing: 6
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         width: 51; height: 51; radius: 14
-                                        color: WorkspaceState.activeColor()
-                                        opacity: 0.85
+                                        color: appTile.hasIcon ? "#00000000" : WorkspaceState.activeColor()
+                                        opacity: appTile.hasIcon ? 1 : 0.85
                                         Image {
                                             anchors.centerIn: parent
                                             width: 36; height: 36
-                                            source: resolveIcon(modelData.icon)
+                                            source: resolveIcon(modelData.iconPath || modelData.icon)
                                             fillMode: Image.PreserveAspectFit
-                                            visible: resolveIcon(modelData.icon).length > 0
+                                            visible: appTile.hasIcon
                                         }
                                         Text {
                                             anchors.centerIn: parent
-                                            visible: resolveIcon(modelData.icon).length === 0
+                                            visible: !appTile.hasIcon
                                             text: modelData.name.charAt(0)
                                             color: "#ffffff"; font.pixelSize: 21; font.bold: true
                                         }
@@ -635,25 +653,32 @@ ShellRoot {
                     boundsBehavior: Flickable.StopAtBounds
                     clip: true
                     delegate: Rectangle {
+                        // Same two real bugs as the grid delegate above -
+                        // opacity cascading to children on select/hover, and
+                        // an always-colored icon badge - fixed the same way.
+                        id: resultTile
+                        readonly property bool hasIcon: resolveIcon(modelData.iconPath || modelData.icon).length > 0
                         width: parent ? parent.width : 0; height: 52; radius: 10
-                        color: index === launcher.listIndex ? WorkspaceState.activeColor() : (resultMouse.containsMouse ? Theme.panelInk : "#00000000")
-                        opacity: index === launcher.listIndex ? 0.22 : (resultMouse.containsMouse ? 0.08 : 1)
+                        color: index === launcher.listIndex
+                            ? Qt.rgba(WorkspaceState.activeColor().r, WorkspaceState.activeColor().g, WorkspaceState.activeColor().b, 0.22)
+                            : (resultMouse.containsMouse ? Qt.rgba(Theme.panelInk.r, Theme.panelInk.g, Theme.panelInk.b, 0.08) : "#00000000")
                         Row {
                             anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 14; spacing: 12
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 34; height: 34; radius: 10
-                                color: WorkspaceState.activeColor(); opacity: 0.85
+                                color: resultTile.hasIcon ? "#00000000" : WorkspaceState.activeColor()
+                                opacity: resultTile.hasIcon ? 1 : 0.85
                                 Image {
                                     anchors.centerIn: parent
                                     width: 22; height: 22
-                                    source: resolveIcon(modelData.icon)
+                                    source: resolveIcon(modelData.iconPath || modelData.icon)
                                     fillMode: Image.PreserveAspectFit
-                                    visible: resolveIcon(modelData.icon).length > 0
+                                    visible: resultTile.hasIcon
                                 }
                                 Text {
                                     anchors.centerIn: parent
-                                    visible: resolveIcon(modelData.icon).length === 0
+                                    visible: !resultTile.hasIcon
                                     text: modelData.name.charAt(0)
                                     color: "#ffffff"; font.pixelSize: 15; font.bold: true
                                 }

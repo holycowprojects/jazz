@@ -27,8 +27,64 @@ DIRS = [
 
 FIELD_CODES = re.compile(r"%[fFuUick]")
 
+# Task 25 design polish, 15 Sept 2026: real bug found live (Akash: "many
+# apps needs icons") - Quickshell.iconPath()'s QIcon::fromTheme() lookup
+# only reliably resolves icons an app ships bundled in the universal
+# `hicolor` fallback theme. This session has no QT_QPA_PLATFORMTHEME
+# integration (qt6ct isn't installed; Kvantum only styles QtWidgets apps,
+# it doesn't drive icon-theme resolution) wiring the real active theme
+# (Adwaita, confirmed via gsettings) into Qt's icon lookup - confirmed via
+# real research (ArchWiki "Uniform look for Qt and GTK applications",
+# Hyprland wiki's hyprqt6engine docs) before touching anything, same root
+# cause already found and fixed for Files.qml's mimetype icons. Rather
+# than depend on that uncertain runtime lookup at all, resolve every app's
+# real icon file ONCE here, by walking the actual theme directories on
+# disk - deterministic, verified, and reusable by every consumer of this
+# scan (dock, launcher), not a one-off per-icon patch.
+ICON_THEME_DIRS = ["/usr/share/icons/Adwaita", "/usr/share/icons/Papirus", "/usr/share/icons/hicolor"]
+ICON_EXTS = (".svg", ".png")
+# Prefer the largest/scalable variant available for a given name - crisper
+# at the sizes both the dock (36px) and launcher (36px/22px) actually use.
+SIZE_PRIORITY = ["scalable", "256x256", "128x128", "96x96", "64x64", "48x48", "32x32", "24x24", "22x22", "16x16"]
+
+
+def build_icon_index():
+    """One name -> absolute path map, built by walking the real theme dirs
+    in priority order (first match for a name wins, so Adwaita/Papirus
+    take precedence over hicolor's often-lower-resolution fallbacks)."""
+    index = {}
+
+    def consider(name, path):
+        if name not in index:
+            index[name] = path
+
+    for theme_dir in ICON_THEME_DIRS:
+        if not os.path.isdir(theme_dir):
+            continue
+        # Walk size-priority order first so a theme's own best variant
+        # wins over its lower-res ones, without needing every combination
+        # of size/category spelled out - os.walk covers whatever category
+        # subdirectories (apps/devices/mimetypes/...) actually exist.
+        ordered_dirs = [os.path.join(theme_dir, s) for s in SIZE_PRIORITY if os.path.isdir(os.path.join(theme_dir, s))]
+        remaining = [os.path.join(theme_dir, d) for d in sorted(os.listdir(theme_dir))
+                     if os.path.join(theme_dir, d) not in ordered_dirs and os.path.isdir(os.path.join(theme_dir, d))]
+        for base in ordered_dirs + remaining:
+            for root, _dirs, files in os.walk(base):
+                for fname in files:
+                    stem, ext = os.path.splitext(fname)
+                    if ext.lower() in ICON_EXTS:
+                        consider(stem, os.path.join(root, fname))
+    # Flat pixmaps dir (older-style apps, no size/category subfolders)
+    if os.path.isdir("/usr/share/pixmaps"):
+        for fname in os.listdir("/usr/share/pixmaps"):
+            stem, ext = os.path.splitext(fname)
+            if ext.lower() in ICON_EXTS or ext.lower() == ".xpm":
+                consider(stem, os.path.join("/usr/share/pixmaps", fname))
+    return index
+
 
 def scan():
+    icon_index = build_icon_index()
     seen_names = set()
     apps = []
     for d in DIRS:
@@ -55,9 +111,15 @@ def scan():
                 continue
             seen_names.add(name)
             exec_clean = FIELD_CODES.sub("", exec_raw).strip()
+            icon_name = entry.get("Icon", "")
+            if icon_name.startswith("/"):
+                icon_path = icon_name if os.path.isfile(icon_name) else ""
+            else:
+                icon_path = icon_index.get(icon_name, "")
             apps.append({
                 "name": name,
-                "icon": entry.get("Icon", ""),
+                "icon": icon_name,
+                "iconPath": icon_path,
                 "exec": exec_clean,
                 "wmClass": entry.get("StartupWMClass", ""),
                 "desktopFile": os.path.splitext(os.path.basename(path))[0],
