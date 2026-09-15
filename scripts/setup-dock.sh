@@ -174,45 +174,40 @@ ShellRoot {
     }
     Timer { interval: 1500; repeat: true; running: true; onTriggered: clientsPollProc.running = true }
 
-    property var pinnedMatch: ["Firefox", "Bazaar", "LibreOffice", "GIMP", "Obsidian", "Thunderbird", "VLC", "Steam"]
+    // Task 25 design polish, 15 Sept 2026 (Akash's explicit dock spec):
+    // exactly four fixed slots - App Launcher and Files always first,
+    // Terminal and Settings always last - that can never be reordered or
+    // removed. Every other dock icon reflects a currently RUNNING app,
+    // inserted between the fixed front and back pair, real macOS-dock
+    // behavior (not a curated always-pinned favorites list, which is what
+    // this replaces - Firefox/Bazaar/LibreOffice/etc. only show up here
+    // now if actually running, same as any other app). Capped at 15 total
+    // dock slots (4 fixed + up to 11 running apps in the middle).
+    readonly property int dockCap: 15
     property var dockEntries: []
     function rebuildDock() {
-        var out = [];
-        var usedClasses = {};
-        // Pinned apps first, in order, real icon/exec from the scan
-        for (var i = 0; i < pinnedMatch.length; i++) {
-            var a = findAppByName(pinnedMatch[i]);
-            if (!a) continue;
-            var running = false;
-            for (var c = 0; c < runningState.classes.length; c++) {
-                if (a.wmClass && a.wmClass.toLowerCase() === runningState.classes[c].toLowerCase()) { running = true; usedClasses[runningState.classes[c]] = true; }
-            }
-            out.push({ name: a.name, icon: resolveIcon(a.iconPath || a.icon), glyph: "", cmd: ["sh", "-c", a.exec], running: running });
-        }
-        // Terminal is always pinned - not every distro ships a kitty
-        // .desktop entry with a matching StartupWMClass, and JAZZ always
-        // needs a terminal regardless of what the scan finds.
         var termRunning = runningState.classes.indexOf("kitty") !== -1;
-        if (termRunning) usedClasses["kitty"] = true;
-        out.push({ name: "Terminal", icon: resolveIcon("kitty"), glyph: "", cmd: ["kitty"], running: termRunning });
-        // Ollama - not a real .desktop app, a deliberate JAZZ shortcut
-        out.push({ name: "Ollama", icon: "", glyph: "◈", themeIcon: "ai", cmd: ["kitty", "-e", "ollama", "run", "qwen2.5:0.5b"], running: false });
-        // App launcher and Settings - always pinned (Akash's request), so
-        // the dock alone can reach every app plus real settings without
-        // needing to know any keybind. Neither is a real installed app, so
-        // both get a deliberate glyph rather than an icon-theme lookup that
-        // might not resolve: a saxophone for the JAZZ-branded launcher (not
-        // a generic search icon), a universal gear for Settings.
-        out.push({ name: "App Launcher", icon: "", glyph: "🎷", cmd: ["qs", "ipc", "call", "launcher", "toggle"], running: false });
-        out.push({ name: "Settings", icon: "", glyph: "⚙", themeIcon: "settings", cmd: ["qs", "ipc", "call", "settings", "toggle"], running: false });
-        // Any other currently-running app not already pinned - real
-        // macOS/Windows dock behavior, not invented
+
+        var middle = [];
         for (var c = 0; c < runningState.classes.length; c++) {
             var cls = runningState.classes[c];
-            if (usedClasses[cls]) continue;
+            if (cls.toLowerCase() === "kitty") continue; // Terminal is its own fixed slot, never duplicated in the middle
             var app = findAppByClass(cls);
-            out.push({ name: app ? app.name : cls, icon: resolveIcon(app ? (app.iconPath || app.icon) : cls), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [cls], running: true });
+            middle.push({ name: app ? app.name : cls, icon: resolveIcon(app ? (app.iconPath || app.icon) : cls), glyph: "", cmd: app ? ["sh", "-c", app.exec] : [cls], running: true });
         }
+        var maxMiddle = Math.max(0, dockCap - 4);
+
+        var out = [];
+        // Neither Launcher, Files, nor Settings is a real installed app, so
+        // each gets a deliberate glyph rather than an icon-theme lookup
+        // that might not resolve - a saxophone for the JAZZ-branded
+        // launcher (not a generic search icon), a folder for Files, a
+        // universal gear for Settings.
+        out.push({ name: "App Launcher", icon: "", glyph: "🎷", cmd: ["qs", "ipc", "call", "launcher", "toggle"], running: false });
+        out.push({ name: "Files", icon: "", glyph: "📁", cmd: ["qs", "ipc", "call", "files", "toggle"], running: false });
+        out = out.concat(middle.slice(0, maxMiddle));
+        out.push({ name: "Terminal", icon: resolveIcon("kitty"), glyph: "", cmd: ["kitty"], running: termRunning });
+        out.push({ name: "Settings", icon: "", glyph: "⚙", themeIcon: "settings", cmd: ["qs", "ipc", "call", "settings", "toggle"], running: false });
         dockEntries = out;
     }
     Connections { target: appCatalog; function onAppsChanged() { rebuildDock() } }
@@ -938,10 +933,16 @@ ShellRoot {
     }
 
     // ---------- Dock (always visible, macOS-style: pinned + running combined) ----------
+    // Task 25 design polish, 15 Sept 2026 (Akash: "the background of dock
+    // should be transparent as if apps in dock look suspended in air") -
+    // this used to fill the whole bottom strip with Theme.panel; each
+    // icon tile itself was already transparent-at-rest/colored-on-hover
+    // (color, not opacity - correct already), so removing just this outer
+    // bar background is the whole fix.
     PanelWindow {
         anchors { bottom: true; left: true; right: true }
         implicitHeight: 78
-        color: Theme.panel
+        color: "#00000000"
 
         Row {
             anchors.centerIn: parent
