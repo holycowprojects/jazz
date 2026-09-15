@@ -505,7 +505,7 @@ ShellRoot {
 
         Rectangle {
             id: launcherBox
-            width: 780; height: 600
+            width: 900; height: 680
             anchors.horizontalCenter: parent.horizontalCenter
             y: 70
             radius: 21
@@ -520,22 +520,31 @@ ShellRoot {
                 spacing: 18
 
                 Rectangle {
-                    width: parent.width; height: 51; radius: 12
-                    color: Theme.panelInk; opacity: 0.08
+                    // Real bug found live, 15 Sept 2026 (Akash: "search is
+                    // not visible properly"): `opacity: 0.08` was set on
+                    // this WHOLE Rectangle, and QtQuick's opacity cascades
+                    // to every child - the typed text and placeholder were
+                    // ALSO rendering at 8% opacity, not just the
+                    // background tint. Fixed by using a real solid token
+                    // color + border for the box (same proven pattern as
+                    // Settings.qml's text inputs) instead of opacity, so
+                    // children render at full opacity.
+                    width: parent.width; height: 56; radius: 12
+                    color: Theme.surfaceRaised
+                    border.color: Theme.panelInk; border.width: 1
                     TextInput {
                         id: searchInput
                         anchors.fill: parent
-                        anchors.margins: 14
+                        anchors.margins: 16
                         color: Theme.panelInk
-                        font.pixelSize: 20
+                        font.pixelSize: 21
                         clip: true
                         focus: launcher.visible
                         Text {
                             text: "Search apps..."
-                            color: Theme.panelInk
-                            opacity: 0.4
+                            color: Theme.textSecondary
                             visible: searchInput.text.length === 0
-                            font.pixelSize: 20
+                            font.pixelSize: 21
                         }
                         onTextChanged: launcher.listIndex = 0
                         Keys.onEscapePressed: launcher.visible = false
@@ -558,7 +567,7 @@ ShellRoot {
                 // scroll container at all, so apps beyond what fit were
                 // just permanently clipped and unreachable). -----
                 Flickable {
-                    width: parent.width; height: 450
+                    width: parent.width; height: 520
                     visible: searchInput.text.length === 0
                     contentWidth: width; contentHeight: appGridFlow.implicitHeight
                     clip: true
@@ -620,7 +629,7 @@ ShellRoot {
                 // catalog size with zero clipping, unlike shrinking icons
                 // into the grid in place (the old behavior). -----
                 ListView {
-                    width: parent.width; height: 450
+                    width: parent.width; height: 520
                     visible: searchInput.text.length > 0
                     model: launcher.filteredApps()
                     boundsBehavior: Flickable.StopAtBounds
