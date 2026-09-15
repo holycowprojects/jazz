@@ -722,8 +722,10 @@ Fix: `setup-hyprland.sh` force-authors JAZZ's own definitive `hyprland.lua` unco
 
 ---
 
-### Task 25: JAZZ design polish - a real second pass
+### Task 25: JAZZ design polish - a real second pass — **DONE, 15 Sept 2026**
 **Description:** Not part of the original 20-task plan; added 6 Sept 2026 per Akash's own words after Task 22/23's rebuild: "its good for now but we need to improve design of jazz for sure. i would research more." Explicitly deferred, not scoped yet - Akash is doing his own research before deciding what changes. Do not start building against this until he brings back concrete direction; this entry exists so the open item isn't lost between sessions, not to prescribe a solution.
+
+**Completed 15 Sept 2026, after Akash's own research landed.** Rebuilt the app launcher (GridView + search-mode ListView, real icon resolution via `scan-apps.py`'s own icon-theme index, fixed an `opacity`-cascade bug that had been fading icon/text content along with the intended hover tint), resized both the launcher and Jazz Files windows to real app-sized panels instead of full-screen. Redesigned the dock: transparent background ("suspended in air" per Akash's own words), four fixed slots (Launcher/Files always first two, Terminal/Settings always last two), up to 15 total with running apps in between, real minimize/restore via a hidden `special:minimized` workspace (Super+H/Shift+H). Fixed the same opacity bug in the power menu. Adopted a researched luxury "Sapphire" chrome theme (navy/gold, real hex references) and a gemstone-motif workspace color palette (Sapphire/Emerald/Topaz/Smoky Quartz/Onyx/Garnet) as JAZZ's new defaults - both previewed live before being confirmed, and both verified end-to-end on a fresh test user account and a real reboot, not just the dev account's live session.
 
 **Known rough edges as of 6 Sept 2026 (for reference, not a locked scope):**
 - Icon-based (glyph/emoji) system icons render inconsistently across contexts - real icon-theme icons (Task 22's dock/launcher work) look noticeably more polished than the remaining glyph-based tray icons
@@ -1323,8 +1325,10 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 
 ## Phase 4: Public-repo readiness
 
-### Task 17: README
+### Task 17: README — **DONE, 15 Sept 2026**
 **Description:** Write the public-facing README — what JAZZ is, why it exists, install instructions referencing `install/` and `scripts/`, current status, a demo GIF/screenshot once the desktop from Task 10/11 is stable.
+
+**Completed 15 Sept 2026.** Written for a stranger with zero context: what/why, a "why JAZZ over vanilla Hyprland/Omarchy" section, full feature table, install steps, an honest per-area status breakdown, the Known Issues section (drafted below, plus the hyprlock-crash recovery step found the same day), and a documentation map. No screenshot embedded yet (Akash held off on that) and clone URLs point at `github.com/holycowprojects/jazz`, which doesn't exist publicly yet - update both once the public-repo push happens.
 
 **Draft "Known Issues" section ready, added 15 Sept 2026 (Akash's request, during Task 33's Plymouth work) — drop this into the real README.md when this task starts, don't recreate it from scratch. Full technical detail (root-cause trail, sources) lives in `docs/Research-Reference-List.md` section 0, dated 15 Sept 2026 - this is the public-facing summary of that entry:**
 
@@ -1337,10 +1341,11 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 > **A universal fix (bounding how long boot waits on any slow/misbehaving USB device, not specific to any one machine's exact hardware) is planned for v2, not v1** - deliberately not rushed. If you don't need the affected device (usually the integrated camera) and want to remove the delay now, disabling it in your BIOS/UEFI setup is a workaround, not something JAZZ does for you.
 
 **Acceptance criteria:**
-- [ ] README covers: what/why, install steps, current status, at least one visual (screenshot/GIF), and the Known Issues section drafted above
+- [x] README covers: what/why, install steps, current status, and the Known Issues section drafted above
+- [ ] At least one visual (screenshot/GIF) - deliberately not added yet, Akash's call
 
 **Verification:**
-- [ ] Manual read-through: could a stranger follow this?
+- [x] Manual read-through: could a stranger follow this?
 
 **Dependencies:** Tasks 5, 9, 10 (needs a working, demoable system)
 
