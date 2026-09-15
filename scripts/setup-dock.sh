@@ -505,7 +505,14 @@ ShellRoot {
 
         Rectangle {
             id: launcherBox
-            width: 900; height: 680
+            width: 900; height: 766
+            // ^ kept taller than the original 680 to fit the extra footer
+            // spacer below AND the GridView's 570px height (5 rows of 114 -
+            // GridView.SnapToRow means scrolling always settles on a whole
+            // row, so no clipping regardless of scroll position), not for
+            // outer bottom padding (Akash: the outer margin was already
+            // correct - the gap needed is specifically between the last
+            // icon row and the "Esc closes" footer text).
             anchors.horizontalCenter: parent.horizontalCenter
             y: 70
             radius: 21
@@ -566,75 +573,92 @@ ShellRoot {
                 // this used to be a bare Flow with a fixed height and no
                 // scroll container at all, so apps beyond what fit were
                 // just permanently clipped and unreachable). -----
-                Flickable {
-                    width: parent.width; height: 520
+                GridView {
+                    // Real bug caught live (Akash: "VLC media player is not
+                    // fully visible" - turned out to happen while
+                    // scrolling, not at rest): a plain Flow inside a
+                    // Flickable allows free-pixel scrolling to any offset,
+                    // so a row can land half-cut at the viewport edge
+                    // wherever the scroll happens to stop - fixing only the
+                    // resting-state height didn't touch that. GridView is
+                    // the real fix: it's row-aware, and
+                    // snapMode: GridView.SnapToRow (confirmed via Qt's own
+                    // docs, not guessed) makes it always settle on a whole
+                    // row after any scroll/flick, at any position, not just
+                    // at rest.
+                    id: appGrid
+                    // 5 columns * (114 tile + 40 gap) = 770, 5 rows * (74
+                    // tile + 40 gap) = 570. The tile is centered within its
+                    // cell (not filling it), which is what actually
+                    // produces the 40px gap on every side between tiles.
+                    width: 770; height: 570
+                    anchors.horizontalCenter: parent.horizontalCenter
                     visible: searchInput.text.length === 0
-                    contentWidth: width; contentHeight: appGridFlow.implicitHeight
+                    model: appCatalog.apps
+                    cellWidth: 154; cellHeight: 114
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    Flow {
-                        id: appGridFlow
-                        width: parent.width
-                        spacing: 9
-                        Repeater {
-                            model: appCatalog.apps
-                            delegate: Rectangle {
-                                // Task 25 design polish, 15 Sept 2026 (Akash:
-                                // "there should be no colour behind it... on
-                                // cursor move, colour theme should come in
-                                // background"): two real bugs fixed here -
-                                // (1) `opacity: ... ? 0.18 : 1` on hover was
-                                // set on this WHOLE delegate, and QtQuick's
-                                // opacity cascades to every child, so hovering
-                                // actually faded the icon+text to 18% instead
-                                // of showing a clean colored highlight (same
-                                // bug class as the search box fix earlier) -
-                                // fixed with a real alpha color instead of
-                                // opacity. (2) the icon's own circular badge
-                                // was ALWAYS a solid workspace-colored disc
-                                // regardless of whether a real icon existed -
-                                // real apps now float with no color behind
-                                // them at rest; the colored disc only appears
-                                // for the rare letter-fallback case.
-                                id: appTile
-                                readonly property bool hasIcon: resolveIcon(modelData.iconPath || modelData.icon).length > 0
-                                width: 114; height: 74; radius: 12
-                                color: launchMouse.containsMouse ? Qt.rgba(WorkspaceState.activeColor().r, WorkspaceState.activeColor().g, WorkspaceState.activeColor().b, 0.18) : "#00000000"
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 6
-                                    Rectangle {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        width: 51; height: 51; radius: 14
-                                        color: appTile.hasIcon ? "#00000000" : WorkspaceState.activeColor()
-                                        opacity: appTile.hasIcon ? 1 : 0.85
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 36; height: 36
-                                            source: resolveIcon(modelData.iconPath || modelData.icon)
-                                            fillMode: Image.PreserveAspectFit
-                                            visible: appTile.hasIcon
-                                        }
-                                        Text {
-                                            anchors.centerIn: parent
-                                            visible: !appTile.hasIcon
-                                            text: modelData.name.charAt(0)
-                                            color: "#ffffff"; font.pixelSize: 21; font.bold: true
-                                        }
+                    snapMode: GridView.SnapToRow
+                    delegate: Item {
+                        id: cell
+                        width: 154; height: 114
+                        readonly property bool hasIcon: resolveIcon(modelData.iconPath || modelData.icon).length > 0
+                        Rectangle {
+                            // Task 25 design polish, 15 Sept 2026 (Akash:
+                            // "there should be no colour behind it... on
+                            // cursor move, colour theme should come in
+                            // background"): two real bugs fixed here -
+                            // (1) `opacity: ... ? 0.18 : 1` on hover was
+                            // set on this WHOLE delegate, and QtQuick's
+                            // opacity cascades to every child, so hovering
+                            // actually faded the icon+text to 18% instead
+                            // of showing a clean colored highlight (same
+                            // bug class as the search box fix earlier) -
+                            // fixed with a real alpha color instead of
+                            // opacity. (2) the icon's own circular badge
+                            // was ALWAYS a solid workspace-colored disc
+                            // regardless of whether a real icon existed -
+                            // real apps now float with no color behind
+                            // them at rest; the colored disc only appears
+                            // for the rare letter-fallback case.
+                            id: appTile
+                            anchors.centerIn: parent
+                            width: 114; height: 74; radius: 12
+                            color: launchMouse.containsMouse ? Qt.rgba(WorkspaceState.activeColor().r, WorkspaceState.activeColor().g, WorkspaceState.activeColor().b, 0.18) : "#00000000"
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 51; height: 51; radius: 14
+                                    color: cell.hasIcon ? "#00000000" : WorkspaceState.activeColor()
+                                    opacity: cell.hasIcon ? 1 : 0.85
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 36; height: 36
+                                        source: resolveIcon(modelData.iconPath || modelData.icon)
+                                        fillMode: Image.PreserveAspectFit
+                                        visible: cell.hasIcon
                                     }
                                     Text {
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                        text: modelData.name; color: Theme.panelInk; font.pixelSize: 14
-                                        width: 111; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-                                        elide: Text.ElideRight; maximumLineCount: 2
+                                        anchors.centerIn: parent
+                                        visible: !cell.hasIcon
+                                        text: modelData.name.charAt(0)
+                                        color: "#ffffff"; font.pixelSize: 21; font.bold: true
                                     }
                                 }
-                                MouseArea {
-                                    id: launchMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: launcher.launchApp(modelData)
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: modelData.name; color: Theme.panelInk; font.pixelSize: 14
+                                    width: 111; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+                                    elide: Text.ElideRight; maximumLineCount: 2
                                 }
+                            }
+                            MouseArea {
+                                id: launchMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: launcher.launchApp(modelData)
                             }
                         }
                     }
@@ -647,7 +671,11 @@ ShellRoot {
                 // catalog size with zero clipping, unlike shrinking icons
                 // into the grid in place (the old behavior). -----
                 ListView {
-                    width: parent.width; height: 520
+                    width: parent.width; height: 570
+                    // Same fix as the grid above - rows are 52px each with
+                    // no gap, and 570 isn't an exact multiple, so without
+                    // snapping a scroll could still stop mid-row.
+                    snapMode: ListView.SnapToItem
                     visible: searchInput.text.length > 0
                     model: launcher.filteredApps()
                     boundsBehavior: Flickable.StopAtBounds
@@ -704,6 +732,12 @@ ShellRoot {
                         color: Theme.panelInk; opacity: 0.4; font.pixelSize: 16
                     }
                 }
+
+                // Extra gap specifically before the footer, on top of the
+                // Column's own uniform spacing - Akash: the space was
+                // needed between the last icon row and this line, not the
+                // outer bottom margin (which was already right).
+                Item { width: 1; height: 16 }
 
                 Text {
                     text: searchInput.text.length === 0
