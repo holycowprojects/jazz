@@ -105,6 +105,14 @@ JAZZ does **not** currently hide this delay behind a boot splash — Plymouth wa
 
 **Screen-reader support is not currently achievable** — this is an upstream Hyprland/wlroots limitation (Orca's AT-SPI2/D-Bus dependencies aren't reliably supported on wlroots-based compositors as of 2026), not a JAZZ gap. Reduced-motion and UI scaling are supported; full screen-reader compatibility is honestly out of reach until that changes upstream.
 
+**If your lock screen (`hyprlock`) ever crashes or is killed abnormally, your screen can get stuck locked with no on-screen way out.** This isn't a JAZZ-specific bug — it's Wayland's session-lock protocol working as designed: once a client locks the session, the compositor is required to keep the screen blanked and input blocked until that same client explicitly releases it. If the lock client disappears any other way (a crash, or being force-killed), the compositor correctly refuses to auto-unlock — treating a crash as a valid way to bypass a lock screen would defeat the whole point of having one. The practical effect is a real dead end at the keyboard: no password prompt is left to type into.
+
+**Recovery:** from another device on the same network, SSH in and run:
+```bash
+hyprctl dispatch "hl.dsp.exit()"
+```
+This exits Hyprland entirely (no reboot needed, filesystem untouched) and hands control back to the `ly` login screen, where you can log in again normally. Any unsaved state in apps that were open is lost, same as ending any session. If you don't have another device to SSH from, a full reboot achieves the same recovery.
+
 Two AMD iGPU/audio quirks were investigated and closed as non-issues on the reference hardware — see `CHANGELOG.md` if you hit something that looks similar.
 
 ---
