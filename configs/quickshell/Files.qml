@@ -401,17 +401,31 @@ PanelWindow {
     }
 
     // ---------- layout ----------
+    // Task 25 design polish, 15 Sept 2026 (Akash: "reduce the file manager
+    // window size to an app open size"): Files used to fill the entire
+    // screen; now it's a real bounded app window floating over a dim,
+    // click-to-close backdrop - the same pattern the launcher already
+    // uses, rather than every app feeling like a full takeover.
     Rectangle {
-        id: rootContent
         anchors.fill: parent
-        color: Theme.surface
+        color: "#0a090899"
         visible: filesPanel.visible
+        MouseArea { anchors.fill: parent; onClicked: filesPanel.visible = false }
 
-        MouseArea {
-            anchors.fill: parent
-            z: -1
-            onClicked: { filesPanel.contextMenuTarget = ""; filesPanel.selectedPath = "" }
-        }
+        Rectangle {
+            id: rootContent
+            width: 1400; height: 820
+            anchors.centerIn: parent
+            radius: 16
+            color: Theme.surface
+            border.color: WorkspaceState.activeColor(); border.width: 2
+            clip: true
+
+            MouseArea {
+                anchors.fill: parent
+                z: -1
+                onClicked: { filesPanel.contextMenuTarget = ""; filesPanel.selectedPath = "" }
+            }
 
         Item {
             anchors.fill: parent
@@ -968,6 +982,7 @@ PanelWindow {
                 }
             }
         }
+    }
     }
 
     component EntryContextMenu: Rectangle {
