@@ -477,6 +477,29 @@ ShellRoot {
         exclusiveZone: -1
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
+        // Task 25 design polish, 15 Sept 2026: browsing (empty search) keeps
+        // JAZZ's own signature colored icon grid, but search mode switches
+        // to a real keyboard-navigable ranked list (arrow keys + Enter) -
+        // the pattern every 2026 launcher (Raycast, Ulauncher, Albert)
+        // converged on, researched live before building this, not guessed.
+        property int listIndex: 0
+        function filteredApps() {
+            if (searchInput.text.length === 0) return []
+            var q = searchInput.text.toLowerCase()
+            var starts = [], contains = []
+            for (var i = 0; i < appCatalog.apps.length; i++) {
+                var a = appCatalog.apps[i]
+                var name = a.name.toLowerCase()
+                if (name.indexOf(q) === 0) starts.push(a)
+                else if (name.indexOf(q) !== -1) contains.push(a)
+            }
+            return starts.concat(contains)
+        }
+        function launchApp(app) {
+            Quickshell.execDetached(["sh", "-c", app.exec])
+            launcher.visible = false
+        }
+
         Rectangle { anchors.fill: parent; color: "#0a090899" }
         MouseArea { anchors.fill: parent; onClicked: launcher.visible = false }
 
@@ -514,63 +537,144 @@ ShellRoot {
                             visible: searchInput.text.length === 0
                             font.pixelSize: 20
                         }
+                        onTextChanged: launcher.listIndex = 0
                         Keys.onEscapePressed: launcher.visible = false
+                        Keys.onDownPressed: {
+                            var n = launcher.filteredApps().length
+                            if (n > 0) launcher.listIndex = Math.min(launcher.listIndex + 1, n - 1)
+                        }
+                        Keys.onUpPressed: launcher.listIndex = Math.max(launcher.listIndex - 1, 0)
+                        Keys.onReturnPressed: {
+                            var list = launcher.filteredApps()
+                            if (list.length > 0) launcher.launchApp(list[launcher.listIndex])
+                        }
                     }
                 }
 
-                Flow {
-                    width: parent.width
-                    height: 450
-                    spacing: 9
+                // ----- Browse mode (empty search): JAZZ's own colored icon
+                // grid, the signature look Akash asked to keep - now
+                // properly scrollable (real bug found live, 15 Sept 2026:
+                // this used to be a bare Flow with a fixed height and no
+                // scroll container at all, so apps beyond what fit were
+                // just permanently clipped and unreachable). -----
+                Flickable {
+                    width: parent.width; height: 450
+                    visible: searchInput.text.length === 0
+                    contentWidth: width; contentHeight: appGridFlow.implicitHeight
                     clip: true
-                    Repeater {
-                        model: appCatalog.apps
-                        delegate: Rectangle {
-                            visible: searchInput.text.length === 0 || modelData.name.toLowerCase().indexOf(searchInput.text.toLowerCase()) !== -1
-                            width: 114; height: visible ? 74 : 0; radius: 12
-                            color: launchMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
-                            opacity: launchMouse.containsMouse ? 0.18 : 1
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 6
-                                Rectangle {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: 51; height: 51; radius: 14
-                                    color: WorkspaceState.activeColor()
-                                    opacity: 0.85
-                                    Image {
-                                        anchors.centerIn: parent
-                                        width: 36; height: 36
-                                        source: resolveIcon(modelData.icon)
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: resolveIcon(modelData.icon).length > 0
+                    boundsBehavior: Flickable.StopAtBounds
+                    Flow {
+                        id: appGridFlow
+                        width: parent.width
+                        spacing: 9
+                        Repeater {
+                            model: appCatalog.apps
+                            delegate: Rectangle {
+                                width: 114; height: 74; radius: 12
+                                color: launchMouse.containsMouse ? WorkspaceState.activeColor() : "#00000000"
+                                opacity: launchMouse.containsMouse ? 0.18 : 1
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        width: 51; height: 51; radius: 14
+                                        color: WorkspaceState.activeColor()
+                                        opacity: 0.85
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 36; height: 36
+                                            source: resolveIcon(modelData.icon)
+                                            fillMode: Image.PreserveAspectFit
+                                            visible: resolveIcon(modelData.icon).length > 0
+                                        }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            visible: resolveIcon(modelData.icon).length === 0
+                                            text: modelData.name.charAt(0)
+                                            color: "#ffffff"; font.pixelSize: 21; font.bold: true
+                                        }
                                     }
                                     Text {
-                                        anchors.centerIn: parent
-                                        visible: resolveIcon(modelData.icon).length === 0
-                                        text: modelData.name.charAt(0)
-                                        color: "#ffffff"; font.pixelSize: 21; font.bold: true
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: modelData.name; color: Theme.panelInk; font.pixelSize: 14
+                                        width: 111; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
+                                        elide: Text.ElideRight; maximumLineCount: 2
                                     }
                                 }
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.name; color: Theme.panelInk; font.pixelSize: 14
-                                    width: 111; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-                                    elide: Text.ElideRight; maximumLineCount: 2
+                                MouseArea {
+                                    id: launchMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: launcher.launchApp(modelData)
                                 }
-                            }
-                            MouseArea {
-                                id: launchMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: { Quickshell.execDetached(["sh", "-c", modelData.exec]); launcher.visible = false }
                             }
                         }
                     }
                 }
 
+                // ----- Search mode: a fast, ranked, keyboard-navigable
+                // list (Up/Down + Enter) - the pattern every current
+                // launcher (Raycast/Ulauncher/Albert) converged on,
+                // researched live before building this. Scales to any
+                // catalog size with zero clipping, unlike shrinking icons
+                // into the grid in place (the old behavior). -----
+                ListView {
+                    width: parent.width; height: 450
+                    visible: searchInput.text.length > 0
+                    model: launcher.filteredApps()
+                    boundsBehavior: Flickable.StopAtBounds
+                    clip: true
+                    delegate: Rectangle {
+                        width: parent ? parent.width : 0; height: 52; radius: 10
+                        color: index === launcher.listIndex ? WorkspaceState.activeColor() : (resultMouse.containsMouse ? Theme.panelInk : "#00000000")
+                        opacity: index === launcher.listIndex ? 0.22 : (resultMouse.containsMouse ? 0.08 : 1)
+                        Row {
+                            anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 14; spacing: 12
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 34; height: 34; radius: 10
+                                color: WorkspaceState.activeColor(); opacity: 0.85
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: 22; height: 22
+                                    source: resolveIcon(modelData.icon)
+                                    fillMode: Image.PreserveAspectFit
+                                    visible: resolveIcon(modelData.icon).length > 0
+                                }
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: resolveIcon(modelData.icon).length === 0
+                                    text: modelData.name.charAt(0)
+                                    color: "#ffffff"; font.pixelSize: 15; font.bold: true
+                                }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.name; color: Theme.panelInk; font.pixelSize: 17
+                                width: parent.width - 46; elide: Text.ElideRight
+                            }
+                        }
+                        MouseArea {
+                            id: resultMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onEntered: launcher.listIndex = index
+                            onClicked: launcher.launchApp(modelData)
+                        }
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: launcher.filteredApps().length === 0
+                        text: "No matching apps"
+                        color: Theme.panelInk; opacity: 0.4; font.pixelSize: 16
+                    }
+                }
+
                 Text {
-                    text: "Esc closes · " + appCatalog.apps.length + " apps"
+                    text: searchInput.text.length === 0
+                        ? ("Esc closes · " + appCatalog.apps.length + " apps")
+                        : ("↑↓ Navigate · Enter Open · Esc closes · " + launcher.filteredApps().length + " match" + (launcher.filteredApps().length === 1 ? "" : "es"))
                     color: Theme.panelInk; opacity: 0.4; font.pixelSize: 14
                 }
             }
