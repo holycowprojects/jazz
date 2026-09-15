@@ -1373,12 +1373,16 @@ Retriggered for real after that, this time leaving it running: Akash unlocked it
 ### Task 19: Hygiene gate
 **Description:** Full-history Gitleaks scan (not just staged-diff) and a manual pass confirming every tracked config references `$HOME`/XDG variables natively rather than hardcoded personal paths.
 
+**Status: DONE as of 15 Sept 2026.** `gitleaks detect --source . --log-opts="--all"` came back clean on the first pass (122 commits, no leaks) - but Gitleaks is tuned for high-entropy secrets, not plain dictionary-style passwords, and it missed something real: `tasks/todo.md` had this machine's actual root/user passwords (`jazzroot`/`hcs123`) written in plaintext across two lines, present since they were first typed and persisting through every subsequent commit. `configs/`, `scripts/`, and `install/` were all separately checked clean - no hardcoded `/home/<user>` paths or usernames outside of a few harmless illustrative comments, hostnames genericized to `jazz`, and the real `install/base-credentials.json` correctly gitignored (only the `.example` is tracked).
+
+Since this repo has never had a remote configured (confirmed via `git remote -v`), nobody outside this machine had ever seen the history - the one safe window to permanently fix it rather than just redact-going-forward. Backed up the repo first, installed `git-filter-repo` (PyPI, with Akash's go-ahead), and rewrote all 122 commits with `--replace-text` to swap `jazzroot`/`hcs123` for redacted placeholders. Verified two ways: a direct `git grep` across every commit in `git rev-list --all` (zero hits) and a second full Gitleaks pass (still clean). Commit count unchanged (122) - no history was lost, just rewritten in place.
+
 **Acceptance criteria:**
-- [ ] `gitleaks detect` (full history, not `--staged`) returns clean
-- [ ] No hardcoded personal paths/usernames found in `configs/`
+- [x] `gitleaks detect` (full history, not `--staged`) returns clean
+- [x] No hardcoded personal paths/usernames found in `configs/`
 
 **Verification:**
-- [ ] Command output reviewed directly
+- [x] Command output reviewed directly
 
 **Dependencies:** All prior tasks
 

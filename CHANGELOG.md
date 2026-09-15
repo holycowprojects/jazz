@@ -6,6 +6,24 @@ releases yet, so entries are grouped by date instead of a version number.
 
 ## [Unreleased]
 
+### 2026-09-15
+- Shipped Jazz Files v1 (Task 29) - a real GUI file manager, replacing the
+  Dolphin placeholder, with real undo/redo and multi-pane browsing.
+- Design polish pass (Task 25): rebuilt the app launcher (grid + search,
+  real icon resolution, proper spacing), redesigned the dock (transparent,
+  four fixed slots + up to 15 running apps, minimize/restore via a hidden
+  workspace), fixed an opacity bug affecting hover states across the
+  launcher and power menu. Adopted a researched luxury "Sapphire" theme
+  and a gemstone-motif workspace color palette as the new defaults,
+  end-to-end tested on a fresh user account and a real reboot.
+- Added the public-facing `README.md` (Task 17).
+- Completed the hygiene gate (Task 19): full-history Gitleaks scan clean,
+  `configs/`/`scripts/`/`install/` confirmed free of hardcoded personal
+  paths - and, separately, found and permanently scrubbed two real
+  plaintext dev-machine passwords that had persisted in `tasks/todo.md`
+  since they were first typed, by rewriting git history (safe since no
+  remote had ever been configured for this repo).
+
 ### 2026-09-07
 - Fixed a real boot failure on the Yoga 6 caused by FAT32 corruption on the shared
   EFI System Partition (cross-linked clusters had silently corrupted the systemd-boot
