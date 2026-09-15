@@ -104,8 +104,7 @@
         "bright_white": "#f2f2f3"
       },
       "wallpapers": [
-        { "path": "jazz-wallpaper-midnight-hyprland.png", "curated": true, "status": "curated - Hyprland's own official bundled wallpaper (ships with the hyprland pacman package at /usr/share/hypr/wall2.png), cropped from 7680x4191 to 1920x1080. Adopted 12 Sept 2026 at Akash's request - Midnight IS Hyprland's own out-of-the-box aesthetic, so its default desktop art belongs here. Third-party art, not JAZZ-original/Recraft-generated like Forge/Warm's canyon pieces - see design/wallpapers/SOURCE.md for the licensing caveat (same open class as Task 27f)." },
-        { "path": "jazz-wallpaper-midnight-01.png", "curated": false, "status": "placeholder - procedurally generated, kept as second variant" }
+        { "path": "jazz-wallpaper-midnight-01.png", "curated": false, "status": "placeholder - procedurally generated. Sole/default variant as of 15 Sept 2026 - the Hyprland official art that used to lead this list moved to Sapphire (see that theme's wallpapers), now the default theme, at Akash's request." }
       ]
     },
     "warm": {
@@ -142,6 +141,43 @@
       "wallpapers": [
         { "path": "jazz-wallpaper-warm-canyon.png", "curated": true, "status": "curated - same Recraft-generated source as Forge's canyon piece, color-graded to Warm's own tan/amber palette (surface/accent duotone, fire glow kept as a deeper red-orange focal accent), cropped to 1920x1080 (12 Sept 2026)" },
         { "path": "jazz-wallpaper-warm-01.png", "curated": false, "status": "Task 27b procedural placeholder, kept as second variant pending a proper second curated piece" }
+      ]
+    },
+    "sapphire": {
+      "label": "Sapphire",
+      "mode": "dark",
+      "_comment": "Adopted as the default theme 15 Sept 2026 - Akash supplied this navy/gold luxury palette, previewed live end-to-end (chrome, kitty terminal, wallpaper), then confirmed as the new default (NOT a workspace-color change - the six workspace identity hues stay untouched per this file's own top-level comment). Mapped his 6 named roles onto the 5-slot chrome+accent schema: Midnight Navy->surface, Sapphire Blue->surfaceRaised, Pearl White->textPrimary, Champagne->textSecondary, Antique Gold->accent. Warm Brass (#C79C5A, his 'secondary accents/borders') has no dedicated slot in this schema and isn't used - noted here rather than silently dropped. Theme.qml's activeTheme default and jazz-theme-set --restore's fresh-install fallback both point here now (generate-theme-qml.py, jazz-theme-set); Forge remains the corruption-safety fallback only.",
+      "chrome": {
+        "surface": "#102542",
+        "surfaceRaised": "#1e3a5f",
+        "textPrimary": "#faf8f5",
+        "textSecondary": "#d8c3a5"
+      },
+      "accent": "#c9a84c",
+      "terminal": {
+        "background": "#102542",
+        "foreground": "#faf8f5",
+        "cursor": "#c9a84c",
+        "black": "#232629",
+        "red": "#bf4c40",
+        "green": "#40bf55",
+        "yellow": "#bf9940",
+        "blue": "#c9a84c",
+        "magenta": "#bf40bf",
+        "cyan": "#40aabf",
+        "white": "#c9cccf",
+        "bright_black": "#596069",
+        "bright_red": "#d67166",
+        "bright_green": "#66d679",
+        "bright_yellow": "#d6b566",
+        "bright_blue": "#e1ce9a",
+        "bright_magenta": "#d666d6",
+        "bright_cyan": "#66c4d6",
+        "bright_white": "#f2f2f3"
+      },
+      "wallpapers": [
+        { "path": "jazz-wallpaper-sapphire-hyprland.png", "curated": true, "status": "curated - Hyprland's own official bundled wallpaper (ships with the hyprland pacman package at /usr/share/hypr/wall2.png), cropped from 7680x4191 to 1920x1080. Moved here from Midnight 15 Sept 2026 at Akash's request, to be Sapphire's default (variant 0) now that Sapphire is the default theme. Third-party art, not JAZZ-original/Recraft-generated like Forge/Warm's canyon pieces - see design/wallpapers/SOURCE.md for the licensing caveat (same open class as Task 27f)." },
+        { "path": "jazz-wallpaper-sapphire-01.png", "curated": false, "status": "procedural placeholder generated via gen_wallpaper.py, adopted with the theme 15 Sept 2026 - second/fallback variant now that the Hyprland art leads this list" }
       ]
     }
   }

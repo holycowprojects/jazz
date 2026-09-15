@@ -137,7 +137,8 @@ PanelWindow {
             { id: "forge", label: "Forge" },
             { id: "daylight", label: "Daylight" },
             { id: "midnight", label: "Midnight" },
-            { id: "warm", label: "Warm" }
+            { id: "warm", label: "Warm" },
+            { id: "sapphire", label: "Sapphire" }
         ]
         // Font-picker follow-up (Task 27) - matches
         // design/tokens/typography.json's curated options exactly.

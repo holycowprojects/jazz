@@ -10,7 +10,7 @@ import Quickshell.Io
 // chrome only (surface/text/accent), never these.
 QtObject {
     id: root
-    property string activeTheme: "forge"
+    property string activeTheme: "sapphire"  // default theme, 15 Sept 2026 (was forge) - see design/tokens/themes.json sapphire entry
     // Task 28 Accessibility tab: gates JAZZ's own chrome animations (the
     // top bar's workspace-color transition is the one that exists today).
     property bool reducedMotion: false
@@ -30,7 +30,8 @@ QtObject {
         "forge": { mode: "dark", surface: "#1e1d24", surfaceRaised: "#26252d", textPrimary: "#ede9e2", textSecondary: "#9b968c", accent: "#4c6fa0" },
         "daylight": { mode: "light", surface: "#e9eaec", surfaceRaised: "#dcdde0", textPrimary: "#23262b", textSecondary: "#6b6e73", accent: "#3d5c8a" },
         "midnight": { mode: "dark", surface: "#0a0a0d", surfaceRaised: "#131319", textPrimary: "#e8e6e0", textSecondary: "#7d7a72", accent: "#5c86ad" },
-        "warm": { mode: "dark", surface: "#201c18", surfaceRaised: "#2a2420", textPrimary: "#ede6da", textSecondary: "#a89a89", accent: "#b8783f" }
+        "warm": { mode: "dark", surface: "#201c18", surfaceRaised: "#2a2420", textPrimary: "#ede6da", textSecondary: "#a89a89", accent: "#b8783f" },
+        "sapphire": { mode: "dark", surface: "#102542", surfaceRaised: "#1e3a5f", textPrimary: "#faf8f5", textSecondary: "#d8c3a5", accent: "#c9a84c" }
     })
 
     readonly property var _active: root._themes[root.activeTheme] || root._themes["forge"]

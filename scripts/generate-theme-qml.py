@@ -44,7 +44,7 @@ lines = [
     "// chrome only (surface/text/accent), never these.",
     "QtObject {",
     "    id: root",
-    "    property string activeTheme: \"forge\"",
+    "    property string activeTheme: \"sapphire\"  // default theme, 15 Sept 2026 (was forge) - see design/tokens/themes.json sapphire entry",
     "    // Task 28 Accessibility tab: gates JAZZ's own chrome animations (the",
     "    // top bar's workspace-color transition is the one that exists today).",
     "    property bool reducedMotion: false",

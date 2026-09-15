@@ -14,12 +14,14 @@ for Forge at all, and a corrupted copy for Warm - fixed 12 Sept 2026.
   scratch tooling, not committed). Akash-commissioned/generated - not
   third-party.
 
-- **jazz-wallpaper-midnight-hyprland.png**: Hyprland's own official
+- **jazz-wallpaper-sapphire-hyprland.png**: Hyprland's own official
   bundled desktop wallpaper, shipped by the `hyprland` Arch package at
   `/usr/share/hypr/wall2.png` (confirmed via `pacman -Ql hyprland`),
-  cropped from its native 7680x4191 to JAZZ's standard 1920x1080. Adopted
-  for Midnight at Akash's explicit request (12 Sept 2026) - Midnight IS
-  meant to read as Hyprland's own out-of-the-box look.
+  cropped from its native 7680x4191 to JAZZ's standard 1920x1080. Originally
+  adopted for Midnight (12 Sept 2026); moved to Sapphire (15 Sept 2026,
+  renamed from `jazz-wallpaper-midnight-hyprland.png`) as its default
+  wallpaper at Akash's request once Sapphire became the default theme.
+  Midnight now uses its own procedural placeholder as its sole wallpaper.
 
   **Licensing caveat, unresolved (same open class as Task 27f's Kvantum
   licensing item):** this art is not part of Hyprland's own source repo

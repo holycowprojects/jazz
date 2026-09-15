@@ -481,7 +481,7 @@ def main():
     ap.add_argument("theme_id", nargs="?")
     ap.add_argument("--variant", type=int, default=0)
     ap.add_argument("--list", action="store_true")
-    ap.add_argument("--restore", action="store_true", help="reapply the persisted theme-state.json choice - for autostart, so a reboot doesn't silently revert the wallpaper to Forge while Theme.qml correctly restores the last chrome")
+    ap.add_argument("--restore", action="store_true", help="reapply the persisted theme-state.json choice - for autostart, so a reboot doesn't silently revert the wallpaper to Sapphire (the default theme) while Theme.qml correctly restores the last chrome")
     ap.add_argument("--from-wallpaper", metavar="PATH", help="Task 27d: derive the accent from this image via matugen instead of themes.json's configured accent, subject to validate_accent_candidate() - rejected candidates fall back to the theme's own accent, printed to stderr, never silently substituted")
     args = ap.parse_args()
 
@@ -494,10 +494,10 @@ def main():
 
     if args.restore:
         state_file = DATA_DIR / "theme-state.json"
-        args.theme_id = "forge"
+        args.theme_id = "sapphire"
         if state_file.exists():
             try:
-                args.theme_id = json.loads(state_file.read_text()).get("activeTheme", "forge")
+                args.theme_id = json.loads(state_file.read_text()).get("activeTheme", "sapphire")
             except (json.JSONDecodeError, OSError):
                 pass
 
