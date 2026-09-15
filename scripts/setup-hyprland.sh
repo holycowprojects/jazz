@@ -71,7 +71,6 @@ hl.monitor({
 })
 
 local terminal    = "kitty"
-local fileManager = "dolphin"
 local menu        = "wofi --show drun"
 local mainMod     = "SUPER"
 
@@ -86,7 +85,11 @@ local mainMod     = "SUPER"
 -- Launching
 hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal))
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(menu))
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
+-- Task 29: Dolphin retired in favor of Jazz Files (its own real app, not a
+-- themed stock file manager - see tasks/todo.md Task 29). Same
+-- `qs ipc call <target> toggle` pattern as Settings/launcher/quicksettings
+-- below, not exec_cmd - Files is a Quickshell panel, not a separate binary.
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("qs ipc call files toggle"))
 
 -- Window state: close/float/maximize/fullscreen are four distinct dynamic
 -- effects in the real dispatcher list, not one generic "toggle" - maximize

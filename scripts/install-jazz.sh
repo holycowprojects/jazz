@@ -35,9 +35,6 @@ bash "$SCRIPT_DIR/setup-jazz-repo.sh"
 echo "=== JAZZ install: standalone /usr/local/bin scripts (theme/font/user/idle helpers) ==="
 bash "$SCRIPT_DIR/setup-jazz-bin.sh"
 
-echo "=== JAZZ install: Jazz Files backend (Task 29) ==="
-bash "$SCRIPT_DIR/setup-files.sh"
-
 echo "=== JAZZ install: ly login-screen theming (Task 33) ==="
 bash "$SCRIPT_DIR/setup-ly-theme.sh"
 
@@ -57,6 +54,7 @@ bash "$SCRIPT_DIR/setup-theme.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-dock.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-settings.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-welcome.sh" "$USERNAME"
+bash "$SCRIPT_DIR/setup-files.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-wallpaper.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-kvantum.sh" "$USERNAME"
 bash "$SCRIPT_DIR/setup-theme-bundle.sh" "$USERNAME"

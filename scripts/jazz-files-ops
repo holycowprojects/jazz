@@ -17,6 +17,7 @@ live, 15 Sept 2026). No sudo/pkexec anywhere in this script, matching Task
 
 Subcommands:
     list <dir>
+    recent
     mkdir <dir> <name>
     rename <path> <new-name>
     copy <src> <dest-dir>
@@ -124,6 +125,8 @@ def entry_info(p: pathlib.Path):
         "ext": p.suffix.lstrip(".").lower() if not is_dir else "",
         "owner": owner,
         "group": group,
+        "uid": st.st_uid,
+        "gid": st.st_gid,
         "mode_octal": oct(st.st_mode & 0o777)[2:],
         "mode_translated": translate_mode(st.st_mode & 0o777),
     }
@@ -142,6 +145,34 @@ def cmd_list(args):
         except (FileNotFoundError, PermissionError):
             continue
     ok(out)
+
+
+def cmd_recent(args):
+    # No real "recently opened" tracker exists yet (apps launched via
+    # Quickshell's own xdg-open path don't write GtkRecentManager's
+    # recently-used.xbel) - honest substitute per the project's own
+    # "never fake data" rule: real recently-MODIFIED files under home,
+    # skipping dotdirs/caches so it doesn't fill up with config noise.
+    home = pathlib.Path.home()
+    skip_dirs = {".cache", ".local", ".config", ".mozilla", ".steam", "node_modules", ".git"}
+    found = []
+    for root, dirs, files in os.walk(home):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in skip_dirs]
+        depth = len(pathlib.Path(root).relative_to(home).parts)
+        if depth >= 4:
+            dirs[:] = []
+        for f in files:
+            if f.startswith("."):
+                continue
+            p = pathlib.Path(root) / f
+            try:
+                found.append((p.stat().st_mtime, p))
+            except OSError:
+                continue
+        if len(found) > 2000:  # cheap bound on pathological trees
+            break
+    found.sort(key=lambda t: t[0], reverse=True)
+    ok([entry_info(p) for _, p in found[:40]])
 
 
 def cmd_mkdir(args):
@@ -515,6 +546,7 @@ def cmd_eject(args):
 
 COMMANDS = {
     "list": cmd_list,
+    "recent": cmd_recent,
     "mkdir": cmd_mkdir,
     "rename": cmd_rename,
     "copy": cmd_copy,

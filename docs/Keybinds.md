@@ -12,7 +12,7 @@ All binds use **Super** (the Windows key) as the main modifier.
 |---|---|
 | Super + Return | Open a terminal (kitty) |
 | Super + R | Open the app launcher (wofi) - type a name, Enter to launch, **Escape to dismiss without launching** |
-| Super + E | Open the file manager (dolphin) |
+| Super + E | Open Jazz Files (Task 29's own file manager - replaced the Dolphin placeholder 15 Sept 2026) |
 
 ## Window state
 

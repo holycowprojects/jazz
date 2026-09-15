@@ -46,8 +46,8 @@ if [[ -d "$JAZZ_SCRIPTS" ]]; then
     echo "Provisioning JAZZ desktop for $USERNAME..."
     for script in setup-hyprland.sh setup-quickshell.sh setup-theme.sh \
                   setup-dock.sh setup-settings.sh setup-welcome.sh \
-                  setup-wallpaper.sh setup-kvantum.sh setup-theme-bundle.sh \
-                  setup-hypridle.sh; do
+                  setup-files.sh setup-wallpaper.sh setup-kvantum.sh \
+                  setup-theme-bundle.sh setup-hypridle.sh; do
         if [[ -f "$JAZZ_SCRIPTS/$script" ]]; then
             bash "$JAZZ_SCRIPTS/$script" "$USERNAME"
         else

@@ -714,6 +714,9 @@ ShellRoot {
     // ---------- First-boot Welcome app (Task 33) ----------
     Loader { source: "Welcome.qml" }
 
+    // ---------- Jazz Files (Task 29) ----------
+    Loader { source: "Files.qml" }
+
     // ---------- Power menu ----------
     PanelWindow {
         id: powerMenu
