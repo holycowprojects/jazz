@@ -147,6 +147,15 @@ end)
 hl.bind(mainMod .. " + SHIFT + Q", hl.dsp.exit())
 hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "previous" }))
 
+-- Screenshot capture (birdeye review finding, 15 Sept 2026 - grim/slurp
+-- were installed but nothing ever bound them, so there was no way to take
+-- a screenshot at all). Mirrors Omarchy's own real scheme, confirmed via
+-- their bin/omarchy-capture-screenshot source: plain Print for region,
+-- Shift+Print for the active window, Ctrl+Print for the full display.
+hl.bind("Print", hl.dsp.exec_cmd("jazz-screenshot region"))
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("jazz-screenshot window"))
+hl.bind("CTRL + Print", hl.dsp.exec_cmd("jazz-screenshot full"))
+
 -- Moving focus between tiled windows, and moving a window itself, in a
 -- direction - core tiling-WM navigation, missing from the first draft.
 local directions = { l = "Left", r = "Right", u = "Up", d = "Down" }

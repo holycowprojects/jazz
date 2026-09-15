@@ -35,6 +35,9 @@ bash "$SCRIPT_DIR/setup-jazz-repo.sh"
 echo "=== JAZZ install: standalone /usr/local/bin scripts (theme/font/user/idle helpers) ==="
 bash "$SCRIPT_DIR/setup-jazz-bin.sh"
 
+echo "=== JAZZ install: screenshot capture (satty + jazz-screenshot) ==="
+bash "$SCRIPT_DIR/setup-screenshot.sh"
+
 echo "=== JAZZ install: ly login-screen theming (Task 33) ==="
 bash "$SCRIPT_DIR/setup-ly-theme.sh"
 

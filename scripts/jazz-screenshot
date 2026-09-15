@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# jazz-screenshot <region|window|full>
+#
+# Real gap found and fixed 15 Sept 2026, via a birdeye review of JAZZ vs
+# comparable Hyprland setups: grim/slurp were only ever run by Claude
+# manually over SSH for debug screenshots - there was no way for Akash
+# to take one himself. Mirrors Omarchy's own scheme closely (confirmed
+# via their real bin/omarchy-capture-screenshot source, not guessed):
+# Print/Shift+Print/Ctrl+Print for region/window/full, saves to
+# ~/Pictures/Screenshots, copies to clipboard immediately, and a
+# notification offers an "Edit" action that opens satty for annotation
+# (arrows/boxes/text/blur) before you'd share it.
+#
+# Deliberately simpler than Omarchy's own version: no freeze-frame
+# picker, no "smart" window-hover mode, no configurable editor/output-dir
+# env vars - those are real features but not needed for a first pass;
+# region/window/full via slurp/hyprctl/grim directly is enough to close
+# the actual gap (no capture path existing at all).
+#
+# Run as the logged-in user (never root - this touches the user's own
+# session/clipboard/home directory).
+set -eu
+
+MODE="${1:?Usage: jazz-screenshot <region|window|full>}"
+OUTDIR="$HOME/Pictures/Screenshots"
+mkdir -p "$OUTDIR"
+FILE="$OUTDIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
+
+case "$MODE" in
+    region)
+        GEOM=$(slurp) || exit 0   # Esc cancels slurp - exit quietly, no file, no notification
+        grim -g "$GEOM" "$FILE"
+        ;;
+    window)
+        GEOM=$(hyprctl activewindow -j | python3 -c '
+import json, sys
+w = json.load(sys.stdin)
+if "at" in w and "size" in w:
+    x, y = w["at"]
+    ww, wh = w["size"]
+    print(f"{x},{y} {ww}x{wh}")
+')
+        [ -z "$GEOM" ] && exit 0  # no active window - exit quietly
+        grim -g "$GEOM" "$FILE"
+        ;;
+    full)
+        grim "$FILE"
+        ;;
+    *)
+        echo "Usage: jazz-screenshot <region|window|full>" >&2
+        exit 1
+        ;;
+esac
+
+wl-copy --type image/png < "$FILE"
+
+ACTION=$(dunstify -A "edit,Edit" -i "$FILE" "Screenshot saved" "Copied to clipboard - click Edit to annotate" 2>/dev/null || true)
+if [ "$ACTION" = "edit" ]; then
+    satty -f "$FILE" --output-filename "$FILE" --copy-command wl-copy
+fi
