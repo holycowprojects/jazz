@@ -6,6 +6,34 @@ releases yet, so entries are grouped by date instead of a version number.
 
 ## [Unreleased]
 
+### 2026-09-16
+- Code-level review of every `scripts/setup-*.sh` and `scripts/verify/*.sh`
+  file (ShellCheck + manual audit): added `pipefail` project-wide, fixed a
+  real exit-code-masking bug (`verify/matugen.sh`), a missing readiness
+  check (`setup-ollama.sh`), a stale-comment/dead-code mismatch
+  (`verify/widgets-tier1.sh`), and a cosmetic `sed`-vs-bash-builtin swap -
+  tested live on the Yoga 6 through a real reboot before committing.
+- Pushed the repo to GitHub for real (private) and ran Task 20 (clean-clone
+  rebuild test) on a genuinely fresh HP Pavilion (Intel i3 8th-gen) that had
+  never run Arch before - the first true stranger's-machine test this
+  project has ever done. Found and fixed seven real bugs invisible on the
+  original dev VM and the Yoga 6: missing `git` on the live ISO, a
+  QEMU-only hardcoded disk device in `install/base-profile.json`, EFI
+  boot-branding breaking on stale NVRAM entries, a Btrfs subvolume-layout
+  mismatch breaking Snapper, an uninitialized pacman keyring, a stale
+  pacman lock, and a missing `less` dependency breaking the Welcome app's
+  keybind button. Full install completed end-to-end, verified via a real
+  reboot into the finished desktop (`systemctl is-system-running` ->
+  running, zero failed units).
+- Rewrote the README's entire install-steps section for a genuine
+  first-time Linux user, verified against the exact sequence that worked
+  live on the Pavilion.
+- Project status: 11 of SPEC.md's 12 success criteria now met - only
+  Task 16 (GPU rental, gated on Akash's own money/timing) remains open.
+  Decided: build Task 30's Settings UI (the Agents tab) next, before
+  Task 16. Plymouth's boot splash is deferred to whenever the custom-ISO
+  work (`docs/JAZZ-v2.md` sec 2) gets scoped, not revisited standalone.
+
 ### 2026-09-15
 - Shipped Jazz Files v1 (Task 29) - a real GUI file manager, replacing the
   Dolphin placeholder, with real undo/redo and multi-pane browsing.
