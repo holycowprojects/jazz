@@ -1397,23 +1397,40 @@ Since this repo has never had a remote configured (confirmed via `git remote -v`
 
 ---
 
-### Task 20: Clean-clone rebuild test
+### Task 20: Clean-clone rebuild test — **DONE, 16 Sept 2026**
 **Description:** The spec's own definition-of-done for reproducibility: boot a genuinely fresh vanilla Arch ISO in a disposable VM, clone the repo, run only what's in `install/` and `scripts/`, and confirm it reproduces a working system using nothing but the repo and its README.
 
+**Went further than the original VM-only scope: run on real, previously-untouched physical hardware instead.** An HP Pavilion (Intel i3 8th-gen, 4GB RAM, Intel UHD 620 iGPU) that had never run Arch or any Arch-based distro before — a genuinely independent machine with no relationship to this project's dev history, purchased/owned separately from the Yoga 6. Preceded by a real code-level review (ShellCheck + manual audit) of every setup/verify script, tested live on the Yoga 6 through a reboot, committed - see the 15 Sept session's own entries above for that pass.
+
+**First pushed the repo to GitHub for real** (`github.com/holycowprojects/jazz`, private - going public is still its own separate, gated decision per SPEC.md's boundaries), specifically so this test would exercise the actual documented `git clone` command, not a local file copy. Cloned onto the Pavilion via a real GitHub token over its own live wifi connection.
+
+**Seven real bugs found and fixed, none of them visible on the original dev VM or the Yoga 6, because neither ever exercised these exact conditions:**
+1. **The official Arch live ISO doesn't ship `git`** - the README's own install steps never mentioned this (every earlier test pushed files via serial console or SSH instead of ever running a real `git clone` on a live ISO). Fixed: README now installs `git` explicitly as its own step.
+2. **`install/base-profile.json` hardcoded `"device": "/dev/vda"`** - QEMU's virtio-disk naming convention from this project's original VM-only dev phase, which can never exist on real hardware. archinstall didn't fail loudly - it silently wrote into the live ISO's own tiny overlay filesystem instead of the real disk, surfacing only later as a confusing "not enough free disk space" error. Fixed: removed `disk_config` entirely; every other JAZZ-specific choice stays pre-answered, and disk selection becomes the one interactive prompt (confirmed via research this is archinstall's own officially-supported pattern, and the same one-interactive-step approach Omarchy's pre-ISO installer used).
+3. **`setup-boot-branding.sh`'s EFI BootOrder rewrite broke on stale NVRAM entries** - this Pavilion's firmware carried orphaned boot-entry references (almost certainly leftover from its prior Pop OS install - EFI NVRAM lives on the motherboard, not the disk, so wiping the drive never touches it). `efibootmgr` correctly refused to write back an order containing a non-existent entry. Fixed: dropped the "preserve original position" rewrite entirely - `efibootmgr -c` already inserts the new JAZZ entry first by default, which was the desired outcome anyway.
+4. **`setup-snapper.sh` assumed a pre-mounted `@snapshots` subvolume that no longer exists** - a direct consequence of fix #2: archinstall's own interactive "best-effort default" Btrfs layout uses `@`/`@home`/`@pkg`/`@log`, not the hand-crafted `@`/`@home`/`@snapshots` the script was written around. Fixed: the unmount/discard/remount reconcile dance now only runs when `/.snapshots` is actually a pre-existing mountpoint; otherwise `snapper create-config` just creates its own cleanly.
+5. **A genuinely fresh archinstall target has its pacman trustdb created but the actual package-signing keys never imported** - every `pacman -S` call failed with "signature ... unknown trust" the first time it hit an untrusted key. The dev VM and Yoga 6 never hit this since their keyrings were already populated from earlier `pacman -Syu` runs before JAZZ's scripts ever touched them. Fixed: `pacman-key --init && pacman-key --populate archlinux` added as the very first step of `install-jazz.sh`, confirmed idempotent (safe to re-run on an already-populated keyring).
+6. **A stale `/var/lib/pacman/db.lck`** left behind by a mid-download network abort (real wifi flakiness, not a code bug) blocked all further pacman calls until manually removed - confirmed no pacman process was actually running before clearing it. No code fix needed, just an operational step.
+7. **The Welcome app's "View keybinds" button silently did nothing** - it runs `kitty -e less Keybinds.md`, but `less` isn't part of Arch's base package set and nothing in JAZZ's install chain ever installed it; it only worked on the Yoga 6 because that machine already had it from something unrelated. Same class of gap as #5. Fixed in two places: added to `base-profile.json`'s packages (fresh installs) and to `setup-welcome.sh` itself (so `git pull` + re-run on an already-existing system also gets it).
+
+**Also rewrote the entire README install-steps section for a genuine first-time Linux user** while walking through this test - bootable-USB tool recommendations, explicit boot-menu guidance, a full wifi walkthrough (both on the live ISO via `iwctl` and again after the first reboot via `nmcli`, since the live ISO's network connection doesn't carry over to the installed system - confirmed live, this trips up a first boot every time), plain-language `nano` instructions, a careful disk-selection walkthrough with the wipe warning front and center, and a factual correction (Hyprland has no desktop/right-click menu, corrected to the real `Super+Q` terminal keybind).
+
+**Final verification, all live:** `install-jazz.sh` completed end-to-end (`systemctl is-system-running` → `running`, zero failed units), a real reboot into the finished desktop confirmed working (Hyprland/Quickshell rendering correctly on Intel iGPU - different hardware family than the Yoga 6's AMD), the first-boot Welcome app showed correctly, and the "View keybinds" button (fix #7) was re-tested live and confirmed working after the fix.
+
 **Acceptance criteria:**
-- [ ] A fresh VM, following only the README, reaches the same working state as the development VM
+- [x] A fresh machine (real hardware, not just a VM), following only the README, reaches the same working state as the development machine - confirmed live, 16 Sept 2026
 
 **Verification:**
-- [ ] Full walkthrough performed and documented; any gap between "what I did from memory" and "what's actually in the repo" gets fixed before this passes
+- [x] Full walkthrough performed and documented; every real gap found between "what I did from memory" and "what's actually in the repo" was fixed and re-verified live before this passed - 7 real bugs found and fixed, all listed above with commits
 
 **Dependencies:** Task 19
 
-**Files likely touched:** whatever gaps are found during the walkthrough
+**Files touched:** `README.md`, `install/base-profile.json`, `scripts/install-jazz.sh`, `scripts/setup-boot-branding.sh`, `scripts/setup-snapper.sh`, `scripts/setup-welcome.sh`
 
-**Estimated scope:** M
+**Estimated scope:** M (matched, though the real-hardware detour and the 7 bugs found made this a genuinely full session, not a quick pass)
 
 ---
 
 ## Checkpoint: Public-repo ready
-- [ ] All 12 of SPEC.md's success criteria met
+- [ ] All 12 of SPEC.md's success criteria met — **11 of 12 done as of 16 Sept 2026.** Only #7 (GPU-backed PyTorch validated via a rented cloud GPU, Task 16) remains open, gated on Akash's own money/timing decision. #1 (build reproducibly from the repo alone) and #11 (documentation sufficient for a stranger to go from clone to working system) were both proven for real via Task 20's live Pavilion test, not just checked off from memory.
 - [ ] **Explicit go-ahead from Akash obtained before the first public push** — this checklist does not authorize that step on its own, per SPEC.md's boundaries
