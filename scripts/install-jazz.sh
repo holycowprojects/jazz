@@ -29,6 +29,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USERNAME="${1:?Usage: install-jazz.sh <username> [ollama-model]}"
 MODEL="${2:-qwen2.5:0.5b}"
 
+echo "=== JAZZ install: pacman keyring ==="
+# A genuinely fresh archinstall target (confirmed live, 16 Sept 2026, on a
+# real machine that had never run pacman before) has its trustdb created but
+# the actual Arch Linux package-signing keys never imported - every
+# `pacman -S` call below would fail with "signature ... unknown trust" the
+# very first time it hits a package whose key isn't already locally trusted.
+# The original dev machines (VM, Yoga 6) never hit this because their
+# keyrings were already populated from earlier `pacman -Syu` runs before
+# JAZZ's own scripts ever touched them. Safe to re-run - pacman-key's own
+# init/populate are themselves idempotent.
+pacman-key --init
+pacman-key --populate archlinux
+
 echo "=== JAZZ install: persist repo at /opt/jazz (for per-user re-provisioning, Task 32) ==="
 bash "$SCRIPT_DIR/setup-jazz-repo.sh"
 

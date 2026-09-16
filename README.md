@@ -55,18 +55,25 @@ The default look is a researched, jewel-toned "Sapphire" theme — deep navy chr
 You need: a machine that can boot the official Arch Linux ISO (a spare drive, a VM, or free space next to an existing OS — JAZZ has been dual-boot-installed next to Windows without touching the Windows partition).
 
 **1. Boot the official Arch Linux ISO.**
-Get it from [archlinux.org/download](https://archlinux.org/download/) — write it to a USB drive and boot it.
+Get it from [archlinux.org/download](https://archlinux.org/download/) — write it to a USB drive and boot it. Connect to wifi first if you're not on ethernet (`iwctl device list`, then `iwctl station <device> connect "<your-network>"`) — Arch's live ISO doesn't auto-connect for you.
 
-**2. Run archinstall with JAZZ's profile.**
-From the live ISO environment:
+**2. Install git, then clone the repo.**
+The live ISO doesn't ship `git` by default:
 ```bash
+pacman -Sy --noconfirm git
 git clone https://github.com/holycowprojects/jazz.git
 cd jazz
-archinstall --config install/base-profile.json --silent
 ```
-This lays down Arch + Hyprland + a Btrfs/Snapper filesystem in one unattended pass. (Dual-booting next to an existing Windows install on the same disk? `install/bare-metal-profile.json` is the real profile used for exactly that on this project's own reference laptop — read it before adapting it to your own disk layout; disk partitioning is not something to run blind.)
 
-**3. Reboot into your new install, then run the real setup.**
+**3. Fill in your credentials, then run archinstall with JAZZ's profile.**
+```bash
+cp install/base-credentials.json.example install/base-credentials.json
+nano install/base-credentials.json   # replace the three "changeme" values with your own
+archinstall --config install/base-profile.json --creds install/base-credentials.json
+```
+Note there's no `--silent` here — every JAZZ-specific choice (Hyprland, Btrfs/Snapper layout, kernel, locale, and everything else in `base-profile.json`) is already pre-filled and used automatically. The **only** thing you'll be asked is which disk to install to. That's deliberate: guessing a disk device on a stranger's machine isn't something a public install script should ever do blind — you pick your own real disk from archinstall's own menu, same as any normal Arch install. (Dual-booting next to an existing Windows install on the same disk? `install/bare-metal-profile.json` is the real profile used for exactly that on this project's own reference laptop — read it before adapting it to your own disk layout.)
+
+**4. Reboot into your new install, then run the real setup.**
 Log in as the user you created, then as root:
 ```bash
 git clone https://github.com/holycowprojects/jazz.git /opt/jazz-src
@@ -75,7 +82,7 @@ bash scripts/install-jazz.sh <your-username>
 ```
 This one script brings up everything else — the full desktop shell, theming, AI tooling, red-team tooling, and the everyday app layer — in dependency order. It's idempotent: if it's interrupted or you want to update later, `git pull` and run it again safely.
 
-**4. Log in and you're done.**
+**5. Log in and you're done.**
 Sapphire theme, gemstone workspaces, a working dock and launcher, and a fully wired AI stack, on first login.
 
 Want to add another user later? Open Jazz Settings → Users → Add — they get the complete JAZZ desktop automatically, not a bare Hyprland session.

@@ -91,19 +91,20 @@ if [[ -n "$CURRENT_LABEL_LINE" ]] && ! echo "$CURRENT_LABEL_LINE" | grep -q '^Bo
     ESP_SOURCE="$(findmnt -no SOURCE /boot)"
     ESP_DISK="/dev/$(lsblk -no PKNAME "$ESP_SOURCE")"
     ESP_PARTNUM="$(lsblk -no PARTN "$ESP_SOURCE")"
-    OLD_ORDER="$(efibootmgr | sed -n 's/^BootOrder: //p')"
-    OLD_NUMS="$(efibootmgr | grep -oE '^Boot[0-9A-F]{4}' | sort -u)"
 
     efibootmgr -b "$OLD_BOOTNUM" -B > /dev/null
     efibootmgr -c -d "$ESP_DISK" -p "$ESP_PARTNUM" -L 'JAZZ' -l '\EFI\systemd\systemd-bootx64.efi' > /dev/null
-    NEW_NUMS="$(efibootmgr | grep -oE '^Boot[0-9A-F]{4}' | sort -u)"
-    NEW_BOOTNUM="$(comm -13 <(echo "$OLD_NUMS") <(echo "$NEW_NUMS") | sed 's/^Boot//' | head -1)"
-
-    # Preserve the original entry's position in BootOrder, swapping the old
-    # number for the new one - a fresh `-c` always inserts at the front.
-    NEW_ORDER="${OLD_ORDER/$OLD_BOOTNUM/$NEW_BOOTNUM}"
-    efibootmgr -o "$NEW_ORDER" > /dev/null
-    echo "EFI boot entry renamed to JAZZ (Boot$OLD_BOOTNUM -> Boot$NEW_BOOTNUM), BootOrder preserved"
+    # No separate BootOrder rewrite - `efibootmgr -c` already places the new
+    # entry first by default, which is the outcome JAZZ wants anyway (boot
+    # JAZZ by default). An earlier version tried to preserve the OLD entry's
+    # exact position by rewriting BootOrder with the previous string, but
+    # that string can carry stale/orphaned entry references left over from
+    # a machine's prior OS (confirmed live, 16 Sept 2026, on a real laptop
+    # with leftover Pop OS-era NVRAM entries) - efibootmgr correctly refuses
+    # to write back an order containing a non-existent entry, aborting the
+    # whole install. Letting `-c`'s own default stand avoids the class of
+    # bug entirely, not just this one machine's instance of it.
+    echo "EFI boot entry renamed to JAZZ (was Boot$OLD_BOOTNUM) - now first in BootOrder by default"
 else
     echo "EFI boot entry: already labeled JAZZ (or no systemd-boot entry found), skipped"
 fi
