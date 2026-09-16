@@ -45,6 +45,8 @@ Recorded 7 Sept 2026. Akash wants JAZZ to eventually ship its own bootable ISO -
 
 **Not scoped as a numbered task yet** - deliberately, since this is a real undertaking on the scale of the Task 22 rebuild (a full dedicated pass), not a quick add. When Akash is ready to commit to it, give it its own task number and real acceptance criteria rather than starting speculatively.
 
+**Decided 16 Sept 2026: this is where the Plymouth boot splash gets revisited, not before.** Task 33's own v1 attempt (JAZZ-branded splash, built and briefly working) got fully reverted after live testing found a real, separate hardware issue - an ~85s USB enumeration stall on AMD Renoir/Cezanne chipsets that predates Plymouth entirely (full trail below, "Universal USB-enumeration boot-stall bound"). Building a real custom ISO is the natural point to solve both pieces together: the ISO's own boot chain gives full control over splash timing/branding the way v1's "script on vanilla Arch" approach never could, and `archiso`'s own tooling is exactly the same class of work as fixing the USB-stall bound properly (mkinitcpio/initramfs-level, not a quick per-machine BIOS workaround). Don't reopen Plymouth as a standalone v1 patch - fold it into this task once it's scoped.
+
 ---
 
 ## 3. What Omarchy's "Beautiful, Fun & Agentic" actually means, and what JAZZ v2 should learn from it
@@ -241,7 +243,10 @@ get taken from this doc on their own merits, not because JAZZ is trying to be a 
   similar hardware, not just this unit. Likely shape: bound `udevadm settle`'s timeout in the
   initramfs `udev` hook (or an equivalent generic mkinitcpio-level change) rather than targeting this
   exact peripheral's vendor/product ID. Not started - v1 ships with the honest "boots, just slower on
-  this hardware" framing in the README instead (Task 17's draft "Known Issues" section).
+  this hardware" framing in the README instead (Task 17's draft "Known Issues" section). **Decided 16
+  Sept 2026: revisit this alongside the custom ISO work (§2 above), not as a standalone fix** - both
+  are mkinitcpio/initramfs-level changes, and the ISO build is also where Plymouth's own splash gets
+  revisited, since the two are the same underlying "boots, but the first thing you see" problem.
 
 - **A real graphical login screen, deferred to v2 - researched and DECIDED (SDDM) 15 Sept 2026.** `ly` (v1's greeter) is a TUI by design - Akash's live feedback was that it's too plain for a real "first impression" and wants an actual GUI login screen. Confirmed both real candidates are official-repo, no AUR needed: `sddm` (0.21.0-7 - already past the `>=0.20.0` version that avoids a documented shutdown-hang bug on Hyprland/NVIDIA setups, not relevant here since this machine is AMD) and `greetd` (0.10.3-2) + `greetd-regreet` (0.5.0-1).
 

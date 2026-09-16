@@ -25,6 +25,8 @@ Reasoned out with Akash 7 Sept 2026, covering everything open after Task 30 was 
 
 **Update, 15 Sept 2026 (Akash's explicit sequencing call, after Tasks 32/33 wrapped):** the conditional in item 6 above is now resolved firmly, not just leaning one way — **Task 25 (design polish) comes after Task 29 (Jazz Files), not before or interleaved with it.** Current remaining order: **Task 29 → Task 25 → Task 17 → Task 19 → Task 20**, with Task 16 (GPU rental) and any v2 work (SDDM login screen, universal USB boot-stall fix - both decided/researched in `docs/JAZZ-v2.md` the same night, neither started) sitting outside this sequence, gated on Akash's own money/timing or explicitly deferred.
 
+**Update, 16 Sept 2026 (Akash's explicit sequencing call, after Task 20 completed on the Pavilion):** Tasks 29/25/17/19/20 are all now DONE. Two things remained open at this point: Task 30's Settings UI (the Agents tab - backend already built and verified, just never got a visual surface in `Settings.qml`) and Task 16 (GPU rental). **Decided: build Task 30's UI before renting the GPU, not after or in parallel.** Reasoning given: it's a real, scoped, already-understood piece of work (the backend it calls into already works, no research needed) that's better to close out while everything else is fresh, rather than leave it sitting half-built once Task 16 introduces a different kind of work (cloud account setup, payment, CUDA validation) that has nothing to do with the desktop shell. Plymouth's boot splash - the other open loose end - is explicitly NOT part of this: it's deferred to whenever the custom-ISO work (`docs/JAZZ-v2.md` §2) gets scoped, not revisited as a standalone v1 patch (see that doc's own 16 Sept update for why).
+
 ---
 
 ## Phase 0: Foundation
