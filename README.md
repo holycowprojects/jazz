@@ -52,38 +52,93 @@ The default look is a researched, jewel-toned "Sapphire" theme — deep navy chr
 
 ## Install it
 
-You need: a machine that can boot the official Arch Linux ISO (a spare drive, a VM, or free space next to an existing OS — JAZZ has been dual-boot-installed next to Windows without touching the Windows partition).
+This guide assumes no prior Linux experience — every step says what to type and what you should expect to see. It's also the exact sequence verified live, start to finish, on real hardware that had never run Arch (or any Arch-based distro) before.
 
-**1. Boot the official Arch Linux ISO.**
-Get it from [archlinux.org/download](https://archlinux.org/download/) — write it to a USB drive and boot it. Connect to wifi first if you're not on ethernet (`iwctl device list`, then `iwctl station <device> connect "<your-network>"`) — Arch's live ISO doesn't auto-connect for you.
+You need: a machine that can boot the official Arch Linux ISO (a spare drive, a VM, or free space next to an existing OS — JAZZ has been dual-boot-installed next to Windows, and clean-installed over a wiped drive, without issues either way). A wired ethernet connection makes the early steps simpler, but wifi works fine too — covered below.
 
-**2. Install git, then clone the repo.**
-The live ISO doesn't ship `git` by default:
+**1. Make a bootable USB drive.**
+Download the ISO from [archlinux.org/download](https://archlinux.org/download/). Then write it to a USB drive (8GB or larger — this erases everything on the drive, so use a spare one):
+- **Windows**: [Rufus](https://rufus.ie/) — open it, select the ISO and the USB drive, click Start.
+- **Mac/Linux**: [balenaEtcher](https://etcher.balena.io/) — same idea, a simple drag-and-select GUI.
+
+**2. Boot from the USB drive.**
+Restart the machine and, before it loads its normal OS, press the boot-menu key repeatedly — this varies by manufacturer (common ones: `F12`, `F9`, `Esc`, `Del`). Pick the USB drive from the list. You'll land at a black screen with a `root@archiso` prompt — this is a normal terminal, not a crash.
+
+**3. Connect to the internet.**
+If you're on ethernet, this is usually already done — skip to step 4. For wifi:
+```bash
+iwctl device list                              # note your adapter's name, usually wlan0
+iwctl station wlan0 scan
+iwctl station wlan0 get-networks                # find your network's name in this list
+iwctl station wlan0 connect "YOUR-WIFI-NAME"    # it'll prompt for the password
+```
+Confirm it worked:
+```bash
+ping -c 2 archlinux.org
+```
+If you see real replies (not "could not resolve" or timeouts), you're online.
+
+**4. Install git, then clone the repo.**
+The live installer doesn't include `git` by default:
 ```bash
 pacman -Sy --noconfirm git
 git clone https://github.com/holycowprojects/jazz.git
 cd jazz
 ```
 
-**3. Fill in your credentials, then run archinstall with JAZZ's profile.**
+**5. Fill in your own username and passwords.**
 ```bash
 cp install/base-credentials.json.example install/base-credentials.json
-nano install/base-credentials.json   # replace the three "changeme" values with your own
+nano install/base-credentials.json
+```
+This opens a plain text editor. Replace all three occurrences of `"changeme"` with your own root password, your desired username, and your desired user password (real values, not placeholders — this is what you'll actually log in with). To save and exit nano: **`Ctrl+O`**, then **Enter** to confirm the filename, then **`Ctrl+X`** to exit.
+
+**6. Run archinstall with JAZZ's profile.**
+```bash
 archinstall --config install/base-profile.json --creds install/base-credentials.json
 ```
-Note there's no `--silent` here — every JAZZ-specific choice (Hyprland, Btrfs/Snapper layout, kernel, locale, and everything else in `base-profile.json`) is already pre-filled and used automatically. The **only** thing you'll be asked is which disk to install to. That's deliberate: guessing a disk device on a stranger's machine isn't something a public install script should ever do blind — you pick your own real disk from archinstall's own menu, same as any normal Arch install. (Dual-booting next to an existing Windows install on the same disk? `install/bare-metal-profile.json` is the real profile used for exactly that on this project's own reference laptop — read it before adapting it to your own disk layout.)
+This opens a menu you navigate with arrow keys and Enter. Every JAZZ-specific choice (Hyprland desktop, Btrfs/Snapper filesystem, kernel, locale, and everything else) is already filled in — you'll see each one listed as already configured. The **one thing left to set up is the disk**, and this is the single most important moment in the whole install, since **everything on the drive you pick will be erased:**
 
-**4. Reboot into your new install, then run the real setup.**
-Log in as the user you created, then as root:
+1. Select **"Disk configuration"** from the menu, press Enter.
+2. Choose **"Use a best-effort default partition layout."**
+3. Pick your real disk from the list — if you're not sure which is which, go by size: your main internal drive is almost always the larger one, a USB installer the smaller one.
+4. Confirm the wipe.
+5. Filesystem: choose **BTRFS**. When asked, enable **compression**, and leave **Copy-on-Write enabled** — don't disable it, JAZZ's snapshot/rollback system depends on it.
+6. Back at the main menu, everything should now show as configured. Choose **"Install"** to begin.
+
+It downloads and installs real packages at this point, so it takes a few minutes — let it run.
+
+(Dual-booting next to an existing Windows install on the same disk? `install/bare-metal-profile.json` is the real profile used for exactly that on this project's own reference laptop — read it before adapting it to your own disk layout, since that's a more involved, higher-stakes partitioning scenario than a full-disk install.)
+
+**7. Reboot into your new system.**
 ```bash
+reboot
+```
+Remove the USB drive once the screen goes black (or make sure your BIOS boot order won't pick it again), then let it boot into the system you just installed. Log in with the username and password you set in step 5.
+
+**8. Reconnect to the internet.**
+Your live-installer wifi connection doesn't carry over — the installed system uses a different network tool (NetworkManager, not `iwctl`). At this point you're looking at stock Hyprland, not JAZZ yet (that's what the next step builds) — there's no desktop or right-click menu, just a blank screen. Press **`Super+Q`** (the Windows/Meta key + Q) to open a terminal, then run:
+```bash
+nmcli device wifi list
+nmcli device wifi connect "YOUR-WIFI-NAME" password "YOUR-WIFI-PASSWORD"
+```
+Skip this if you're on ethernet.
+
+**9. Run the real JAZZ setup.**
+Become root, then run the one script that builds everything else:
+```bash
+sudo -i
 git clone https://github.com/holycowprojects/jazz.git /opt/jazz-src
 cd /opt/jazz-src
 bash scripts/install-jazz.sh <your-username>
 ```
-This one script brings up everything else — the full desktop shell, theming, AI tooling, red-team tooling, and the everyday app layer — in dependency order. It's idempotent: if it's interrupted or you want to update later, `git pull` and run it again safely.
+Replace `<your-username>` with the username you actually created. This one script brings up the full desktop shell, theming, AI tooling, red-team tooling, and the everyday app layer, in order — it downloads a substantial amount (the AI stack and the desktop app layer are both sizeable), so expect it to take a while, particularly on slower connections. It's idempotent: if it's interrupted (a network hiccup, for instance) or you want to update later, `git pull` and run it again safely — it picks up where it left off.
 
-**5. Log in and you're done.**
-Sapphire theme, gemstone workspaces, a working dock and launcher, and a fully wired AI stack, on first login.
+**10. Reboot and log in — you're done.**
+```bash
+reboot
+```
+Sapphire theme, gemstone workspaces, a working dock and launcher, and a fully wired AI stack, right on first login. `docs/Keybinds.md` is your reference for how to actually drive the desktop — JAZZ has no title bars or window buttons, every action is a keybind.
 
 Want to add another user later? Open Jazz Settings → Users → Add — they get the complete JAZZ desktop automatically, not a bare Hyprland session.
 
