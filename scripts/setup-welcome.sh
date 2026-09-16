@@ -19,6 +19,15 @@
 set -euo pipefail
 
 USERNAME="${1:?Usage: setup-welcome.sh <username>}"
+
+# `less` isn't guaranteed present on every install (confirmed live, 16 Sept
+# 2026: it's not part of Arch's base package set, and base-profile.json only
+# started listing it after this was found) - the Welcome app's "View
+# keybinds" button opens Keybinds.md in `less`, so make sure it exists
+# regardless of whether this is a fresh install or a `git pull` + re-run on
+# an existing system.
+pacman -Sy --noconfirm --needed less
+
 QS_DIR="/home/$USERNAME/.config/quickshell"
 WELCOME_FILE="$QS_DIR/Welcome.qml"
 DATA_DIR="/home/$USERNAME/.local/share/jazz"

@@ -48,7 +48,8 @@
     "ntp": true,
     "packages": [
         "base-devel",
-        "git"
+        "git",
+        "less"
     ],
     "pacman_config": {
         "color": true,
