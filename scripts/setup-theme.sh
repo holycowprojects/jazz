@@ -23,7 +23,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-theme.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-theme.sh <username>}"
 QS_DIR="/home/$USERNAME/.config/quickshell"

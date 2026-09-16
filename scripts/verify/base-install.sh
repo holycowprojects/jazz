@@ -3,7 +3,7 @@
 # configured state. Run this ON THE INSTALLED GUEST (over serial or SSH),
 # not on the Windows host - it checks systemd state, mounts, and packages
 # that only exist inside the target VM.
-set -u
+set -uo pipefail
 
 pass=0
 fail=0

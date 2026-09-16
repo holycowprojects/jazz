@@ -17,7 +17,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-hypridle.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-hypridle.sh <username>}"
 HOME_DIR="/home/$USERNAME"
@@ -45,4 +45,4 @@ EOF
 fi
 
 echo "Idle auto-lock prepared for $USERNAME:"
-cat "$HOME_DIR/.config/hypr/hypridle.conf" 2>&1 | head -8
+cat "$HOME_DIR/.config/hypr/hypridle.conf" 2>&1 | head -8 || true

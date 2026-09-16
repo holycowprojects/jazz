@@ -13,7 +13,7 @@
 # Run this ON THE INSTALLED GUEST, as the desktop user (matugen needs no
 # root, jazz-theme-set writes to the user's own ~/.config).
 # Usage: verify/matugen.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/matugen.sh <username>}"
 HOME_DIR="/home/$USERNAME"
@@ -26,7 +26,9 @@ fail=0
 # without a real Wayland connection - a real bug hit twice this session
 # (Task 27e's process note, then again writing this very script) - export
 # both unconditionally so this verify script can never repeat it.
-export XDG_RUNTIME_DIR="/run/user/$(id -u "$USERNAME")"
+USER_UID="$(id -u "$USERNAME")"
+XDG_RUNTIME_DIR="/run/user/$USER_UID"
+export XDG_RUNTIME_DIR
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
 
 wallpaper_for() {

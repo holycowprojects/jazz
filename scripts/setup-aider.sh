@@ -8,7 +8,7 @@
 # AUR helper needed, matching the setup-extras.sh decision.
 #
 # Run this ON THE INSTALLED GUEST, as root.
-set -eu
+set -euo pipefail
 
 VENV=/opt/jazz-aider/venv
 

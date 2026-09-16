@@ -18,7 +18,7 @@
 # the repo root), as root.
 #
 # Usage: setup-jazz-repo.sh
-set -eu
+set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="/opt/jazz"

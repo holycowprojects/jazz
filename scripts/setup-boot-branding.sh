@@ -41,7 +41,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-boot-branding.sh
-set -eu
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SPLASH_SRC="$(cd "$SCRIPT_DIR/../design/boot-branding" && pwd)/jazz-splash.bmp"
@@ -101,7 +101,7 @@ if [[ -n "$CURRENT_LABEL_LINE" ]] && ! echo "$CURRENT_LABEL_LINE" | grep -q '^Bo
 
     # Preserve the original entry's position in BootOrder, swapping the old
     # number for the new one - a fresh `-c` always inserts at the front.
-    NEW_ORDER="$(echo "$OLD_ORDER" | sed "s/$OLD_BOOTNUM/$NEW_BOOTNUM/")"
+    NEW_ORDER="${OLD_ORDER/$OLD_BOOTNUM/$NEW_BOOTNUM}"
     efibootmgr -o "$NEW_ORDER" > /dev/null
     echo "EFI boot entry renamed to JAZZ (Boot$OLD_BOOTNUM -> Boot$NEW_BOOTNUM), BootOrder preserved"
 else

@@ -12,7 +12,7 @@
 # Run this ON THE INSTALLED GUEST, as root. Run AFTER setup-dock.sh (needs
 # the Files Loader line already in shell.qml).
 # Usage: setup-files.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-files.sh <username>}"
 HOME_DIR="/home/$USERNAME"

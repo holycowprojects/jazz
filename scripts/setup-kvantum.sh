@@ -22,7 +22,7 @@
 # (its default jazz-theme-set --restore call needs kvantum-base/ to
 # already exist).
 # Usage: setup-kvantum.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-kvantum.sh <username>}"
 HOME_DIR="/home/$USERNAME"

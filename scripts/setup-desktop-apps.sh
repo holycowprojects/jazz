@@ -49,7 +49,7 @@
 # before syncing.
 #
 # Run this ON THE INSTALLED GUEST, as root.
-set -eu
+set -euo pipefail
 
 if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
     echo "Enabling [multilib] repo for Steam..."

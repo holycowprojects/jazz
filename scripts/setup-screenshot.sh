@@ -8,7 +8,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-screenshot.sh
-set -eu
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

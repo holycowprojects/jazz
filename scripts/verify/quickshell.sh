@@ -14,7 +14,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: verify/quickshell.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/quickshell.sh <username>}"
 UID_N=$(id -u "$USERNAME")

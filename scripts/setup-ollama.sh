@@ -5,7 +5,7 @@
 # most people actually run it day-to-day.
 #
 # Usage: setup-ollama.sh [model]
-set -eu
+set -euo pipefail
 
 MODEL="${1:-qwen2.5:0.5b}"
 
@@ -14,12 +14,18 @@ pacman -Sy --noconfirm --needed ollama
 systemctl enable --now ollama
 
 # Wait for the API to actually be up before pulling.
-for i in $(seq 1 30); do
+ready=0
+for _ in $(seq 1 30); do
     if curl -sf http://127.0.0.1:11434/api/tags > /dev/null 2>&1; then
+        ready=1
         break
     fi
     sleep 1
 done
+if [[ "$ready" != "1" ]]; then
+    echo "ERROR: Ollama's API did not become reachable within 30s" >&2
+    exit 1
+fi
 
 ollama pull "$MODEL"
 

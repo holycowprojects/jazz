@@ -8,7 +8,7 @@
 # Run this ON THE INSTALLED GUEST, as root (installs to /usr/local/bin).
 #
 # Usage: setup-agent-safety.sh <username>
-set -eu
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USERNAME="${1:?Usage: setup-agent-safety.sh <username>}"

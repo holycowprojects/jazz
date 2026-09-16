@@ -16,7 +16,7 @@
 # (needs Keybinds.md already copied to $JAZZ_DATA_DIR) and AFTER
 # setup-dock.sh (needs the Welcome Loader line already in shell.qml).
 # Usage: setup-welcome.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-welcome.sh <username>}"
 QS_DIR="/home/$USERNAME/.config/quickshell"

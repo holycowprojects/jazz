@@ -20,7 +20,7 @@
 #   <ssh-port>     that same SSH line's port
 #   [ssh-key-path] defaults to your normal SSH identity (omit -i entirely)
 #                  if not given
-set -u
+set -uo pipefail
 
 HOST="${1:?Usage: verify/gpu-cuda.sh <ssh-host> <ssh-port> [ssh-key-path]}"
 PORT="${2:?Usage: verify/gpu-cuda.sh <ssh-host> <ssh-port> [ssh-key-path]}"

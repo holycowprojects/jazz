@@ -11,7 +11,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: verify/theme.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/theme.sh <username>}"
 UID_N=$(id -u "$USERNAME")

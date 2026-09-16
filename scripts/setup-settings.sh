@@ -10,7 +10,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-settings.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-settings.sh <username>}"
 QS_DIR="/home/$USERNAME/.config/quickshell"

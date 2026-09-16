@@ -13,7 +13,7 @@
 # to launch and control their own Hyprland session).
 #
 # Usage: verify/hyprland.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/hyprland.sh <username>}"
 UID_N=$(id -u "$USERNAME")

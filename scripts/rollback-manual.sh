@@ -24,7 +24,7 @@
 # separate bug from the already-documented graphics rendering issue. The
 # filesystem is safely unmounted before the crash happens, so no data is
 # at risk, but the guest hangs and the QEMU process needs a hard kill.
-set -eu
+set -euo pipefail
 
 NUM="${1:?Usage: rollback-manual.sh <snapshot-number> (see: snapper list)}"
 ROOT_UUID=$(findmnt -no UUID /)

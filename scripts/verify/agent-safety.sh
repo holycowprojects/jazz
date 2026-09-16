@@ -5,7 +5,7 @@
 # (needs snapper access).
 #
 # Usage: verify/agent-safety.sh
-set -u
+set -uo pipefail
 pass=0
 fail=0
 

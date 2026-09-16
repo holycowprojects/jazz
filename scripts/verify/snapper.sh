@@ -2,7 +2,7 @@
 # Verifies Snapper is configured (Task 7) and that snap-pac actually
 # triggers automatic snapshots on a real pacman transaction, not just that
 # the config exists. Run this ON THE INSTALLED GUEST, as root.
-set -u
+set -uo pipefail
 
 pass=0
 fail=0

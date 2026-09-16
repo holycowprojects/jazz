@@ -16,7 +16,7 @@
 # installs) and setup-dock.sh (Theme.qml's @@JAZZ_DATA_DIR@@ FileView
 # needs theme-state.json's directory to exist).
 # Usage: setup-theme-bundle.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-theme-bundle.sh <username>}"
 HOME_DIR="/home/$USERNAME"

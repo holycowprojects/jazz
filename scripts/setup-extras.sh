@@ -14,7 +14,7 @@
 # uv-provisioned interpreter instead of a plain venv off system Python.
 #
 # Run this AS ROOT.
-set -eu
+set -euo pipefail
 
 pacman -Sy --noconfirm --needed foot opencode cmatrix fastfetch cava sl
 

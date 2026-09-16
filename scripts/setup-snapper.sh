@@ -8,7 +8,7 @@
 # own, then remount the real one in its place. Idempotent - safe to re-run.
 #
 # Run this ON THE INSTALLED GUEST, as root.
-set -eu
+set -euo pipefail
 
 pacman -Sy --noconfirm --needed snapper snap-pac
 

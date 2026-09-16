@@ -6,7 +6,7 @@
 # would make this flaky for the wrong reason.
 #
 # Usage: verify/ollama.sh [model]
-set -u
+set -uo pipefail
 
 MODEL="${1:-qwen2.5:0.5b}"
 pass=0

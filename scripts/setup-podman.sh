@@ -7,7 +7,7 @@
 # Podman rootless.
 #
 # Usage: setup-podman.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-podman.sh <username>}"
 

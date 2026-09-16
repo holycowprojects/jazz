@@ -3,6 +3,13 @@
 # Design-Vision.md sec 6) - the first batch broken out of the widget
 # backlog now that Task 10/11 proved Quickshell+Theme.qml works.
 #
+# NOTE: the setup script that originally wrote this content
+# (setup-widgets-tier1.sh) was retired 12 Sept 2026 - it was fully
+# superseded by setup-dock.sh, which now writes shell.qml (including this
+# panel) instead. This verify script still checks the right thing (the
+# tokens below still land in shell.qml via setup-dock.sh), just via a
+# different setup script than the one named above.
+#
 # Full interaction (typing a note, clicking a checkbox/timer button) isn't
 # scripted here - there's no Hyprland IPC for synthetic pointer input, and
 # a real screenshot (grim) already confirmed live rendering + correct World
@@ -13,7 +20,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: verify/widgets-tier1.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/widgets-tier1.sh <username>}"
 UID_N=$(id -u "$USERNAME")

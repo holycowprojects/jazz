@@ -7,7 +7,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root or the desktop user.
 # Usage: verify/kvantum.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/kvantum.sh <username>}"
 HOME_DIR="/home/$USERNAME"

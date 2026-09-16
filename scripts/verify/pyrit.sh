@@ -5,7 +5,7 @@
 # loopback-only here, so no special user context is needed).
 #
 # Usage: verify/pyrit.sh [model]
-set -u
+set -uo pipefail
 
 VENV=/opt/jazz-pyrit/venv
 MODEL="${1:-qwen2.5:0.5b}"

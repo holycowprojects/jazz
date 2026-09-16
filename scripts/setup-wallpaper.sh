@@ -15,7 +15,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-wallpaper.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-wallpaper.sh <username>}"
 HOME_DIR="/home/$USERNAME"
@@ -54,7 +54,7 @@ tee "$SET_SCRIPT" > /dev/null << 'EOF'
 # this way after anve had already run swaybg once. $XDG_RUNTIME_DIR is
 # per-user (mode 700) and already exported by Hyprland, so it can't collide.
 # Usage: jazz-wallpaper-set <path-to-image>
-set -eu
+set -euo pipefail
 IMG="${1:?Usage: jazz-wallpaper-set <path-to-image>}"
 LOG="${XDG_RUNTIME_DIR:-/tmp}/jazz-swaybg.log"
 pkill -u "$(whoami)" swaybg 2>/dev/null || true

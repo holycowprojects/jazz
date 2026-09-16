@@ -33,7 +33,7 @@
 # Run this ON THE INSTALLED GUEST, as root.
 #
 # Usage: setup-hyprland.sh <username>
-set -eu
+set -euo pipefail
 
 USERNAME="${1:?Usage: setup-hyprland.sh <username>}"
 CONFIG_DIR="/home/$USERNAME/.config/hypr"

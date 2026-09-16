@@ -7,7 +7,7 @@
 # via PyPI metadata for pyrit==1.0.1) - this VM has no Python installed at
 # all yet. Arch's system Python is "externally managed" (PEP 668), so PyRIT
 # lives in its own venv rather than fighting that with --break-system-packages.
-set -eu
+set -euo pipefail
 
 VENV=/opt/jazz-pyrit/venv
 

@@ -23,7 +23,7 @@
 #                    holycowstudios)
 #   [ollama-model]  passed straight to setup-ollama.sh, defaults to
 #                    qwen2.5:0.5b
-set -eu
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USERNAME="${1:?Usage: install-jazz.sh <username> [ollama-model]}"

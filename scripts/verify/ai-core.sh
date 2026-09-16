@@ -5,7 +5,7 @@
 # (rootless Podman, per Task 12) - assumes ~/ai-core/{Containerfile,
 # requirements.txt} already exist (copy configs/containers/ai-core/* there
 # before calling this).
-set -u
+set -uo pipefail
 
 pass=0
 fail=0
@@ -43,7 +43,7 @@ podman rm -f "$CONTAINER" > /dev/null 2>&1 || true
 podman run -d --name "$CONTAINER" -p 8888:8888 "$IMAGE" > /dev/null
 
 ready=0
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
     if curl -sf "http://127.0.0.1:8888/api" > /dev/null 2>&1; then
         ready=1
         break

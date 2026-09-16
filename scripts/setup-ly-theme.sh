@@ -16,7 +16,7 @@
 #
 # Run this ON THE INSTALLED GUEST, as root.
 # Usage: setup-ly-theme.sh
-set -eu
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="/var/lib/jazz"

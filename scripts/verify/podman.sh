@@ -4,7 +4,7 @@
 # ON THE INSTALLED GUEST, as root (it su's into the target user itself).
 #
 # Usage: verify/podman.sh <username>
-set -u
+set -uo pipefail
 
 USERNAME="${1:?Usage: verify/podman.sh <username>}"
 pass=0
