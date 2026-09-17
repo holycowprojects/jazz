@@ -782,7 +782,19 @@ ShellRoot {
 
         IpcHandler {
             target: "launcher"
-            function toggle(): void { launcher.visible = !launcher.visible; searchInput.text = "" }
+            // Real bug found live, 17 Sept 2026 (Akash: installed Nibbles via
+            // Bazaar, it never showed up in the launcher): appCatalog.apps was
+            // only ever scanned once, 100ms after Quickshell starts (see the
+            // scanProc Timer above) - anything installed after that point
+            // stayed invisible until a full Quickshell restart. Re-scanning
+            // every time the launcher opens (not continuous background
+            // polling, which the app grid doesn't need) fixes it with zero
+            // added idle cost.
+            function toggle(): void {
+                launcher.visible = !launcher.visible
+                if (launcher.visible) scanProc.running = true
+                searchInput.text = ""
+            }
         }
     }
 

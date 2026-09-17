@@ -1239,6 +1239,18 @@ PanelWindow {
                                     }
                                 }
                             }
+                            // Real bug found live, 17 Sept 2026 (Akash: installed
+                            // Nibbles via Bazaar, couldn't find it anywhere): this
+                            // scan only ever ran once, at Quickshell startup -
+                            // Component.onCompleted fires exactly once for the
+                            // lifetime of this Loader (it's never re-created), so
+                            // any app installed after Quickshell launched was
+                            // invisible until the next full Quickshell restart.
+                            // Re-scanning on every visit to this page (like every
+                            // other live-data tab already does, e.g. Bluetooth's
+                            // device poll) keeps it current with zero added
+                            // background cost while the page is closed.
+                            onVisibleChanged: if (visible) appsProc.running = true
                             Component.onCompleted: appsProc.running = true
                             SectionHeader { text: "APPLICATIONS" }
                             Text { font.family: Theme.uiFont; text: appsTab.apps.length + " installed applications (same catalog the dock/launcher use)"; color: Theme.textSecondary; font.pixelSize: 16 }
