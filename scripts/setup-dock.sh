@@ -152,6 +152,21 @@ ShellRoot {
         return null
     }
 
+    // Real gap found live, 17 Sept 2026 (Akash: the power menu and quick
+    // settings flyout "should close automatically if click something else
+    // like app launcher") - each of the four top-bar overlays (launcher,
+    // quick settings, power menu, widgets) toggled independently, so
+    // opening one while another was already open left both stacked on
+    // screen. One shared close-the-others call, made from every toggle()
+    // below, keeps exactly one open at a time - `except` is the target
+    // name of the overlay that's about to open, so it's skipped.
+    function closeOverlays(except) {
+        if (except !== "launcher") launcher.visible = false
+        if (except !== "quicksettings") quickSettings.visible = false
+        if (except !== "powermenu") powerMenu.visible = false
+        if (except !== "widgets") widgetPanel.visible = false
+    }
+
     // Task 27g-followup: active-workspace name/color + display overrides now
     // live in the WorkspaceState singleton (configs/quickshell/WorkspaceState.qml)
     // instead of a file-local `workspaces` id, so Settings.qml (a separate
@@ -791,7 +806,9 @@ ShellRoot {
             // polling, which the app grid doesn't need) fixes it with zero
             // added idle cost.
             function toggle(): void {
-                launcher.visible = !launcher.visible
+                var opening = !launcher.visible
+                closeOverlays("launcher")
+                launcher.visible = opening
                 if (launcher.visible) scanProc.running = true
                 searchInput.text = ""
             }
@@ -805,23 +822,48 @@ ShellRoot {
         anchors { top: true; right: true }
         margins { top: 38; right: 8 }
         implicitWidth: 345
-        implicitHeight: 390
+        implicitHeight: 396
         exclusiveZone: -1
-        color: Theme.panel
+        color: "#00000000"
 
         property string btStatus: "checking"
+        property string wifiStatus: "checking"
         property real brightnessVal: 100
         property bool audioAvailable: false
         property real volumeVal: 0
 
+        function setVolume(pct) {
+            pct = Math.max(0, Math.min(100, pct))
+            quickSettings.volumeVal = pct
+            Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)])
+        }
+        function setBrightness(pct) {
+            pct = Math.max(1, Math.min(100, pct))
+            quickSettings.brightnessVal = pct
+            Quickshell.execDetached(["brightnessctl", "set", Math.round(pct) + "%"])
+        }
+
         onVisibleChanged: {
-            if (visible) { btProc.running = true; briProc.running = true; volCheckProc.running = true; volReadProc.running = true }
+            if (visible) { btProc.running = true; wifiRadioProc.running = true; briProc.running = true; volCheckProc.running = true; volReadProc.running = true }
         }
 
         Process {
             id: btProc
             command: ["bash", "-c", "bluetoothctl show 2>/dev/null | grep Powered | awk '{print $2}'"]
             stdout: SplitParser { onRead: function (data) { if (data) quickSettings.btStatus = data } }
+        }
+        // Real gap found live, 17 Sept 2026 (Akash: the settings flyout
+        // "must give toggle for both bluetooth and wifi" - Wi-Fi was just
+        // static "on" text, no real control). Same nmcli radio mechanism
+        // Settings.qml's Network page already uses live, not guessed.
+        Process {
+            id: wifiRadioProc
+            command: ["nmcli", "radio", "wifi"]
+            stdout: SplitParser { onRead: function (data) { if (data) quickSettings.wifiStatus = data } }
+        }
+        Process {
+            id: wifiRadioToggleProc
+            onExited: function (exitCode, exitStatus) { wifiRadioProc.running = true }
         }
         Process {
             id: briProc
@@ -845,82 +887,128 @@ ShellRoot {
             }
         }
 
-        Column {
+        // Floating elevated panel look (Akash, 17 Sept 2026: the power/
+        // quick-settings flyouts should feel as polished as the launcher/
+        // Settings/Files panels) - PanelWindow itself can't take a radius
+        // (it's a Wayland layer-shell surface), so it stays transparent
+        // and a real Rectangle underneath carries the rounded corners/
+        // border/shadow, same technique those other panels already use.
+        Rectangle { anchors.fill: parent; anchors.topMargin: 4; radius: 16; color: "#00000040" }
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 21
-            spacing: 21
+            radius: 16
+            color: Theme.panel
+            border.color: Theme.panelInk; border.width: 1
+            clip: true
 
-            Row {
-                width: parent.width
-                Text { font.family: Theme.uiFont; text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 18; width: parent.width - 50 }
-                Text { font.family: Theme.uiFont; text: "on"; color: Theme.panelInk; opacity: 0.6; font.pixelSize: 16 }
-            }
-            Row {
-                width: parent.width
-                spacing: 12
-                Text { font.family: Theme.uiFont; text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
-                Rectangle {
-                    width: 51; height: 27; radius: 14
-                    color: quickSettings.btStatus === "yes" ? WorkspaceState.activeColor() : Theme.panelInk
-                    opacity: quickSettings.btStatus === "yes" ? 1 : 0.25
-                    Rectangle {
-                        width: 21; height: 21; radius: 10; color: "#ffffff"
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: quickSettings.btStatus === "yes" ? parent.width - width - 2 : 2
+            Column {
+                anchors.fill: parent
+                anchors.margins: 21
+                spacing: 18
+
+                Row {
+                    width: parent.width
+                    spacing: 12
+                    Text { font.family: Theme.uiFont; text: "Wi-Fi"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
+                    Toggle {
+                        checked: quickSettings.wifiStatus === "enabled"
+                        onToggled: {
+                            wifiRadioToggleProc.command = ["nmcli", "radio", "wifi", quickSettings.wifiStatus === "enabled" ? "off" : "on"]
+                            wifiRadioToggleProc.running = true
+                        }
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
+                }
+                Row {
+                    width: parent.width
+                    spacing: 12
+                    Text { font.family: Theme.uiFont; text: "Bluetooth"; color: Theme.panelInk; font.pixelSize: 18; width: 165 }
+                    Toggle {
+                        checked: quickSettings.btStatus === "yes"
+                        onToggled: {
                             Quickshell.execDetached(["bash", "-c", quickSettings.btStatus === "yes" ? "bluetoothctl power off" : "bluetoothctl power on"])
                             btProc.running = true
                         }
                     }
                 }
-            }
-            Column {
-                width: parent.width
-                spacing: 6
-                Text { font.family: Theme.uiFont; text: "Volume"; color: Theme.panelInk; font.pixelSize: 18 }
-                Text {
-                    visible: !quickSettings.audioAvailable
-                    text: "Not available - no audio device"
-                    color: Theme.panelInk; opacity: 0.5; font.pixelSize: 15; font.italic: true
-                }
-                Rectangle {
-                    visible: quickSettings.audioAvailable
-                    width: parent.width; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
-                    MouseArea {
-                        anchors.fill: parent
-                        onPressed: (mouse) => { var pct = Math.max(0, Math.min(100, mouse.x / width * 100)); quickSettings.volumeVal = pct; Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)]) }
-                        onPositionChanged: (mouse) => { if (pressed) { var pct = Math.max(0, Math.min(100, mouse.x / width * 100)); quickSettings.volumeVal = pct; Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", (pct / 100).toFixed(2)]) } }
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Text { font.family: Theme.uiFont; text: "Volume"; color: Theme.panelInk; font.pixelSize: 18 }
+                    Text {
+                        visible: !quickSettings.audioAvailable
+                        text: "Not available - no audio device"
+                        color: Theme.panelInk; opacity: 0.5; font.pixelSize: 15; font.italic: true
+                    }
+                    Row {
+                        visible: quickSettings.audioAvailable
+                        width: parent.width
+                        spacing: 9
+                        Button { label: "-"; variant: "neutral"; implicitWidth: 30; anchors.verticalCenter: parent.verticalCenter; onClicked: quickSettings.setVolume(quickSettings.volumeVal - 5) }
+                        Rectangle {
+                            width: parent.width - 78; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle {
+                                width: parent.width * quickSettings.volumeVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor()
+                                // Real gap found live, 17 Sept 2026 (Akash:
+                                // "the - and + button... must show increase
+                                // and decrease in the line bar while we
+                                // press the button") - the fill already
+                                // tracked volumeVal correctly, it just
+                                // snapped instead of sliding, so a +/- press
+                                // was easy to miss. Same Behavior-on-size
+                                // smoothing pattern used everywhere else
+                                // this session.
+                                Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onPressed: (mouse) => quickSettings.setVolume(mouse.x / width * 100)
+                                onPositionChanged: (mouse) => { if (pressed) quickSettings.setVolume(mouse.x / width * 100) }
+                            }
+                        }
+                        Button { label: "+"; variant: "neutral"; implicitWidth: 30; anchors.verticalCenter: parent.verticalCenter; onClicked: quickSettings.setVolume(quickSettings.volumeVal + 5) }
                     }
                 }
-            }
-            Column {
-                width: parent.width
-                spacing: 6
-                Text { font.family: Theme.uiFont; text: "Brightness"; color: Theme.panelInk; font.pixelSize: 18 }
-                Rectangle {
-                    width: parent.width; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
-                    Rectangle { width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor() }
-                    MouseArea {
-                        anchors.fill: parent
-                        onPressed: (mouse) => { var pct = Math.max(1, Math.min(100, mouse.x / width * 100)); quickSettings.brightnessVal = pct; Quickshell.execDetached(["brightnessctl", "set", Math.round(pct) + "%"]) }
-                        onPositionChanged: (mouse) => { if (pressed) { var pct = Math.max(1, Math.min(100, mouse.x / width * 100)); quickSettings.brightnessVal = pct; Quickshell.execDetached(["brightnessctl", "set", Math.round(pct) + "%"]) } }
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Text { font.family: Theme.uiFont; text: "Brightness"; color: Theme.panelInk; font.pixelSize: 18 }
+                    Row {
+                        width: parent.width
+                        spacing: 9
+                        Button { label: "-"; variant: "neutral"; implicitWidth: 30; anchors.verticalCenter: parent.verticalCenter; onClicked: quickSettings.setBrightness(quickSettings.brightnessVal - 5) }
+                        Rectangle {
+                            width: parent.width - 78; height: 9; radius: 4; color: Theme.panelInk; opacity: 0.2
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle {
+                                width: parent.width * quickSettings.brightnessVal / 100; height: parent.height; radius: 4; color: WorkspaceState.activeColor()
+                                Behavior on width { enabled: !Theme.reducedMotion; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onPressed: (mouse) => quickSettings.setBrightness(mouse.x / width * 100)
+                                onPositionChanged: (mouse) => { if (pressed) quickSettings.setBrightness(mouse.x / width * 100) }
+                            }
+                        }
+                        Button { label: "+"; variant: "neutral"; implicitWidth: 30; anchors.verticalCenter: parent.verticalCenter; onClicked: quickSettings.setBrightness(quickSettings.brightnessVal + 5) }
                     }
                 }
-            }
-            Rectangle {
-                width: parent.width; height: 39; radius: 9; color: WorkspaceState.activeColor()
-                Text { font.family: Theme.uiFont; anchors.centerIn: parent; text: "More settings..."; font.pixelSize: 16; color: "#ffffff" }
-                MouseArea { anchors.fill: parent; onClicked: { quickSettings.visible = false; Quickshell.execDetached(["qs", "ipc", "call", "settings", "toggle"]) } }
+                Button {
+                    label: "More settings..."
+                    variant: "primary"
+                    width: parent.width; implicitWidth: width; height: 39
+                    onClicked: { quickSettings.visible = false; Quickshell.execDetached(["qs", "ipc", "call", "settings", "toggle"]) }
+                }
             }
         }
 
         IpcHandler {
             target: "quicksettings"
-            function toggle(): void { quickSettings.visible = !quickSettings.visible }
+            function toggle(): void {
+                var opening = !quickSettings.visible
+                closeOverlays("quicksettings")
+                quickSettings.visible = opening
+            }
         }
     }
 
@@ -940,39 +1028,41 @@ ShellRoot {
         anchors { top: true; right: true }
         margins { top: 38; right: 8 }
         implicitWidth: 225
-        implicitHeight: 210
+        implicitHeight: 218
         exclusiveZone: -1
-        color: Theme.panel
+        color: "#00000000"
 
-        Column {
+        // Same elevated-panel treatment as quick settings above, and the
+        // Repeater's flat hand-rolled Rectangle delegate replaced with the
+        // shared Button component (Akash, 17 Sept 2026: "all buttons there
+        // must work smooth with mouse and... give a 3d feel") - Button.qml
+        // already had the glossy raised look from the 8 Sept feedback pass,
+        // it just never responded to hover/press until this session's fix
+        // to ui/Button.qml, which this now picks up for free.
+        Rectangle { anchors.fill: parent; anchors.topMargin: 4; radius: 16; color: "#00000040" }
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 3
-            Repeater {
-                model: [
-                    { label: "Lock", cmd: ["hyprlock"] },
-                    { label: "Log out", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
-                    { label: "Restart", cmd: ["systemctl", "reboot"] },
-                    { label: "Shut down", cmd: ["systemctl", "poweroff"] }
-                ]
-                delegate: Rectangle {
-                    // Same opacity-cascades-to-children bug already found
-                    // and fixed in the launcher/search-list (Akash caught
-                    // this one live too, 15 Sept 2026): hovering was fading
-                    // the label text to 8% instead of showing a clean
-                    // highlight - fixed with a real alpha color.
-                    width: parent.width; height: 42; radius: 9
-                    color: powerMouse.containsMouse ? Qt.rgba(Theme.panelInk.r, Theme.panelInk.g, Theme.panelInk.b, 0.08) : "#00000000"
-                    Text {
-                        anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.label
-                        color: modelData.label === "Shut down" ? "#c0392b" : Theme.panelInk
-                        font.pixelSize: 18
-                    }
-                    MouseArea {
-                        id: powerMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
+            radius: 16
+            color: Theme.panel
+            border.color: Theme.panelInk; border.width: 1
+            clip: true
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 6
+                Repeater {
+                    model: [
+                        { label: "Lock", cmd: ["hyprlock"], variant: "neutral" },
+                        { label: "Log out", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"], variant: "neutral" },
+                        { label: "Restart", cmd: ["systemctl", "reboot"], variant: "neutral" },
+                        { label: "Shut down", cmd: ["systemctl", "poweroff"], variant: "danger" }
+                    ]
+                    delegate: Button {
+                        width: parent.width; implicitWidth: width; height: 42
+                        label: modelData.label
+                        variant: modelData.variant
+                        fontSize: 18
                         onClicked: { Quickshell.execDetached(modelData.cmd); powerMenu.visible = false }
                     }
                 }
@@ -981,7 +1071,11 @@ ShellRoot {
 
         IpcHandler {
             target: "powermenu"
-            function toggle(): void { powerMenu.visible = !powerMenu.visible }
+            function toggle(): void {
+                var opening = !powerMenu.visible
+                closeOverlays("powermenu")
+                powerMenu.visible = opening
+            }
         }
     }
 
@@ -1075,7 +1169,11 @@ ShellRoot {
 
         IpcHandler {
             target: "widgets"
-            function toggle(): void { widgetPanel.visible = !widgetPanel.visible }
+            function toggle(): void {
+                var opening = !widgetPanel.visible
+                closeOverlays("widgets")
+                widgetPanel.visible = opening
+            }
         }
 
         SystemClock { id: worldBase; precision: SystemClock.Minutes }

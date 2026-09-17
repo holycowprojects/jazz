@@ -38,9 +38,28 @@ Rectangle {
         return Theme.panel // neutral | outlineDanger | flat
     }
     readonly property bool _glossy: variant === "primary" || variant === "danger" || variant === "subtle"
+
+    // Real tactile feedback (Akash, 17 Sept 2026: buttons should "work
+    // smooth with mouse" and "give a 3D feel" - the gloss above already
+    // reads as raised at rest, but nothing responded to the mouse at all).
+    // Hover lifts the button (scale up + brighter gloss); press flattens
+    // it back down into the panel (scale down + darker) - the same
+    // physical metaphor a real button gives. Plain scale+gradient shift,
+    // no GraphicalEffects dependency needed.
+    scale: buttonMouse.pressed ? 0.96 : (buttonMouse.containsMouse ? 1.03 : 1.0)
+    Behavior on scale { enabled: !Theme.reducedMotion; NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+
     gradient: Gradient {
-        GradientStop { position: 0.0; color: root._glossy ? Qt.lighter(root._base, 1.22) : root._base }
-        GradientStop { position: 1.0; color: root._glossy ? Qt.darker(root._base, 1.08) : root._base }
+        GradientStop {
+            position: 0.0
+            color: root._glossy
+                ? Qt.lighter(root._base, buttonMouse.pressed ? 1.05 : (buttonMouse.containsMouse ? 1.35 : 1.22))
+                : (buttonMouse.containsMouse ? Qt.rgba(Theme.panelInk.r, Theme.panelInk.g, Theme.panelInk.b, 0.08) : root._base)
+        }
+        GradientStop {
+            position: 1.0
+            color: root._glossy ? Qt.darker(root._base, buttonMouse.pressed ? 1.18 : 1.08) : root._base
+        }
     }
     border.width: (variant === "neutral" || variant === "outlineDanger") ? 1 : 0
     border.color: variant === "outlineDanger" ? Theme.critical : Theme.panelInk
@@ -58,8 +77,11 @@ Rectangle {
         }
     }
     MouseArea {
+        id: buttonMouse
         anchors.fill: parent
         enabled: root.enabled
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
 }
