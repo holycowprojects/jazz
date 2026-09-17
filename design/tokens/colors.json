@@ -26,5 +26,11 @@
     "positive": { "value": "#1F6F54", "source": "workspaces.lab" },
     "warning": { "value": "#B8823C", "source": "workspaces.arena" },
     "critical": { "value": "#7A1F2B", "source": "workspaces.range" }
+  },
+  "_tierLightsComment": "Added 17 Sept 2026 (Akash: the Agents tab's green/yellow/red tier badges 'must be different colour than our workspace colours') - unlike status.* above, these are deliberately NOT reused workspace hues (Lab's muted emerald, Arena's brownish gold, Range's dark garnet are all too close to each other and to this same tier concept to read as a real traffic light at a glance). Real saturated traffic-light colors instead, used only for the Agents tab's tier lights.",
+  "tierLights": {
+    "green": { "value": "#22C55E", "description": "Agents tab tier light - green (auto-execute)" },
+    "yellow": { "value": "#EAB308", "description": "Agents tab tier light - yellow (confirm)" },
+    "red": { "value": "#EF4444", "description": "Agents tab tier light - red (strong authorization)" }
   }
 }

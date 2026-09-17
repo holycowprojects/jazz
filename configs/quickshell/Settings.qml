@@ -1467,9 +1467,28 @@ PanelWindow {
                                                 width: 240; anchors.verticalCenter: parent.verticalCenter
                                                 text: policyRow.rowData.action_type; color: Theme.panelInk; font.pixelSize: 18
                                             }
-                                            Text {
-                                                width: 75; anchors.verticalCenter: parent.verticalCenter
-                                                text: "[" + policyRow.rowData.tier + "]"; color: Theme.textSecondary; font.pixelSize: 16
+                                            Item {
+                                                id: tierLight
+                                                width: 75; height: parent.height
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                readonly property color lightColor: policyRow.rowData.tier === "green" ? Theme.tierGreen
+                                                    : (policyRow.rowData.tier === "yellow" ? Theme.tierYellow : Theme.tierRed)
+                                                // Real ask, 17 Sept 2026 (Akash: tier badges should be lights, not
+                                                // bracketed text, and must use real traffic-light colors, not the
+                                                // workspace palette - Lab/Arena/Range are all too close to each
+                                                // other to read as a real tier at a glance). A soft glow halo
+                                                // (translucent outer ring) behind a solid dot reads as a genuine
+                                                // indicator light rather than a flat colored circle.
+                                                Rectangle {
+                                                    anchors.centerIn: parent
+                                                    width: 26; height: 26; radius: 13
+                                                    color: tierLight.lightColor; opacity: 0.22
+                                                }
+                                                Rectangle {
+                                                    anchors.centerIn: parent
+                                                    width: 14; height: 14; radius: 7
+                                                    color: tierLight.lightColor
+                                                }
                                             }
                                             Row {
                                                 spacing: 6

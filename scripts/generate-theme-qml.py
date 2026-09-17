@@ -30,6 +30,7 @@ out_path = ROOT / "configs/quickshell/Theme.qml"
 
 workspaces = colors["workspaces"]
 status = colors["status"]
+tier_lights = colors["tierLights"]
 
 lines = [
     "pragma Singleton",
@@ -95,6 +96,17 @@ lines += [
 ]
 for name, entry in status.items():
     lines.append('    readonly property color %s: "%s"' % (name, entry["value"]))
+
+lines += [
+    "",
+    "    // Agents tab tier lights (17 Sept 2026) - deliberately real, saturated",
+    "    // traffic-light colors, NOT reused workspace hues like status.* above -",
+    "    // Lab/Arena/Range read as too similar to each other for a real tier",
+    "    // indicator (Akash: 'must be different colour than our workspace",
+    "    // colours').",
+]
+for name, entry in tier_lights.items():
+    lines.append('    readonly property color tier%s: "%s"' % (name.capitalize(), entry["value"]))
 
 lines += [
     "",

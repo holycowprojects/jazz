@@ -59,6 +59,15 @@ QtObject {
     readonly property color warning: "#B8823C"
     readonly property color critical: "#7A1F2B"
 
+    // Agents tab tier lights (17 Sept 2026) - deliberately real, saturated
+    // traffic-light colors, NOT reused workspace hues like status.* above -
+    // Lab/Arena/Range read as too similar to each other for a real tier
+    // indicator (Akash: 'must be different colour than our workspace
+    // colours').
+    readonly property color tierGreen: "#22C55E"
+    readonly property color tierYellow: "#EAB308"
+    readonly property color tierRed: "#EF4444"
+
     // Persisted active-theme choice (Task 27b). jazz-theme-set writes this
     // file after regenerating kitty/hyprlock/dunst - watchChanges makes the
     // switch apply here live, no Quickshell relaunch. Same pattern as
