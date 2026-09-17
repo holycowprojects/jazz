@@ -6,6 +6,42 @@ releases yet, so entries are grouped by date instead of a version number.
 
 ## [Unreleased]
 
+### 2026-09-17
+- Polished the top bar's power menu and quick-settings flyout: real hover/
+  press 3D feedback on every button (shared `ui/Button.qml`/`ui/Toggle.qml`
+  components, so it applies everywhere those are used, not just these two
+  panels), a real Wi-Fi toggle alongside the existing Bluetooth one, +/-
+  step buttons for volume/brightness with an animated fill bar, a solid
+  red Shut Down button, and all four top-bar overlays (launcher/quick
+  settings/power menu/widgets) now auto-close each other instead of
+  stacking. Verified live on both the Yoga 6 and the Pavilion.
+- Fixed a real bug: newly installed apps (via Bazaar/Flatpak or plain
+  `pacman`) never showed up in the app launcher until a full Quickshell
+  restart - the app catalog was only ever scanned once, at startup. Now
+  re-scans every time the launcher opens.
+- Replaced the Agents tab's bracketed `[green]`/`[yellow]`/`[red]` tier
+  text with real colored indicator lights, using new dedicated traffic-
+  light color tokens deliberately distinct from the workspace palette
+  (added to `design/tokens/colors.json`, regenerated into `Theme.qml`).
+- **Task 16 done - the last of SPEC.md's 12 success criteria.** Rented a
+  real RTX 4090 (Vast.ai), found and fixed a real gap live (the rented
+  template's "NVIDIA Container Toolkit pre-installed" claim was false for
+  that host - installed and configured it manually), then ran Task 13's
+  exact unmodified AI-core container: `scripts/verify/gpu-cuda.sh` passed
+  6/6, `torch.cuda.is_available()` returned `True`. A real GPU-vs-CPU
+  benchmark in the same container (4096x4096 float32 matmul) showed a
+  64.3x speedup (155.64ms CPU vs 2.42ms GPU per iteration). Instance
+  destroyed immediately after. JAZZ now meets all 12 of SPEC.md's success
+  criteria - only the explicit go-ahead for the first public push remains.
+- Also diagnosed and fixed a real (self-inflicted, not a code bug) issue:
+  the shutdown/restart buttons stopped working on both machines because
+  Quickshell had been manually restarted over SSH during earlier testing
+  sessions, landing it in the wrong login session for Linux's permission
+  system to grant power actions without a password prompt - fixed by
+  restarting it correctly (via Hyprland's own exec mechanism) on both.
+  Confirmed this can't happen from a normal login; nothing in the
+  repo's own scripts does what caused it.
+
 ### 2026-09-16
 - Code-level review of every `scripts/setup-*.sh` and `scripts/verify/*.sh`
   file (ShellCheck + manual audit): added `pipefail` project-wide, fixed a

@@ -540,18 +540,33 @@ Task 16 (GPU rental, spends real money).
 
 ## Phase 3: GPU validation (isolated, explicit go-ahead required)
 
-### Task 16: Rent a GPU, validate the AI-core container
+### Task 16: Rent a GPU, validate the AI-core container — **DONE, 17 Sept 2026**
 **Description:** Rent a Vast.ai (or RunPod fallback) RTX 4090 spot instance, run Task 13's exact container definition unmodified, and confirm `torch.cuda.is_available()` returns `True`. Tear the instance down immediately after — never leave it running.
 
-**In progress as of 6 Sept 2026:** `scripts/verify/gpu-cuda.sh` drafted (written, not yet run — needs a real rented instance, which Akash provisions himself since it spends money). Unlike every other `verify/*.sh`, this one runs from the local machine and SSHes out to the instance rather than running on the target; it deliberately never starts the container's default JupyterLab command (unauthenticated, binds `0.0.0.0` — fine on the local dev VM's loopback-only network, not on an internet-facing rented box), only a one-shot `python -c "torch.cuda.is_available()"` check. Prefers `docker` over `podman` for the `--gpus all` GPU-passthrough flag, since Vast.ai/RunPod GPU images are built around docker's nvidia-container-toolkit wiring. Waiting on Akash to rent the instance and hand over its SSH host/port before this can actually run.
+**Done 17 Sept 2026 - the last of SPEC.md's 12 success criteria.** Akash rented a Vast.ai RTX 4090 VM instance (their "full VM, root access, Docker + NVIDIA Container Toolkit pre-installed" template - deliberately chosen over their default container-mode instances, which don't reliably support the nested `docker build`/`docker run --gpus all` this task needs), added a one-time-use ed25519 SSH key generated for this task specifically (`~/.ssh/jazz-gpu-task16`, added to Vast.ai's Keys page, no ongoing use beyond this task), and handed over the instance's SSH host/port.
+
+**Real bug found and fixed live: the template's "NVIDIA Container Toolkit pre-installed" claim was false for this host.** `scripts/verify/gpu-cuda.sh`'s first run got 5/6 checks passing (SSH, `nvidia-smi`, Docker present, container builds) but failed the actual GPU-run step: `docker: Error response from daemon: could not select device driver "" with capabilities: [[gpu]]`. Diagnosed live: Docker's `daemon.json` referenced an `nvidia` runtime, but the actual `nvidia-container-runtime`/`nvidia-ctk` binaries didn't exist on the instance (`dpkg -l | grep nvidia-container` returned nothing) - the config was there, the package wasn't. Fixed by installing `nvidia-container-toolkit` from NVIDIA's official apt repo, running `nvidia-ctk runtime configure --runtime=docker`, and restarting the Docker daemon - confirmed fixed with a direct `docker run --gpus all nvidia/cuda:... nvidia-smi` test before re-running the full verify script.
+
+**`scripts/verify/gpu-cuda.sh` then passed 6/6** against `root@71.175.237.103:40357`: SSH reachable, real RTX 4090 visible via `nvidia-smi`, Docker present, Task 13's exact unmodified `Containerfile`/`requirements.txt` copied over and built cleanly, and `torch.cuda.is_available()` returned `True` inside that unmodified container.
+
+**Real GPU-vs-CPU benchmark, same container, both runs (Akash's own idea, using the instance's remaining paid time rather than idling it) - a 4096x4096 float32 matmul, 10 iterations after 3 warmup iterations:**
+```
+torch 2.14.0+cu130, CUDA available: True
+GPU: NVIDIA GeForce RTX 4090
+CPU: 155.64 ms/iter
+GPU: 2.42 ms/iter
+Speedup: 64.3x
+```
+
+**Instance destroyed immediately after** (Akash, via Vast.ai's dashboard) - no ongoing spend.
 
 **Acceptance criteria:**
-- [ ] The same container from Task 13 runs on the rented instance without modification
-- [ ] `torch.cuda.is_available()` returns `True` inside it
-- [ ] Instance is terminated after validation
+- [x] The same container from Task 13 runs on the rented instance without modification
+- [x] `torch.cuda.is_available()` returns `True` inside it
+- [x] Instance is terminated after validation
 
 **Verification:**
-- [ ] `scripts/verify/gpu-cuda.sh` (run manually against the remote instance) confirms the above
+- [x] `scripts/verify/gpu-cuda.sh` (run manually against the remote instance) confirms the above - 6/6 passed, 17 Sept 2026
 
 **Dependencies:** Task 13
 
@@ -1434,5 +1449,5 @@ Since this repo has never had a remote configured (confirmed via `git remote -v`
 ---
 
 ## Checkpoint: Public-repo ready
-- [ ] All 12 of SPEC.md's success criteria met — **11 of 12 done as of 16 Sept 2026.** Only #7 (GPU-backed PyTorch validated via a rented cloud GPU, Task 16) remains open, gated on Akash's own money/timing decision. #1 (build reproducibly from the repo alone) and #11 (documentation sufficient for a stranger to go from clone to working system) were both proven for real via Task 20's live Pavilion test, not just checked off from memory.
+- [x] All 12 of SPEC.md's success criteria met — **12 of 12 done as of 17 Sept 2026.** #7 (GPU-backed PyTorch validated via a rented cloud GPU, Task 16) closed out 17 Sept 2026 against a real rented RTX 4090 (6/6 verify checks, real 64.3x GPU-vs-CPU benchmark). #1 (build reproducibly from the repo alone) and #11 (documentation sufficient for a stranger to go from clone to working system) were both proven for real via Task 20's live Pavilion test, not just checked off from memory.
 - [ ] **Explicit go-ahead from Akash obtained before the first public push** — this checklist does not authorize that step on its own, per SPEC.md's boundaries
