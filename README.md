@@ -164,6 +164,8 @@ As of 17 Sept 2026, **JAZZ meets all of `docs/SPEC.md`'s success criteria** — 
 
 The conventional cybersecurity red-team lab layer (the dormant "Range" workspace) is deliberately deferred — not because it's hard in general, but because this Windows-hosted development environment's virtualization backend can't run the nested VMs that layer needs. It's scoped for later, on different hardware.
 
+**JAZZ v1 is beta.** It's real, daily-driver software — not a demo — but it's had two people and two laptops behind it so far, not thousands. If you install it and hit a bug, or there's a feature you'd want in JAZZ v2, email **office@holycowstudios.in**. Both bug reports and feature requests are genuinely welcome — this is early enough that real usage from outside its own build process is exactly what it needs next.
+
 ## Known Issues
 
 **Boot takes longer than expected on AMD Renoir/Cezanne laptops (e.g. Lenovo Yoga 6 82FN) — it will still boot, just not quickly.** On some AMD Ryzen 4000/5000-mobile ("Renoir"/"Cezanne") laptops, an integrated USB peripheral (commonly the webcam) fails to respond during early boot, and the kernel's USB stack retries repeatedly before giving up — adding well over a minute before the desktop appears. This is a known chipset/peripheral timing issue (see `docs/Research-Reference-List.md` for the full trail and sources), not something JAZZ's own scripts cause, and it isn't specific to any one physical unit — any Linux distro on the same chipset family will show the same symptom (`dmesg`/`journalctl -b` will show repeated `usb N-M: device descriptor read/64, error -110` lines from the same port).
