@@ -10,6 +10,8 @@ If you're going to spend a weekend setting up a Linux box for AI work anyway, sp
 
 ![JAZZ desktop - the Sapphire theme, gemstone workspace colors, and the dock](docs/images/jazz-desktop.png)
 
+**[Why JAZZ](#why-jazz-and-not-just-vanilla-hyprland-or-omarchy)** · **[What you get](#what-you-get)** · **[Install it](#install-it)** · **[Project status](#project-status)** · **[Known issues](#known-issues)** · **[Docs](#documentation)**
+
 ---
 
 ## Why JAZZ, and not just vanilla Hyprland or Omarchy
@@ -154,8 +156,11 @@ JAZZ is under active, transparent development — this isn't a finished 1.0 yet,
 - **AI red-teaming** (PyRIT against a local model) — done, verified.
 - **Bare-metal, dual-boot install** — done: installed on a real laptop (Lenovo Yoga 6, AMD Ryzen 7 4700U) alongside an existing Windows install, all verification checks passing on real hardware, real `amdgpu` GPU rendering confirmed (not software fallback).
 - **Multi-user provisioning, boot branding, design polish** — done, including the theme and workspace-color work described above.
-- **Cloud GPU validation** (proving the same AI container runs CUDA-accelerated on a rented GPU) — drafted, not yet executed.
-- **Public-repo hygiene pass and a from-scratch clean-install verification** — in progress now; this README is part of that work.
+- **Stranger's-machine install test** — done: a full clean install on a second, previously-Windows-only laptop (HP Pavilion, Intel i3) that had never run Arch before, found and fixed seven real bugs invisible on the original dev hardware.
+- **Cloud GPU validation** — done: JAZZ's own PyTorch container, completely unmodified, rented a real NVIDIA RTX 4090 (Vast.ai) and ran CUDA-accelerated — `torch.cuda.is_available()` returned `True`, and a real matmul benchmark measured a **64.3x speedup** over CPU (155.6ms vs 2.4ms per iteration on a 4096×4096 float32 matmul).
+- **Public-repo hygiene pass and a from-scratch clean-install verification** — done: full-history secret scan clean, no hardcoded personal paths, ShellCheck-clean install scripts.
+
+As of 17 Sept 2026, **JAZZ meets all of `docs/SPEC.md`'s success criteria** — everything above is real, verified, and running on two independent physical machines, not a VM.
 
 The conventional cybersecurity red-team lab layer (the dormant "Range" workspace) is deliberately deferred — not because it's hard in general, but because this Windows-hosted development environment's virtualization backend can't run the nested VMs that layer needs. It's scoped for later, on different hardware.
 
