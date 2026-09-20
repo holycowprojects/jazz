@@ -268,6 +268,18 @@ get taken from this doc on their own merits, not because JAZZ is trying to be a 
 
   Sources: [Hyprland Wiki - Master Tutorial](https://wiki.hypr.land/Getting-Started/Master-Tutorial/), [ArchWiki - greetd](https://wiki.archlinux.org/title/Greetd), [ReGreet GitHub](https://github.com/rharish101/ReGreet), [ArchWiki - SDDM](https://wiki.archlinux.org/title/SDDM), [hyprshutdown issue #17 - SDDM/Hyprland shutdown hang](https://github.com/hyprwm/hyprshutdown/issues/17), [Omarchy Branding manual](https://omarchy.org/manual/branding/) (SDDM + Plymouth themed together via one command - real precedent for the "sync colors everywhere" pattern `jazz-theme-set` already follows)
 
+- **Waywallen as a `swaybg` replacement candidate, flagged 20 Sept 2026** (Akash installed it via
+  Bazaar while testing an unrelated launcher-icon bug, asked what it was, then asked to record it
+  here). Rust-based dynamic/animated wallpaper manager (Qt/QML UI, GPL-3.0, on Flathub, v0.3.9) with
+  explicit native Hyprland support via a companion display backend (also KDE/GNOME/Sway/Niri/COSMIC)
+  - handles live/video wallpapers with per-monitor playlists, not just static images, comparable to
+  Windows' Wallpaper Engine (can even load real Wallpaper Engine scenes via an optional plugin).
+  Directly relevant because JAZZ's current wallpaper handling (Task 23) is `swaybg` only, chosen
+  after `hyprpaper`'s own IPC was confirmed broken on this Hyprland build - Waywallen is a real,
+  currently-maintained alternative worth evaluating for v2 instead of permanently routing around
+  `hyprpaper`. Not scoped or started - flag for whenever v2 wallpaper work actually begins.
+  Sources: [Waywallen on Flathub](https://flathub.org/en/apps/org.waywallen.waywallen), [Waywallen on LinuxLinks](https://www.linuxlinks.com/waywallen-dynamic-wallpaper-manager/)
+
 ## 6. Findings from the 15 Sept 2026 birdeye review (post-Task-25 design polish)
 
 Akash asked for a full top-to-bottom review of JAZZ against comparable Hyprland setups, researched

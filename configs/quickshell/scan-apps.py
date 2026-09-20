@@ -41,7 +41,18 @@ FIELD_CODES = re.compile(r"%[fFuUick]")
 # real icon file ONCE here, by walking the actual theme directories on
 # disk - deterministic, verified, and reusable by every consumer of this
 # scan (dock, launcher), not a one-off per-icon patch.
-ICON_THEME_DIRS = ["/usr/share/icons/Adwaita", "/usr/share/icons/Papirus", "/usr/share/icons/hicolor"]
+# 20 Sept 2026 addition: Flatpak (Bazaar) installs export their icons to
+# these two dirs, never system-wide under /usr/share/icons - real bug
+# found live (Akash: freshly Bazaar-installed apps like KStars/
+# SeriousSamClassic showed no icon at all, since neither dir was in this
+# list before). Appended after the three system theme dirs so a name
+# collision still resolves to the system theme first, same priority
+# rule the function below already documents.
+ICON_THEME_DIRS = [
+    "/usr/share/icons/Adwaita", "/usr/share/icons/Papirus", "/usr/share/icons/hicolor",
+    "/var/lib/flatpak/exports/share/icons",
+    os.path.expanduser("~/.local/share/flatpak/exports/share/icons"),
+]
 ICON_EXTS = (".svg", ".png")
 # Prefer the largest/scalable variant available for a given name - crisper
 # at the sizes both the dock (36px) and launcher (36px/22px) actually use.

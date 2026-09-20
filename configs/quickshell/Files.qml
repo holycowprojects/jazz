@@ -47,6 +47,9 @@ PanelWindow {
     property string statusMsg: ""
     property bool showHidden: false
     property string contextMenuTarget: ""
+    property var contextMenuEntry: null
+    property real contextMenuX: 0
+    property real contextMenuY: 0
     property var devices: []
 
     // Quick Look overlay
@@ -667,12 +670,16 @@ PanelWindow {
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 onClicked: function (mouse) {
                                     filesPanel.selectedPath = modelData.path
-                                    if (mouse.button === Qt.RightButton) filesPanel.contextMenuTarget = modelData.path
-                                    else filesPanel.contextMenuTarget = ""
+                                    if (mouse.button === Qt.RightButton) {
+                                        filesPanel.contextMenuTarget = modelData.path
+                                        filesPanel.contextMenuEntry = modelData
+                                        var pos = cardMouse.mapToItem(rootContent, mouse.x, mouse.y)
+                                        filesPanel.contextMenuX = pos.x
+                                        filesPanel.contextMenuY = pos.y
+                                    } else filesPanel.contextMenuTarget = ""
                                 }
                                 onDoubleClicked: filesPanel.openEntry(modelData)
                             }
-                            EntryContextMenu { entryPath: modelData.path; entryData: modelData }
                         }
                     }
 
@@ -726,12 +733,16 @@ PanelWindow {
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                                     onClicked: function (mouse) {
                                         filesPanel.selectedPath = modelData.path
-                                        if (mouse.button === Qt.RightButton) filesPanel.contextMenuTarget = modelData.path
-                                        else filesPanel.contextMenuTarget = ""
+                                        if (mouse.button === Qt.RightButton) {
+                                            filesPanel.contextMenuTarget = modelData.path
+                                            filesPanel.contextMenuEntry = modelData
+                                            var pos = rowMouse.mapToItem(rootContent, mouse.x, mouse.y)
+                                            filesPanel.contextMenuX = pos.x
+                                            filesPanel.contextMenuY = pos.y
+                                        } else filesPanel.contextMenuTarget = ""
                                     }
                                     onDoubleClicked: filesPanel.openEntry(modelData)
                                 }
-                                EntryContextMenu { entryPath: modelData.path; entryData: modelData }
                             }
                         }
                     }
@@ -982,20 +993,31 @@ PanelWindow {
                 }
             }
         }
+
+        // ===== Context menu - single top-level instance, not one per
+        // grid/list delegate. A per-delegate menu overflows its own tiny
+        // cell and gets painted behind whichever neighboring delegate
+        // happens to come later in the view's paint order (real bug,
+        // found live 20 Sept 2026 by Akash - menu rendered behind file
+        // icons, not properly clickable). Positioned via contextMenuX/Y,
+        // captured in each delegate's own right-click handler via
+        // mapToItem(rootContent, ...).
+        EntryContextMenu {}
     }
     }
 
     component EntryContextMenu: Rectangle {
         id: menu
-        property string entryPath: ""
-        property var entryData: null
-        visible: filesPanel.contextMenuTarget === entryPath
+        readonly property string entryPath: filesPanel.contextMenuTarget
+        readonly property var entryData: filesPanel.contextMenuEntry
+        visible: filesPanel.contextMenuTarget !== ""
         z: 60
         width: 168; radius: 8
         height: menuCol.implicitHeight + 12
         color: Theme.surfaceRaised
         border.color: Theme.panelInk; border.width: 1
-        x: 4; y: 4
+        x: Math.min(filesPanel.contextMenuX, rootContent.width - width - 8)
+        y: Math.min(filesPanel.contextMenuY, rootContent.height - height - 8)
         Column {
             id: menuCol
             anchors.fill: parent; anchors.margins: 6; spacing: 1
@@ -1015,7 +1037,14 @@ PanelWindow {
                     Text {
                         anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
                         text: modelData.label
-                        color: modelData.danger ? Theme.critical : Theme.panelInk
+                        // Theme.critical is deliberately muted (reuses the
+                        // Range workspace hue) for consistency with
+                        // Settings.qml's destructive buttons - not vivid
+                        // enough here per Akash, 20 Sept 2026. Reusing
+                        // Theme.tierRed instead of inventing a new color -
+                        // same real-saturated-red token already created for
+                        // the Agents tab tier lights for this exact reason.
+                        color: modelData.danger ? Theme.tierRed : Theme.panelInk
                         font.pixelSize: 13; font.family: Theme.uiFont
                     }
                     MouseArea {
