@@ -436,6 +436,77 @@ ShellRoot {
         // the pattern every 2026 launcher (Raycast, Ulauncher, Albert)
         // converged on, researched live before building this, not guessed.
         property int listIndex: 0
+
+        // ---------- Right-click Update/Uninstall (20 Sept 2026, Akash's
+        // request: "if an app is right click, it should give options to
+        // update and uninstall"). Single top-level AppContextMenu instance
+        // (not one per grid/list delegate) - a per-delegate menu was
+        // already found live to render behind neighboring icons in
+        // Files.qml the same day; this avoids repeating that bug here.
+        // Privileged actions reuse the exact sudo -S + stdin-password-popup
+        // pattern already proven in Settings.qml's usersTab.requestSudo()
+        // (pkexec/polkit was tried and abandoned there - no agent renders
+        // a visible dialog under plain Hyprland - so this doesn't attempt
+        // pkexec either). ----------
+        property var contextMenuApp: null
+        property real contextMenuX: 0
+        property real contextMenuY: 0
+        property var pendingCommand: null
+        property string pendingDescription: ""
+        property string sudoStatus: ""
+        property string ownUsername: ""
+        function openContextMenu(app, mouse, sourceItem) {
+            launcher.contextMenuApp = app
+            var pos = sourceItem.mapToItem(launcherBox, mouse.x, mouse.y)
+            launcher.contextMenuX = pos.x
+            launcher.contextMenuY = pos.y
+        }
+        function requestSudo(command, description) {
+            launcher.pendingCommand = command
+            launcher.pendingDescription = description
+            launcher.sudoStatus = ""
+        }
+        function doUpdate(app) {
+            if (app.origin === "flatpak") launcher.requestSudo(["flatpak", "update", "-y", app.pkgId], "Update " + app.name + "?")
+            else if (app.origin === "pacman") launcher.requestSudo(["pacman", "-Sy", "--noconfirm", app.pkgId], "Update " + app.name + "?")
+        }
+        function doUninstall(app) {
+            if (app.origin === "flatpak") launcher.requestSudo(["flatpak", "uninstall", "-y", app.pkgId], "Uninstall " + app.name + "? This removes it completely.")
+            else if (app.origin === "pacman") launcher.requestSudo(["pacman", "-Rs", "--noconfirm", app.pkgId], "Uninstall " + app.name + "? This removes it completely.")
+        }
+        function runPendingCommand(password) {
+            sudoActionProc.outText = ""
+            sudoActionProc.pw = password
+            sudoActionProc.command = ["sudo", "-S"].concat(launcher.pendingCommand)
+            sudoActionProc.running = true
+            launcher.pendingCommand = null
+            launcher.pendingDescription = ""
+        }
+        Process {
+            command: ["whoami"]
+            running: true
+            stdout: SplitParser { onRead: function (data) { if (data) launcher.ownUsername = data } }
+        }
+        Process {
+            id: sudoActionProc
+            stdinEnabled: true
+            property string outText: ""
+            property string pw: ""
+            onStarted: sudoActionProc.write(sudoActionProc.pw + "\n")
+            stdout: StdioCollector { onStreamFinished: sudoActionProc.outText += this.text }
+            stderr: StdioCollector { onStreamFinished: sudoActionProc.outText += this.text }
+            onExited: function (exitCode, exitStatus) {
+                sudoActionProc.pw = ""
+                if (exitCode === 0) {
+                    launcher.sudoStatus = "Done."
+                    scanProc.running = true
+                } else {
+                    var msg = sudoActionProc.outText.replace(/^\[sudo\][^\n]*\n?/, "").trim()
+                    launcher.sudoStatus = msg || "Failed (exit " + exitCode + ")."
+                }
+            }
+        }
+
         function filteredApps() {
             if (searchInput.text.length === 0) return []
             var q = searchInput.text.toLowerCase()
@@ -472,7 +543,7 @@ ShellRoot {
             color: Theme.panel
             border.color: WorkspaceState.activeColor()
             border.width: 2
-            MouseArea { anchors.fill: parent }
+            MouseArea { anchors.fill: parent; onClicked: launcher.contextMenuApp = null }
 
             Column {
                 anchors.fill: parent
@@ -611,7 +682,11 @@ ShellRoot {
                                 id: launchMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                onClicked: launcher.launchApp(modelData)
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: function (mouse) {
+                                    if (mouse.button === Qt.RightButton) launcher.openContextMenu(modelData, mouse, launchMouse)
+                                    else launcher.launchApp(modelData)
+                                }
                             }
                         }
                     }
@@ -674,8 +749,12 @@ ShellRoot {
                             id: resultMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             onEntered: launcher.listIndex = index
-                            onClicked: launcher.launchApp(modelData)
+                            onClicked: function (mouse) {
+                                if (mouse.button === Qt.RightButton) launcher.openContextMenu(modelData, mouse, resultMouse)
+                                else launcher.launchApp(modelData)
+                            }
                         }
                     }
                     Text {
@@ -697,6 +776,97 @@ ShellRoot {
                         ? ("Esc closes · " + appCatalog.apps.length + " apps")
                         : ("↑↓ Navigate · Enter Open · Esc closes · " + launcher.filteredApps().length + " match" + (launcher.filteredApps().length === 1 ? "" : "es"))
                     color: Theme.panelInk; opacity: 0.4; font.pixelSize: 14
+                }
+            }
+
+            AppContextMenu {}
+
+            // Sudo password popup for Update/Uninstall - same pattern as
+            // Settings.qml's usersTab (sudo -S fed via Process's own
+            // stdinEnabled/write(), not a spawned terminal or pkexec).
+            Rectangle {
+                visible: launcher.pendingCommand !== null
+                anchors.fill: parent
+                radius: 21
+                color: "#0a090899"
+                MouseArea { anchors.fill: parent }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 360; height: 190; radius: 12
+                    color: Theme.surfaceRaised
+                    border.color: Theme.panelInk; border.width: 1
+                    Column {
+                        anchors.fill: parent; anchors.margins: 18; spacing: 12
+                        Text {
+                            width: parent.width
+                            font.family: Theme.uiFont; color: Theme.panelInk; font.pixelSize: 16
+                            text: launcher.pendingDescription
+                            wrapMode: Text.WordWrap
+                        }
+                        Column {
+                            spacing: 4
+                            Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Your password (" + launcher.ownUsername + ")" }
+                            Rectangle {
+                                width: 320; height: 33; radius: 6; color: Theme.panel
+                                border.color: Theme.panelInk; border.width: 1
+                                TextInput {
+                                    id: launcherSudoPwField
+                                    anchors.fill: parent; anchors.margins: 6
+                                    color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
+                                    echoMode: TextInput.Password; clip: true
+                                    focus: launcher.pendingCommand !== null
+                                    Keys.onReturnPressed: { launcher.runPendingCommand(text); text = "" }
+                                }
+                            }
+                        }
+                        Row {
+                            spacing: 10
+                            Button { label: "Confirm"; onClicked: { launcher.runPendingCommand(launcherSudoPwField.text); launcherSudoPwField.text = "" } }
+                            Button { label: "Cancel"; variant: "neutral"; onClicked: { launcher.pendingCommand = null; launcher.pendingDescription = ""; launcherSudoPwField.text = "" } }
+                        }
+                    }
+                }
+            }
+        }
+
+        component AppContextMenu: Rectangle {
+            id: menu
+            readonly property var app: launcher.contextMenuApp
+            visible: launcher.contextMenuApp !== null
+            z: 60
+            width: 168; radius: 8
+            height: menuCol.implicitHeight + 12
+            color: Theme.surfaceRaised
+            border.color: Theme.panelInk; border.width: 1
+            x: Math.min(launcher.contextMenuX, launcherBox.width - width - 8)
+            y: Math.min(launcher.contextMenuY, launcherBox.height - height - 8)
+            Column {
+                id: menuCol
+                anchors.fill: parent; anchors.margins: 6; spacing: 1
+                Repeater {
+                    model: [
+                        { label: "Update", action: "update" },
+                        { label: "Uninstall", action: "uninstall", danger: true }
+                    ]
+                    delegate: Rectangle {
+                        width: parent.width; height: 30; radius: 5
+                        color: appMenuItemMouse.containsMouse ? Theme.panel : "#00000000"
+                        Text {
+                            anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.label
+                            color: modelData.danger ? Theme.tierRed : Theme.panelInk
+                            font.pixelSize: 13; font.family: Theme.uiFont
+                        }
+                        MouseArea {
+                            id: appMenuItemMouse
+                            anchors.fill: parent; hoverEnabled: true
+                            onClicked: {
+                                if (modelData.action === "update") launcher.doUpdate(menu.app)
+                                else if (modelData.action === "uninstall") launcher.doUninstall(menu.app)
+                                launcher.contextMenuApp = null
+                            }
+                        }
+                    }
                 }
             }
         }

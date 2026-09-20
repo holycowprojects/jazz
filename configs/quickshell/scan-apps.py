@@ -17,6 +17,8 @@ import glob
 import json
 import os
 import re
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 DIRS = [
     "/usr/share/applications",
@@ -24,6 +26,30 @@ DIRS = [
     "/var/lib/flatpak/exports/share/applications",
     os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
 ]
+
+# The last two DIRS entries are Flatpak's own export dirs - anything found
+# there is Flatpak-owned, everything else is pacman-owned (or unowned).
+# Used by the launcher's right-click Update/Uninstall (20 Sept 2026,
+# Akash's request) to know which package manager and which real
+# package/app id to act on.
+FLATPAK_DIRS = set(DIRS[2:])
+
+
+def owning_pkg(desktop_path):
+    """Real package-manager lookup, not guessed - `pacman -Qoq` asks pacman
+    itself which installed package owns this exact file. Returns "" for a
+    .desktop file pacman doesn't know about (hand-placed, or owned by
+    something outside pacman's database)."""
+    try:
+        result = subprocess.run(
+            ["pacman", "-Qoq", desktop_path],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
 
 FIELD_CODES = re.compile(r"%[fFuUick]")
 
@@ -98,6 +124,12 @@ def scan():
     icon_index = build_icon_index()
     seen_names = set()
     apps = []
+    # (app dict, its .desktop path) for every pacman-candidate entry, so
+    # their `pacman -Qoq` lookups can run in parallel below - done serially
+    # this took ~3.5s (one pacman process spawn per file dominates, not the
+    # lookup itself), real UX problem since this reruns on every launcher
+    # open. A thread pool cuts that to comfortably under a second.
+    pacman_pending = []
     for d in DIRS:
         for path in glob.glob(os.path.join(d, "*.desktop")):
             cp = configparser.ConfigParser(interpolation=None, strict=False)
@@ -127,14 +159,34 @@ def scan():
                 icon_path = icon_name if os.path.isfile(icon_name) else ""
             else:
                 icon_path = icon_index.get(icon_name, "")
-            apps.append({
+            app = {
                 "name": name,
                 "icon": icon_name,
                 "iconPath": icon_path,
                 "exec": exec_clean,
                 "wmClass": entry.get("StartupWMClass", ""),
                 "desktopFile": os.path.splitext(os.path.basename(path))[0],
-            })
+                "origin": "",
+                "pkgId": "",
+            }
+            if d in FLATPAK_DIRS:
+                app["origin"] = "flatpak"
+                # X-Flatpak is written into every exported .desktop file by
+                # flatpak itself - trust it over guessing from the filename,
+                # since a multi-entry app (e.g. an expansion-pack launcher)
+                # can have a .desktop basename that isn't the real app id.
+                app["pkgId"] = entry.get("X-Flatpak", "") or os.path.splitext(os.path.basename(path))[0]
+            else:
+                pacman_pending.append((app, path))
+            apps.append(app)
+
+    if pacman_pending:
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            results = pool.map(owning_pkg, [path for _app, path in pacman_pending])
+        for (app, _path), pkg_id in zip(pacman_pending, results):
+            app["pkgId"] = pkg_id
+            app["origin"] = "pacman" if pkg_id else ""
+
     apps.sort(key=lambda a: a["name"].lower())
     print(json.dumps(apps))
 

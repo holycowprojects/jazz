@@ -1654,6 +1654,13 @@ PanelWindow {
                             property var pendingCommand: null
                             property string pendingDescription: ""
                             property string sudoStatus: ""
+                            // Real gap found live, 20 Sept 2026 (Akash: "user should not be
+                            // confused whether it is updating or not") - the popup used to
+                            // close the instant you hit Confirm, so a long action (Update
+                            // All's real pacman -Syu) gave zero visible feedback until the
+                            // Updates tab was revisited later. Now the popup stays open and
+                            // switches to a running/result state instead of closing early.
+                            property bool sudoRunning: false
                             property bool idleEnabled: true
                             property int idleMinutes: 10
                             property string idleStatus: ""
@@ -1686,6 +1693,7 @@ PanelWindow {
                                 usersTab.pendingCommand = command
                                 usersTab.pendingDescription = description
                                 usersTab.sudoStatus = ""
+                                usersTab.sudoRunning = false
                             }
                             Process {
                                 id: sudoActionProc
@@ -1697,9 +1705,14 @@ PanelWindow {
                                 stderr: StdioCollector { onStreamFinished: sudoActionProc.outText += this.text }
                                 onExited: function (exitCode, exitStatus) {
                                     sudoActionProc.pw = ""
+                                    usersTab.sudoRunning = false
                                     if (exitCode === 0) {
                                         usersTab.sudoStatus = "Done."
                                         usersTab.refresh()
+                                        // This popup/Process is now shared across tabs (Updates'
+                                        // "Update All" reuses it) - harmless no-op re-check when
+                                        // the action that ran wasn't update-related.
+                                        updatesTab.refresh()
                                     } else {
                                         // sudo's own real error text (wrong password, etc.) -
                                         // strip its "[sudo] password for X:" echo, keep the rest.
@@ -1708,13 +1721,22 @@ PanelWindow {
                                     }
                                 }
                             }
+                            // Keeps pendingCommand set (popup stays open) through the whole
+                            // run - only dismissBusyPopup() (the new Close button) clears it
+                            // now, not this function. Real gap found live: closing on Confirm
+                            // gave zero visible feedback while a long action (Update All) ran.
                             function runPendingCommand(password) {
                                 sudoActionProc.outText = ""
                                 sudoActionProc.pw = password
                                 sudoActionProc.command = ["sudo", "-S"].concat(usersTab.pendingCommand)
+                                usersTab.sudoRunning = true
                                 sudoActionProc.running = true
+                            }
+                            function dismissBusyPopup() {
                                 usersTab.pendingCommand = null
                                 usersTab.pendingDescription = ""
+                                usersTab.sudoStatus = ""
+                                usersTab.sudoRunning = false
                             }
                             Process {
                                 command: ["whoami"]
@@ -2316,6 +2338,43 @@ PanelWindow {
                             function refresh() { updatesTab.checked = false; updatesProc.running = true }
                             Component.onCompleted: refresh()
                             SectionHeader { text: "UPDATES" }
+                            // Akash's placement feedback, 20 Sept 2026: buttons belong
+                            // right under the section header, above the count/list -
+                            // not buried below a potentially long scrolling list of
+                            // package lines.
+                            Row {
+                                spacing: 10
+                                Button {
+                                    width: 165; height: 39
+                                    fontSize: 11
+                                    label: "Check Now"
+                                    onClicked: updatesTab.refresh()
+                                }
+                                // "Update All" - a real button that upgrades every
+                                // package this list shows, not just the check. Reuses
+                                // the exact sudo -S + password-popup mechanism Users'
+                                // privileged actions already use (usersTab.requestSudo),
+                                // rather than a third copy of the same pattern - this
+                                // popup is already shared across tabs now (see its own
+                                // Text status line above). variant: "primary" is the
+                                // glossy/raised "3D" look (Akash, 17 Sept: buttons
+                                // should "give a 3d feel") - same component already
+                                // used for Check Now, just the filled variant instead
+                                // of neutral, since this is the primary action here.
+                                Button {
+                                    width: 165; height: 39
+                                    fontSize: 11
+                                    variant: "primary"
+                                    // Visible even without the popup open - e.g. if Akash
+                                    // switches to another tab and back while it's running.
+                                    label: usersTab.sudoRunning ? "Updating..." : "Update All"
+                                    enabled: updatesTab.pending.length > 0 && !usersTab.sudoRunning
+                                    onClicked: usersTab.requestSudo(
+                                        ["pacman", "-Syu", "--noconfirm"],
+                                        "Update all " + updatesTab.pending.length + " packages?"
+                                    )
+                                }
+                            }
                             Text {
                                 text: !updatesTab.checked ? "Checking..." : (updatesTab.pending.length === 0 ? "System is up to date" : updatesTab.pending.length + " updates available")
                                 color: Theme.panelInk; font.pixelSize: 22
@@ -2326,12 +2385,6 @@ PanelWindow {
                                     model: updatesTab.pending
                                     delegate: Text { text: modelData; color: Theme.textSecondary; font.pixelSize: 16; font.family: Theme.monoFont }
                                 }
-                            }
-                            Button {
-                                width: 165; height: 39
-                                fontSize: 11
-                                label: "Check Now"
-                                onClicked: updatesTab.refresh()
                             }
                         }
 
@@ -2675,10 +2728,11 @@ PanelWindow {
             MouseArea { anchors.fill: parent } // swallow clicks to content behind
             Rectangle {
                 anchors.centerIn: parent
-                width: 360; height: 190; radius: 12
+                width: 360; height: popupCol.implicitHeight + 36; radius: 12
                 color: Theme.surfaceRaised
                 border.color: Theme.panelInk; border.width: 1
                 Column {
+                    id: popupCol
                     anchors.fill: parent; anchors.margins: 18; spacing: 12
                     Text {
                         width: parent.width
@@ -2686,7 +2740,10 @@ PanelWindow {
                         text: usersTab.pendingDescription
                         wrapMode: Text.WordWrap
                     }
+
+                    // ----- Awaiting password -----
                     Column {
+                        visible: !usersTab.sudoRunning && usersTab.sudoStatus === ""
                         spacing: 4
                         Text { font.family: Theme.uiFont; color: Theme.textSecondary; font.pixelSize: 14; text: "Your password (" + usersTab.ownUsername + ")" }
                         Rectangle {
@@ -2697,12 +2754,13 @@ PanelWindow {
                                 anchors.fill: parent; anchors.margins: 6
                                 color: Theme.panelInk; font.pixelSize: 18; font.family: Theme.uiFont
                                 echoMode: TextInput.Password; clip: true
-                                focus: usersTab.pendingCommand !== null
+                                focus: usersTab.pendingCommand !== null && !usersTab.sudoRunning && usersTab.sudoStatus === ""
                                 Keys.onReturnPressed: { usersTab.runPendingCommand(text); text = "" }
                             }
                         }
                     }
                     Row {
+                        visible: !usersTab.sudoRunning && usersTab.sudoStatus === ""
                         spacing: 10
                         Button {
                             label: "Confirm"
@@ -2711,8 +2769,59 @@ PanelWindow {
                         Button {
                             label: "Cancel"
                             variant: "neutral"
-                            onClicked: { usersTab.pendingCommand = null; usersTab.pendingDescription = ""; sudoPwField.text = "" }
+                            onClicked: { usersTab.dismissBusyPopup(); sudoPwField.text = "" }
                         }
+                    }
+
+                    // ----- Running - real visible progress, not silence.
+                    // Real gap found live, 20 Sept 2026 (Akash: "user should
+                    // not be confused whether it is updating or not") - the
+                    // popup used to vanish the instant Confirm was clicked,
+                    // giving zero feedback for a long action like Update
+                    // All's real pacman -Syu. Plain rotating dot, no
+                    // GraphicalEffects dependency - same rule Button.qml's
+                    // own hover/press animation already follows. -----
+                    Row {
+                        visible: usersTab.sudoRunning
+                        spacing: 10
+                        Rectangle {
+                            id: busySpinner
+                            width: 18; height: 18; radius: 9
+                            color: "#00000000"
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle {
+                                width: 6; height: 6; radius: 3
+                                color: WorkspaceState.activeColor()
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: -3
+                            }
+                            RotationAnimation on rotation {
+                                running: usersTab.sudoRunning
+                                loops: Animation.Infinite
+                                from: 0; to: 360
+                                duration: 900
+                            }
+                        }
+                        Text {
+                            text: "Working - this can take a while for a full update..."
+                            color: Theme.textSecondary; font.pixelSize: 14; font.family: Theme.uiFont
+                            wrapMode: Text.WordWrap; width: 290
+                        }
+                    }
+
+                    // ----- Result - stays up until dismissed, so a long
+                    // action's outcome is never missed just because you
+                    // looked away while it ran. -----
+                    Column {
+                        visible: !usersTab.sudoRunning && usersTab.sudoStatus !== ""
+                        spacing: 10
+                        Text {
+                            text: usersTab.sudoStatus
+                            color: usersTab.sudoStatus === "Done." ? Theme.textSecondary : Theme.critical
+                            font.family: Theme.uiFont; font.pixelSize: 15
+                            wrapMode: Text.WordWrap; width: 320
+                        }
+                        Button { label: "Close"; variant: "neutral"; onClicked: usersTab.dismissBusyPopup() }
                     }
                 }
             }
