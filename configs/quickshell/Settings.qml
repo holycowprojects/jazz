@@ -1283,6 +1283,82 @@ PanelWindow {
                             width: parent.width; spacing: 15
                             property var installedModels: []
                             property var runningModels: []
+                            // ---------- Model picker: pull new models (20 Sept 2026,
+                            // Akash's request, after checking real RAM needs against
+                            // JAZZ's own proven hardware floor - the 4GB Pavilion - so
+                            // qwen2.5:0.5b stays the shipped default; this just adds a
+                            // way to pull something bigger on capable hardware). No
+                            // sudo needed - confirmed live: `ollama pull` talks to the
+                            // Ollama daemon's own API (it runs as its own system user
+                            // and owns the model storage), not the filesystem directly,
+                            // so the regular desktop user can already do this. ----------
+                            property string pullTarget: ""
+                            property string pullingName: ""
+                            property bool pullBusy: false
+                            property string pullStatus: ""
+                            property real pullProgress: 0
+                            readonly property var curatedModels: [
+                                { name: "qwen3.5:4b", size: "3.4 GB", note: "Recommended upgrade - needs ~8-10GB RAM free" },
+                                { name: "llama3.2:3b", size: "2.0 GB", note: "~8GB RAM" },
+                                { name: "gemma3:4b", size: "~4 GB", note: "~10GB RAM" },
+                                { name: "phi4-mini:3.8b", size: "~3 GB", note: "~8GB RAM, stronger at reasoning" }
+                            ]
+                            function startPull(name) {
+                                if (!name || aiTab.pullBusy) return
+                                // Real bug found live, 20 Sept 2026: this used to read back
+                                // aiTab.pullTarget for the final status message, but the
+                                // curated quick-pick buttons never set that property (only
+                                // the free-text field does) - a curated pull finished with
+                                // "Done -  installed." (name silently blank). Storing the
+                                // name startPull() actually got, regardless of which button
+                                // called it, fixes both paths the same way.
+                                aiTab.pullingName = name
+                                aiTab.pullBusy = true
+                                aiTab.pullProgress = 0
+                                aiTab.pullStatus = "Starting..."
+                                pullRequestFile.setText(JSON.stringify({ name: name, stream: true }))
+                            }
+                            FileView {
+                                id: pullRequestFile
+                                path: "@@JAZZ_DATA_DIR@@/pull-request.json"
+                                onSaved: pullProc.running = true
+                            }
+                            Process {
+                                id: pullProc
+                                command: ["curl", "-s", "-N", "-X", "POST", "http://localhost:11434/api/pull", "--data-binary", "@@@JAZZ_DATA_DIR@@/pull-request.json"]
+                                stdout: SplitParser {
+                                    onRead: function (data) {
+                                        if (!data) return
+                                        try {
+                                            var obj = JSON.parse(data)
+                                            if (obj.error) {
+                                                aiTab.pullStatus = "Error: " + obj.error
+                                                aiTab.pullBusy = false
+                                                return
+                                            }
+                                            if (obj.total && obj.completed) {
+                                                aiTab.pullProgress = obj.completed / obj.total
+                                                aiTab.pullStatus = (obj.status || "pulling") + " - " + Math.round(aiTab.pullProgress * 100) + "%"
+                                            } else if (obj.status) {
+                                                aiTab.pullStatus = obj.status
+                                            }
+                                            if (obj.status === "success") {
+                                                aiTab.pullBusy = false
+                                                aiTab.pullProgress = 1
+                                                aiTab.pullStatus = "Done - " + aiTab.pullingName + " installed."
+                                                aiTab.pullTarget = ""
+                                                tagsProc.running = true
+                                            }
+                                        } catch (e) {}
+                                    }
+                                }
+                                onExited: function (exitCode, exitStatus) {
+                                    if (aiTab.pullBusy) {
+                                        aiTab.pullBusy = false
+                                        aiTab.pullStatus = "Failed (exit " + exitCode + ")."
+                                    }
+                                }
+                            }
                             Process {
                                 id: tagsProc
                                 command: ["bash", "-c", "curl -s http://localhost:11434/api/tags"]
@@ -1326,6 +1402,84 @@ PanelWindow {
                                                 color: Theme.textSecondary; font.pixelSize: 15
                                             }
                                         }
+                                    }
+                                }
+                            }
+
+                            SectionHeader { text: "PULL A MODEL" }
+                            Text {
+                                text: "qwen2.5:0.5b ships by default so JAZZ installs on anything - these need real RAM to spare."
+                                color: Theme.textSecondary; font.pixelSize: 15; wrapMode: Text.Wrap; width: parent.width
+                            }
+                            Column {
+                                width: parent.width; spacing: 6
+                                Repeater {
+                                    model: aiTab.curatedModels
+                                    delegate: Rectangle {
+                                        width: parent.width; height: 66; radius: 9; color: Theme.surfaceRaised
+                                        Column {
+                                            anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 3
+                                            Text { font.family: Theme.uiFont; text: modelData.name + "  ·  " + modelData.size; color: Theme.panelInk; font.pixelSize: 18 }
+                                            Text { text: modelData.note; color: Theme.textSecondary; font.pixelSize: 14 }
+                                        }
+                                        Button {
+                                            anchors.right: parent.right; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+                                            width: 90; height: 33; fontSize: 12
+                                            variant: "primary"
+                                            label: "Pull"
+                                            enabled: !aiTab.pullBusy && aiTab.installedModels.every(function (m) { return m.name !== modelData.name })
+                                            onClicked: aiTab.startPull(modelData.name)
+                                        }
+                                    }
+                                }
+                            }
+                            Row {
+                                spacing: 10
+                                Rectangle {
+                                    width: 260; height: 39; radius: 6; color: Theme.panel
+                                    border.color: Theme.panelInk; border.width: 1
+                                    TextInput {
+                                        id: pullTargetField
+                                        anchors.fill: parent; anchors.margins: 8
+                                        color: Theme.panelInk; font.pixelSize: 15; font.family: Theme.uiFont
+                                        clip: true
+                                        text: aiTab.pullTarget
+                                        onTextChanged: aiTab.pullTarget = text
+                                        Text { text: "Other model, e.g. mistral:7b"; color: Theme.textSecondary; visible: pullTargetField.text.length === 0; font.pixelSize: 15 }
+                                        Keys.onReturnPressed: aiTab.startPull(aiTab.pullTarget)
+                                    }
+                                }
+                                Button {
+                                    width: 90; height: 39; fontSize: 12
+                                    variant: "primary"
+                                    label: "Pull"
+                                    enabled: !aiTab.pullBusy && aiTab.pullTarget.trim().length > 0
+                                    onClicked: aiTab.startPull(aiTab.pullTarget.trim())
+                                }
+                            }
+                            // Real UX lesson from the same day's Settings "Update All" work
+                            // (Akash: "user should not be confused whether it is updating or
+                            // not") - a model pull can take minutes, so this shows real
+                            // progress (parsed from Ollama's own streamed byte counts),
+                            // not silence.
+                            Column {
+                                visible: aiTab.pullBusy || aiTab.pullStatus !== ""
+                                width: parent.width; spacing: 6
+                                Text {
+                                    text: aiTab.pullStatus
+                                    color: aiTab.pullStatus.indexOf("Error") === 0 || aiTab.pullStatus.indexOf("Failed") === 0 ? Theme.critical : Theme.textSecondary
+                                    font.family: Theme.uiFont; font.pixelSize: 14; wrapMode: Text.Wrap; width: parent.width
+                                }
+                                Rectangle {
+                                    visible: aiTab.pullBusy
+                                    width: 320; height: 8; radius: 4; color: Theme.panel
+                                    border.color: Theme.panelInk; border.width: 1
+                                    Rectangle {
+                                        height: parent.height; radius: 4
+                                        color: WorkspaceState.activeColor()
+                                        width: Math.max(6, parent.width * aiTab.pullProgress)
+                                        Behavior on width { NumberAnimation { duration: 200 } }
                                     }
                                 }
                             }
