@@ -41,10 +41,10 @@ The default look is a researched, jewel-toned "Sapphire" theme — deep navy chr
 | Layer | What's in it |
 |---|---|
 | **Base system** | Arch Linux, Btrfs + Snapper (automatic pre-change snapshots, real tested rollback), systemd-boot |
-| **Desktop** | Hyprland (tiling Wayland compositor) + a hand-built Quickshell shell — top bar, transparent macOS-style dock, native app launcher, quick settings, power menu |
-| **Jazz Settings** | Appearance (themes, wallpapers, fonts), Desktop (workspace naming/colors), Users (add/remove accounts, each provisioned with the full JAZZ desktop automatically), Applications, Accessibility |
+| **Desktop** | Hyprland (tiling Wayland compositor) + a hand-built Quickshell shell — top bar, transparent macOS-style dock, native app launcher (right-click any app to update or uninstall it, no terminal needed), quick settings, power menu |
+| **Jazz Settings** | Appearance (themes, wallpapers, fonts), Desktop (workspace naming/colors), Users (add/remove accounts, each provisioned with the full JAZZ desktop automatically), Updates (checks for real system updates, one-click "Update All"), AI (see local models actually loaded, pull additional ones from a curated picker), Applications, Accessibility |
 | **Jazz Files** | A real GUI file manager — multi-pane, undo/redo, no AI bolted on for the sake of it |
-| **AI engineering** | Rootless Podman, a PyTorch + JupyterLab container (CPU today, the same container validates unmodified against a rented cloud GPU), Ollama for local model inference |
+| **AI engineering** | Rootless Podman, a PyTorch + JupyterLab container (CPU today, the same container validates unmodified against a rented cloud GPU), Ollama for local model inference — ships with a tiny `qwen2.5:0.5b` by default so it installs on anything, with a one-click picker in Settings to pull a larger model once you know your hardware can spare the RAM |
 | **AI red-teaming** | PyRIT, pointed at your local Ollama model out of the box — the "Arena" workspace is built around this |
 | **Everyday desktop** | A curated app layer (browser, office, media, communication) plus daily-life widgets — clock, world clock, notes, to-do, pomodoro, more on the way |
 | **Screenshots** | Region/window/full-screen capture, straight to clipboard, with an annotate step before you share it |

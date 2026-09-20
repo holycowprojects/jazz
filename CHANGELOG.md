@@ -6,6 +6,36 @@ releases yet, so entries are grouped by date instead of a version number.
 
 ## [Unreleased]
 
+### 2026-09-20
+- App launcher: right-click any app for real Update/Uninstall (`pacman`
+  or Flatpak, detected per-app via a real `pacman -Qoq`/`X-Flatpak`
+  lookup, parallelized so it doesn't slow down opening the launcher).
+  Live-tested by uninstalling a real package through it.
+- Settings > Updates: a real "Update All" button running the actual
+  system upgrade, not just the existing check - moved above the package
+  list per feedback, with a live progress/result popup (spinner + status,
+  stays open until dismissed) so a long update never looks frozen.
+  Live-tested against a real 205-package upgrade to completion.
+- Settings > AI: a model picker to pull additional Ollama models (curated
+  quick-picks with rough RAM notes, plus any model by name), with the
+  same live-progress treatment. `qwen2.5:0.5b` stays the installed
+  default - it's the only model that fits JAZZ's actual proven hardware
+  floor (the 4GB Pavilion from the stranger-machine test); bigger models
+  are opt-in for hardware that can spare the RAM.
+- Fixed a real bug: a newly Bazaar/Flatpak-installed app's icon could
+  stay blank until a full Quickshell restart, even after the Sept 17 fix
+  for the app itself not appearing - icon lookup is now done in
+  `scan-apps.py` on every scan instead of relying on Quickshell's own
+  icon cache, which doesn't reliably pick up icons that land on disk
+  after Quickshell has already started.
+- Fixed a real bug in Jazz Files: right-clicking a file could show its
+  context menu rendered behind neighboring icons, not properly
+  clickable - it was being created once per grid/list item instead of
+  once at the top level.
+- Added `shell.qml`, the top-level `qmldir`, and the top bar's symbol
+  icons to the repo - they were live on real hardware but had never
+  actually been committed.
+
 ### 2026-09-17
 - Polished the top bar's power menu and quick-settings flyout: real hover/
   press 3D feedback on every button (shared `ui/Button.qml`/`ui/Toggle.qml`
